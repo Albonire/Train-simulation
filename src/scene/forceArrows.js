@@ -12,23 +12,26 @@ const nX = new THREE.Vector3(-1, 0, 0);
 const nY = new THREE.Vector3(0, -1, 0);
 const nZ = new THREE.Vector3(0, 0, -1);
 
-export function createForceArrows(parent, y = 1.9) {
+// Diagrama de cuerpo libre sobre el techo: todas las flechas salen de un mismo
+// punto, por encima de la carroceria, para que no se mezclen con ella.
+export function createForceArrows(parent, roofY) {
   const group = new THREE.Group();
-  group.position.set(0, y, 0);
+  group.position.set(0, roofY + 3.8, 0);
   parent.add(group);
+  const opt = { radius: 0.11, head: 0.5 };
   const a = {
-    lift: makeArrow("#35e08a"),
-    weight: makeArrow("#f2f5f8"),
-    thrust: makeArrow("#35d0ff"),
-    drag: makeArrow("#ffa43a"),
-    side: makeArrow("#ff5fd2"),
+    lift: makeArrow("#35e08a", opt),
+    weight: makeArrow("#f2f5f8", opt),
+    thrust: makeArrow("#35d0ff", opt),
+    drag: makeArrow("#ffa43a", opt),
+    side: makeArrow("#ff5fd2", opt),
   };
-  a.lift.position.set(-0.6, 0, 0);
-  a.weight.position.set(0.6, 0, 0);
-  a.thrust.position.set(1.0, -0.2, 0);
-  a.drag.position.set(-1.0, -0.2, 0);
-  a.side.position.set(0, -0.6, 0);
-  group.add(...Object.values(a));
+  const hub = new THREE.Mesh(
+    new THREE.SphereGeometry(0.2, 16, 12),
+    new THREE.MeshBasicMaterial({ color: "#1b2430", transparent: true, opacity: 0.9, depthTest: false }),
+  );
+  hub.renderOrder = 9;
+  group.add(hub, ...Object.values(a));
   return {
     group,
     /** sec: seccion fisica central; train: tren; drag: resistencia total por seccion (N) */

@@ -21,7 +21,9 @@ const { renderer, scene } = world;
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 4000);
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
-controls.maxPolarAngle = Math.PI * 0.62;
+controls.minDistance = 3;
+controls.maxDistance = 420;
+controls.screenSpacePanning = true;
 
 const train = new Train("ems");
 const scenes = { ems: createEmsScene(world), eds: createEdsScene(world) };
@@ -77,14 +79,24 @@ function applyBody() {
   }
 }
 
+// Las lineas de flujo se dibujan sin prueba de profundidad: solo tienen sentido
+// cuando los imanes estan a la vista (vistas de detalle, rayos X o corte).
+function magnetsVisible() {
+  const rig = active.rigs[view.rig];
+  const bodyMode = view.body === "auto" ? rig.body : view.body;
+  return DETAIL.includes(view.rig) || bodyMode !== "solid";
+}
+
 // ---- camaras con transicion ----
 const tween = { active: false, pos: new THREE.Vector3(), target: new THREE.Vector3(), fov: 50 };
 controls.addEventListener("start", () => (tween.active = false));
 function setRig(name, instant = false) {
   view.rig = name;
   const r = active.rigs[name];
-  tween.pos.set(...r.pos);
   tween.target.set(...r.target);
+  // en pantallas verticales el campo horizontal es estrecho: se aleja la camara
+  const far = Math.min(2.4, Math.max(1, (1.3 / camera.aspect) ** 0.6));
+  tween.pos.set(...r.pos).sub(tween.target).multiplyScalar(far).add(tween.target);
   tween.fov = r.fov;
   tween.active = !instant;
   if (instant) {
@@ -98,31 +110,26 @@ function setRig(name, instant = false) {
   document.querySelectorAll("#cams [data-rig]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.rig === name)));
 }
 
-// ---- etiquetas ----
+// ---- etiquetas: solo en las vistas de detalle y con nombres cortos ----
 let labels;
+const DETAIL = ["gap", "section"];
 function buildLabels() {
   labels.clear();
   const V = (x, y, z) => new THREE.Vector3(x, y, z);
   const midGroup = () => active.sections[Math.floor(active.sections.length / 2)].group.position;
   if (mode === "ems") {
     const gv = () => train.sections[1].gap * effExag();
-    labels.add({ text: () => `Entrehierro: ${(train.sections[1].gap * 1000).toFixed(2)} mm`, pos: () => V(0, DIM.statorBottom - gv() / 2, 1.15), rigs: ["gap", "section"] });
-    labels.add({ text: () => "Estator (devanado trifásico)", pos: () => V(2.0, DIM.statorBottom + 0.3, 1.15), rigs: ["gap", "section"], cls: "s" });
-    labels.add({ text: () => "Imán de sustentación (polos N/S)", pos: () => V(-1.6, DIM.statorBottom - gv() - 0.55, 1.15), rigs: ["gap", "section"], cls: "n" });
-    labels.add({ text: () => "Riel de guiado", pos: () => V(0, DIM.railY1 + 0.15, 1.58), rigs: ["gap", "section"] });
-    labels.add({ text: () => "Imán de guiado", pos: () => V(2.2, (DIM.railY0 + DIM.railY1) / 2 - (DIM.plateTop + DIM.floorClear) + midGroup().y - 0.4, 1.8), rigs: ["gap", "section"], cls: "n" });
-    labels.add({ text: () => "Viga guía en T", pos: () => V(0, DIM.webTop - 0.4, 0), rigs: ["section", "orbit"] });
-    labels.add({ text: () => "Vehículo (3 secciones)", pos: () => V(0, DIM.plateTop + DIM.floorClear + 4.0, 0), rigs: ["orbit", "chase"] });
-    labels.add({ text: () => "Onda del estator: avanza con el tren", pos: () => V(-8, 6.2, 1.6), rigs: ["chase"], cls: "s" });
+    labels.add({ text: () => `${(train.sections[1].gap * 1000).toFixed(1)} mm`, pos: () => V(0, DIM.statorBottom - gv() / 2, 1.15), rigs: DETAIL });
+    labels.add({ text: () => "Estator", pos: () => V(2.0, DIM.statorBottom + 0.3, 1.15), rigs: DETAIL, cls: "s" });
+    labels.add({ text: () => "Imán de sustentación", pos: () => V(-1.6, DIM.statorBottom - gv() - 0.55, 1.15), rigs: DETAIL, cls: "n" });
+    labels.add({ text: () => "Riel de guiado", pos: () => V(0, DIM.railY1 + 0.15, 1.58), rigs: ["section"] });
+    labels.add({ text: () => "Imán de guiado", pos: () => V(2.2, (DIM.railY0 + DIM.railY1) / 2 - (DIM.plateTop + DIM.floorClear) + midGroup().y - 0.4, 1.8), rigs: ["section"], cls: "n" });
   } else {
     const gap = () => train.sections[1].gap;
-    labels.add({ text: () => `Elevación: ${(gap() * 1000).toFixed(1)} mm`, pos: () => V(0, EDIM.slabTop + 0.1, 0), rigs: ["section", "gap"] });
-    labels.add({ text: () => "Bobinas de propulsión", pos: () => V(1.4, EDIM.propY + 0.5, 1.93), rigs: ["gap", "section"], cls: "s" });
-    labels.add({ text: () => "Bobinas de levitación en 8", pos: () => V(-1.6, EDIM.levY - 0.9, 1.93), rigs: ["gap", "section"], cls: "n" });
-    labels.add({ text: () => "Imán superconductor (criostato)", pos: () => V(0.0, EDIM.slabTop + 2.35, 1.6), rigs: ["gap", "section"], cls: "n" });
-    labels.add({ text: () => (train.sections[1].wheelsDown ? "Ruedas extendidas" : "Ruedas retraídas"), pos: () => V(0, EDIM.slabTop + 0.5, 0.85), rigs: ["section"] });
-    labels.add({ text: () => "Vía en U", pos: () => V(0, EDIM.slabTop - 0.6, 2.3), rigs: ["section", "orbit"] });
-    labels.add({ text: () => "Vehículo (3 secciones)", pos: () => V(0, EDIM.slabTop + 4.4, 0), rigs: ["orbit", "chase"] });
+    labels.add({ text: () => `${(gap() * 1000).toFixed(0)} mm`, pos: () => V(0, EDIM.slabTop + 0.1, 0), rigs: DETAIL });
+    labels.add({ text: () => "Propulsión", pos: () => V(1.4, EDIM.propY + 0.5, 1.93), rigs: DETAIL, cls: "s" });
+    labels.add({ text: () => "Bobinas en 8", pos: () => V(-1.6, EDIM.levY - 0.9, 1.93), rigs: DETAIL, cls: "n" });
+    labels.add({ text: () => "Imán superconductor", pos: () => V(0.0, EDIM.slabTop + gap() + 1.0, 1.2), rigs: DETAIL, cls: "n" });
   }
 }
 
@@ -145,8 +152,15 @@ const ui = createUI({
   reset: () => {
     train.reset();
     ui.hist.clear();
+    document.getElementById("stopBtn")?.setAttribute("aria-pressed", "false");
+    ui.toast("Reiniciado");
   },
   perturb,
+  setTheme: (t) => {
+    world.setTheme(t);
+    // faros y luz de las ventanas: discretos de dia, visibles al atardecer
+    for (const sc of Object.values(scenes)) for (const m of sc.bodyMats) m.emissiveIntensity = t === "light" ? 0.08 : 1;
+  },
 });
 labels = createLabels(ui.els.labels);
 
@@ -159,41 +173,39 @@ function setMode(next) {
   scenes.eds.group.visible = next === "eds";
   ui.build(next);
   ui.els.exag.value = String(view.exag[next]);
-  ui.setExagText();
+  ui.setOutputs();
   buildLabels();
-  setRig("orbit", true);
+  setRig(view.rig, true);
+  ui.toast(next === "ems" ? "EMS · Transrapid" : "EDS · SCMaglev");
 }
 
 function depart() {
   train.hold = false;
   document.getElementById("stopBtn")?.setAttribute("aria-pressed", "false");
   if (train.state === "estacion") train.stateTime = Math.max(train.stateTime, train.dwell - 8);
-  ui.toast("Salida solicitada");
+  ui.toast("Saliendo");
 }
 
 const midIdx = () => Math.floor(train.sections.length / 2);
 function slowForPerturbation() {
-  if (view.timeScale > 2) {
-    view.timeScale = 1;
-    document.querySelectorAll("#timeBtns [data-ts]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.ts === "1")));
-    ui.toast("Escala de tiempo fijada en x1 para ver la respuesta");
-  }
+  // a x5 o mas la respuesta dura una fraccion de segundo: se pasa a tiempo real
+  if (view.timeScale > 2) ui.setTimeScale(1);
 }
 function perturb(kind, btn) {
   const s = train.sections[midIdx()];
   const W = (s.mass + s.extraMass) * G;
+  slowForPerturbation();
   if (kind === "load") {
     if (s.extraMass > 0) s.clearLoad();
     else s.addLoad();
-    ui.toast(s.extraMass > 0 ? "Carga añadida: la sección 2 pesa un 12 % más" : "Carga retirada");
-    slowForPerturbation();
+    btn.setAttribute("aria-pressed", String(s.extraMass > 0));
+    ui.toast(s.extraMass > 0 ? "Carga +12 %" : "Carga retirada");
   } else if (kind === "gust") {
     s.addGust(0.1 * W, 0.6);
-    slowForPerturbation();
-    ui.toast("Ráfaga lateral del 10 % del peso durante 0,6 s");
+    ui.toast("Ráfaga lateral");
   } else if (kind === "kick") {
     s.kick(mode === "ems" ? 0.002 : 0.015);
-    slowForPerturbation();
+    ui.toast(mode === "ems" ? "Golpe de 2 mm" : "Golpe de 15 mm");
   } else if (kind === "ctrlOff" && mode === "ems") {
     const on = btn.getAttribute("aria-pressed") !== "true";
     btn.setAttribute("aria-pressed", String(on));
@@ -201,17 +213,15 @@ function perturb(kind, btn) {
       s.control = false;
       s.openLoop = true;
       s.kick(0.0005);
-      slowForPerturbation();
-      ui.toast("Control apagado en la sección 2 con la corriente fija: el equilibrio es inestable");
+      ui.toast("Control apagado");
     } else {
       s.openLoop = false;
       s.engage();
-      ui.toast("Control reactivado: el vehículo vuelve a su entrehierro");
+      ui.toast("Control activo");
     }
   } else if (kind === "cutPower" && mode === "ems") {
     train.sections.forEach((q) => q.release());
-    slowForPerturbation();
-    ui.toast("Corriente cortada: el tren cae a los patines y se re-levanta solo");
+    ui.toast("Sin corriente: cae a los patines");
     // solo si seguimos en EMS: al cambiar de modo las secciones son otras y no tienen engage()
     setTimeout(() => {
       if (mode === "ems") train.sections.forEach((q) => q.engage?.());
@@ -235,11 +245,27 @@ buildLabels();
 scenes.eds.group.visible = false;
 setRig("orbit", true);
 
+// ---- la camara nunca baja del suelo ----
+// Con el objetivo a la altura de la via se puede mirar desde abajo (ver los imanes),
+// pero la camara se queda por encima de la altura de los ojos de una persona.
+const EYE = 1.7;
+function keepAboveGround() {
+  const t = controls.target;
+  t.y = Math.min(40, Math.max(0.5, t.y));
+  t.x = Math.min(400, Math.max(-400, t.x));
+  t.z = Math.min(300, Math.max(-300, t.z));
+  const r = camera.position.distanceTo(t);
+  const c = (EYE - t.y) / Math.max(r, 1e-3);
+  controls.maxPolarAngle = Math.acos(Math.min(1, Math.max(-1, c)));
+  if (camera.position.y < EYE) camera.position.y = EYE;
+}
+
 // ---- bucle ----
 let last = performance.now();
 const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 function frame(now) {
-  const dt = Math.min(0.05, (now - last) / 1000);
+  const wall = Math.min(0.25, (now - last) / 1000);
+  const dt = Math.min(0.05, wall);
   last = now;
   if (!view.paused) {
     // trozos de a lo sumo 20 ms: mantiene el historial y la precision con escalas altas
@@ -251,11 +277,10 @@ function frame(now) {
     }
   }
   const sc = train.x - train.length / 2;
-  world.updateTrees(sc);
-  world.gTex.offset.x = sc / world.GROUND_TILE;
+  world.scroll(sc);
   stations.update(sc, train.length, train.stationSpacing, STATION_CFG[mode]);
   const tel = train.telemetry();
-  const v2 = { ...view, exag: effExag() };
+  const v2 = { ...view, exag: effExag(), magnetsVisible: magnetsVisible() };
   active.update(tel, train, v2, dt);
   if (mode === "ems") {
     fields.ems.update(tel, train, v2);
@@ -266,13 +291,15 @@ function frame(now) {
   }
 
   if (tween.active) {
-    const k = reduced ? 1 : 1 - Math.exp(-dt * 5);
+    // con tiempo real (no el paso limitado): en equipos lentos la transicion dura lo mismo
+    const k = reduced ? 1 : 1 - Math.exp(-wall * 5);
     camera.position.lerp(tween.pos, k);
     controls.target.lerp(tween.target, k);
     camera.fov += (tween.fov - camera.fov) * k;
     camera.updateProjectionMatrix();
     if (camera.position.distanceTo(tween.pos) < 0.02) tween.active = false;
   }
+  keepAboveGround();
   controls.update();
   renderer.render(scene, camera);
   labels.update(camera, view.rig, view.layers.labels, window.innerWidth, window.innerHeight);
