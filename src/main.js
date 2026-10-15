@@ -212,7 +212,10 @@ function perturb(kind, btn) {
     train.sections.forEach((q) => q.release());
     slowForPerturbation();
     ui.toast("Corriente cortada: el tren cae a los patines y se re-levanta solo");
-    setTimeout(() => train.sections.forEach((q) => q.engage()), 3500);
+    // solo si seguimos en EMS: al cambiar de modo las secciones son otras y no tienen engage()
+    setTimeout(() => {
+      if (mode === "ems") train.sections.forEach((q) => q.engage?.());
+    }, 3500);
   }
 }
 

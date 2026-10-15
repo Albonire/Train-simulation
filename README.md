@@ -32,7 +32,7 @@ Chromium.
 |---|---|
 | EMS / EDS | Cambia de tecnología (mismo tren, otra física). |
 | Velocidad objetivo, escala de tiempo (x1 a x60), pausa | Gobierna el viaje entre estaciones. |
-| Salir ahora / Retener en estación | El tren aterriza en cada estación (EMS) y vuelve a levitar antes de salir. |
+| Salir ahora / Retener en estación | En el modelo, el tren EMS aterriza en cada estación y vuelve a levitar antes de salir (decisión del modelo, no verificada contra el servicio real). |
 | Perturbaciones | Carga extra del 12 %, ráfaga lateral, golpe vertical, apagar el control, cortar la corriente. |
 | Cámaras | Órbita, persecución, sección transversal, entrehierro y cenital. |
 | Carrocería | Sólida, rayos X o corte. |
@@ -105,6 +105,7 @@ elegido para que el modelo sea coherente, **no es un dato oficial**. Cada consta
 | Paso polar del estator: 258 mm; paso de diente 63 mm | fuente | [MDPI Actuators 14(11):514](https://www.mdpi.com/2076-0825/14/11/514), [MAGLEV projects: technology aspects and choices](https://www.researchgate.net/publication/224055510_MAGLEV_projects_technology_aspects_and_choices) |
 | Vehículo de ensayo de dos secciones: 54 m, 120 t en vacío, 85 kN, 0 a 215 Hz, 4250 V, 400 km/h, 450 kW a bordo | fuente | [tabla en un documento sobre motores lineales](https://artefacts-discovery.researcher.life/full_text/DA-2/68/680fe23b46a73ba28f0969fd014f70bc/full_text/623230215391790103f89577fdb0e5e6.pdf); el motor (4250 V, 1200 A, 0 a 215 Hz) coincide con [The Transrapid Magnetic Levitation System](https://escholarship.org/content/qt6ds64496/qt6ds64496.pdf). El empuje de 85 kN solo aparece en una fuente. |
 | 60 t y 27 m por sección; 42,5 kN por sección; velocidad máxima EMS 399 km/h (= 2·τ·215 Hz) | derivado | de lo anterior |
+| Estator del Transrapid alimentado por tramos que se conmutan al paso del vehículo | fuente | [WO 1997/047493](https://patents.google.com/patent/WO1997047493A1/en) |
 | EDS: elevación de unos 100 mm | fuente | [JR Central](https://global.jr-central.co.jp/en/company/_pdf/superconducting_maglev.pdf), [KIT](https://publikationen.bibliothek.kit.edu/1000075557/4402937) |
 | EDS: ruedas hasta unos 150 km/h | fuente aprox. | [ficha educativa de JR Central](https://www.japansociety.org.uk/usercontent/572cf69871d517dad7964c455c746698/JR-Central-SCMAGLEV-Worksheet.pdf) (describe la línea de pruebas de Yamanashi) |
 | EDS: 603 km/h (récord de la serie L0, 2015) | fuente | [L0 Series](https://en.wikipedia.org/wiki/L0_Series) |
