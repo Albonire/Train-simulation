@@ -11,7 +11,7 @@ export const RIGS = {
   chase: { pos: [-92, 11, 20], target: [10, 7.4, 0], fov: 50, body: "solid" },
   section: { pos: [10, 7.0, 0.01], target: [0, 6.75, 0], fov: 44, body: "cut", cut: { axis: "x", c: 0 } },
   gap: { pos: [4.2, 6.95, 0.01], target: [0, 6.85, 1.75], fov: 30, body: "cut", cut: { axis: "x", c: 0 } },
-  top: { pos: [0, 80, 0.01], target: [0, 0, 0], fov: 45, body: "solid" },
+  top: { pos: [0, 135, 0.01], target: [0, 0, 0], fov: 45, body: "solid" },
 };
 
 function buildCaps() {

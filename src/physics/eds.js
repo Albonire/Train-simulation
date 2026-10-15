@@ -14,7 +14,13 @@
 // no hace falta control activo. El arrastre magnetico tiene su pico a baja
 // velocidad y cae despues. Las constantes se calibran para que el vehiculo
 // despegue a v_liftoff con las ruedas y alcance gapCruise a alta velocidad.
-// Es un modelo ilustrativo, no los datos de JR Central.
+// Es un modelo ilustrativo, no los datos de JR Central. En particular NO es la ley
+// de las bobinas en 8 de flujo nulo del SCMaglev real: en una patente de
+// levitacion por induccion (US 5,649,489) la fuerza restauradora vertical es
+// proporcional al desplazamiento del iman respecto del centro de la bobina, no una
+// exponencial en el entrehierro. Aqui se usa la ley de repulsion inducida de tipo
+// Inductrack porque reproduce lo cualitativo (cero en reposo, saturacion con la
+// velocidad, pico de arrastre, estabilidad) con pocos parametros.
 
 import { EDS, G, WHEEL_ROLLING } from "./constants.js";
 

@@ -9,6 +9,7 @@ import { createEmsFields, updateEmsGlow } from "./scene/emsFields.js";
 import { createEdsFields, updateEdsGlow } from "./scene/edsFields.js";
 import { setLineResolution } from "./scene/lines.js";
 import { createLabels } from "./scene/labels.js";
+import { createStations } from "./scene/stations.js";
 import { DIM } from "./scene/ems.js";
 import { D as EDIM } from "./scene/edsGeo.js";
 import { createUI } from "./ui/ui.js";
@@ -26,6 +27,9 @@ const train = new Train("ems");
 const scenes = { ems: createEmsScene(world), eds: createEdsScene(world) };
 const fields = { ems: createEmsFields(scenes.ems), eds: createEdsFields(scenes.eds) };
 scene.add(scenes.ems.group, scenes.eds.group);
+const stations = createStations();
+scene.add(stations.group);
+const STATION_CFG = { ems: { floorY: 7.62, zIn: 2.5 }, eds: { floorY: 6.25, zIn: 2.7 } };
 let mode = "ems";
 let active = scenes.ems;
 
@@ -246,6 +250,7 @@ function frame(now) {
   const sc = train.x - train.length / 2;
   world.updateTrees(sc);
   world.gTex.offset.x = sc / world.GROUND_TILE;
+  stations.update(sc, train.length, train.stationSpacing, STATION_CFG[mode]);
   const tel = train.telemetry();
   const v2 = { ...view, exag: effExag() };
   active.update(tel, train, v2, dt);
