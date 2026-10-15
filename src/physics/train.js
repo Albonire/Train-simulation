@@ -95,6 +95,12 @@ export class Train {
     return frequencyFor(this.v, this.polePitch);
   }
 
+  /** Cambia la distancia entre estaciones; la siguiente es la mas cercana por delante. */
+  setSpacing(meters) {
+    this.stationSpacing = meters;
+    this.nextStation = (Math.floor(this.x / meters + 1e-6) + 1) * meters;
+  }
+
   setTargetSpeedKmh(kmh) {
     this.targetSpeed = clamp(kmh / 3.6, 0, this.mode.vMax);
   }
