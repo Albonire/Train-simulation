@@ -1,0 +1,31 @@
+{
+  "name": "maglev-simulation",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run",
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Albonire/Train-simulation.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Albonire/Train-simulation/issues"
+  },
+  "homepage": "https://github.com/Albonire/Train-simulation#readme",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "vite": "8.3.4",
+    "vitest": "5.0.5"
+  }
+}
