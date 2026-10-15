@@ -24,9 +24,9 @@ const EMS_HTML = `
 <p>La fuerza de un electroimán de dos polos es <code>F = μ₀ N² I² A / (4 g²)</code>. Como <code>F</code> crece al disminuir el entrehierro <code>g</code>, el equilibrio es <b>inestable</b>: si el vehículo sube un poco, la atracción aumenta y lo pega al riel; si baja, la atracción cae y se desploma. Con los valores del modelo, el polo inestable está en <code>√(2g/g₀) ≈ 44 rad/s</code>, es decir, la perturbación se duplica en unos 16 ms.</p>
 <p>Un lazo cerrado (sensor de entrehierro, controlador PID y convertidor de corriente) lo estabiliza: mide el entrehierro, calcula la corriente y la corrige cientos de veces por segundo. Pruébalo: pulsa <b>Apagar el control</b> y mira cómo el vehículo se pega o cae en una fracción de segundo.</p>
 <h4>Arranque y parada</h4>
-<p>En reposo el vehículo descansa sobre patines. Para despegar, la referencia de entrehierro baja en rampa de 20 a 10 mm. En las estaciones el tren aterriza y vuelve a levitar antes de salir.</p>
+<p>En reposo el vehículo descansa sobre patines. En este modelo, para despegar la referencia de entrehierro baja en rampa de 20 a 10 mm (el valor de 20 mm en reposo es ilustrativo), y el tren aterriza en cada estación y vuelve a levitar antes de salir. Esto último es una decisión del modelo: no he encontrado una fuente que describa el procedimiento real de las estaciones.</p>
 <h4>Propulsión</h4>
-<p>El estator largo va en la vía y solo se energiza el tramo bajo el tren. Con τ = 258 mm, la frecuencia máxima de 215 Hz corresponde a 399 km/h.</p>
+<p>El estator largo va en la vía y se alimenta por <b>tramos</b> que se conmutan al paso del vehículo (${L("https://patents.google.com/patent/WO1997047493A1/en", "patente WO 1997/047493")}). Con τ = 258 mm, la frecuencia máxima de 215 Hz corresponde a 399 km/h.</p>
 ${COMMON}
 <h4>Datos y valores ilustrativos</h4>
 <table>
@@ -46,7 +46,7 @@ const EDS_HTML = `
 <ul>
   <li><b>Sin movimiento no hay sustentación.</b> Hasta unos 150 km/h el tren rueda sobre ruedas de goma, que se retraen al despegar.</li>
   <li>Las bobinas de levitación tienen forma de <b>8</b> y van conectadas entre ambas paredes (flujo nulo): si el imán está centrado no se induce corriente; si se desplaza, aparece una fuerza que lo devuelve al centro.</li>
-  <li>La levitación es <b>estable por sí misma</b>: no hace falta control activo. A cambio hay un <b>arrastre magnético</b> con un pico a baja velocidad, que el motor lineal debe vencer.</li>
+  <li>En el modelo la levitación es <b>estable por sí misma</b>: la fuerza cae al subir y aumenta al bajar, así que no hace falta un lazo como el del EMS (se añade amortiguamiento de la suspensión secundaria). A cambio hay un <b>arrastre magnético</b> con un pico a baja velocidad, que el motor lineal debe vencer.</li>
   <li>La elevación en crucero es de unos 100 mm, mucho mayor que los 10 mm del EMS.</li>
 </ul>
 <h4>Modelo usado aquí</h4>

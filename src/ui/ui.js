@@ -214,7 +214,7 @@ export function createUI(h) {
     els.perturbNote.textContent =
       modeId === "ems"
         ? "El equilibrio EMS es inestable: sin control, una perturbación de 0,5 mm hace que el vehículo se pegue al riel o caiga en menos de un cuarto de segundo."
-        : "El equilibrio EDS es estable por sí mismo: la sustentación cae al subir y aumenta al bajar, sin control activo.";
+        : "En el modelo EDS el equilibrio es estable por sí mismo: la sustentación cae al subir y aumenta al bajar, sin lazo de control.";
     // leyenda
     els.legend.innerHTML =
       `<i style="background:var(--n)"></i><span>Polo norte / campo hacia afuera</span>
