@@ -35,7 +35,7 @@ export function createEmsFields(sceneApi) {
   let lastGv = -1;
   const geo = new LineSegmentsGeometry();
   const mat = new LineMaterial({
-    color: new THREE.Color("#ff9d00"),
+    color: new THREE.Color("#ffd23f"),
     linewidth: 2.2,
     dashed: true,
     dashSize: 0.1,
@@ -74,7 +74,7 @@ export function createEmsFields(sceneApi) {
     lines.computeLineDistances();
   }
 
-  const arrowsApi = createForceArrows(mid.group, 1.9);
+  const arrowsApi = createForceArrows(mid.group, DIM.roof);
 
   return {
     arrows: arrowsApi.group,
@@ -88,7 +88,7 @@ export function createEmsFields(sceneApi) {
         lastGv = gv;
       }
       const B = Math.min(2.2, (s.I / s.I0) * (s.gap0 / s.gap));
-      lines.visible = view.layers.fields && !train.sections[0].fallen;
+      lines.visible = view.layers.fields && view.magnetsVisible && !train.sections[0].fallen;
       mat.opacity = Math.min(1, 0.25 + 0.55 * B);
       mat.dashOffset -= 0.012 * (0.4 + B);
       mat.resolution.set(window.innerWidth, window.innerHeight);

@@ -12,6 +12,7 @@
 import * as THREE from "three";
 import { glowMaterial, poleTexture, sets } from "./glow.js";
 import { loft, bodyStations } from "./loft.js";
+import { liveryTextures, bellows } from "./livery.js";
 import { EMS } from "../physics/constants.js";
 
 export const SEG = 25.8; // 400 ranuras de 64.5 mm: el patron no salta al reciclar tramos
@@ -43,9 +44,8 @@ const mat = {
   steel: () => new THREE.MeshStandardMaterial({ color: "#3a424b", roughness: 0.5, metalness: 0.7 }),
   rail: () => new THREE.MeshStandardMaterial({ color: "#c7ced6", roughness: 0.3, metalness: 0.85 }),
   copper: () => new THREE.MeshStandardMaterial({ color: "#c8742a", roughness: 0.45, metalness: 0.8 }),
-  body: () => new THREE.MeshStandardMaterial({ color: "#eef2f6", roughness: 0.32, metalness: 0.35, side: THREE.DoubleSide }),
-  glass: () => new THREE.MeshStandardMaterial({ color: "#10202e", roughness: 0.12, metalness: 0.6 }),
-  accent: () => new THREE.MeshStandardMaterial({ color: "#16a085", roughness: 0.4, metalness: 0.3 }),
+  // el color sale de la librea (livery.js)
+  body: () => new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.32, metalness: 0.35, side: THREE.DoubleSide }),
   dark: () => new THREE.MeshStandardMaterial({ color: "#14181d", roughness: 0.7, metalness: 0.3 }),
   seat: () => new THREE.MeshStandardMaterial({ color: "#2c5aa0", roughness: 0.8 }),
   floor: () => new THREE.MeshStandardMaterial({ color: "#b9c0c8", roughness: 0.9, side: THREE.DoubleSide }),
@@ -143,34 +143,49 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
   const bodyMats = [];
   const clipMats = [];
 
+  const pts = outline();
+  const stations = bodyStations(length - 0.6, {
+    noseFront: role === "front" ? 9 : 0,
+    noseRear: role === "rear" ? 9 : 0,
+  });
+  const livery = liveryTextures({
+    points: pts,
+    x0: stations[0].x,
+    x1: stations[stations.length - 1].x,
+    len: length - 0.6,
+    role,
+    style: {
+      base: "#eef2f6",
+      lower: "#9aa4ae",
+      lowerY: 0.05,
+      accent: "#16a085",
+      stripeY: [0.42, 0.66],
+      windowY: [1.58, 2.36],
+      winW: 1.05,
+      winPitch: 1.42,
+    },
+  });
   const bodyM = mat.body();
+  bodyM.map = livery.map;
+  bodyM.emissiveMap = livery.emissiveMap;
+  bodyM.emissive = new THREE.Color("#ffffff");
   bodyMats.push(bodyM);
-  const body = new THREE.Mesh(
-    loft(outline(), bodyStations(length - 0.6, {
-      noseFront: role === "front" ? 9 : 0,
-      noseRear: role === "rear" ? 9 : 0,
-    })),
-    bodyM,
-  );
+  const body = new THREE.Mesh(loft(pts, stations), bodyM);
   body.castShadow = true;
   body.receiveShadow = true;
   group.add(body);
   clipMats.push(bodyM);
 
+  // fuelle hacia la seccion siguiente (la delantera no tiene)
+  if (role !== "front") {
+    const bel = bellows(pts, length, 0.94, 0.96);
+    bodyMats.push(bel.material);
+    clipMats.push(bel.material);
+    group.add(bel);
+  }
+
   const Lb = length - 0.6 - (role === "mid" ? 0 : 3);
   const xc = role === "front" ? -1.5 : role === "rear" ? 1.5 : 0;
-  // ventanas y franja
-  const glassM = mat.glass();
-  const accentM = mat.accent();
-  clipMats.push(glassM, accentM);
-  for (const s of [-1, 1]) {
-    const win = new THREE.Mesh(new THREE.BoxGeometry(Lb - 3, 0.85, 0.02), glassM);
-    win.position.set(xc, 1.95, s * (DIM.halfW * 0.985 + 0.012));
-    group.add(win);
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(Lb, 0.28, 0.02), accentM);
-    stripe.position.set(xc, 0.55, s * (DIM.halfW + 0.006));
-    group.add(stripe);
-  }
 
   // interior visible en el corte: suelo y asientos
   const interior = new THREE.Group();

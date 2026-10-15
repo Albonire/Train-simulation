@@ -32,7 +32,7 @@ export function createEdsFields(sceneApi) {
   }
   const geo = new LineSegmentsGeometry();
   const mat = new LineMaterial({
-    color: new THREE.Color("#ff9d00"), linewidth: 2.2, dashed: true, dashSize: 0.1, gapSize: 0.09,
+    color: new THREE.Color("#ffd23f"), linewidth: 2.2, dashed: true, dashSize: 0.1, gapSize: 0.09,
     transparent: true, opacity: 0.9, depthTest: false,
   });
   mat.resolution.set(window.innerWidth, window.innerHeight);
@@ -63,7 +63,7 @@ export function createEdsFields(sceneApi) {
   }
   let lastReach = -1;
 
-  const arrowsApi = createForceArrows(mid.group, 2.1);
+  const arrowsApi = createForceArrows(mid.group, D.height);
 
   return {
     arrows: arrowsApi.group,
@@ -76,7 +76,7 @@ export function createEdsFields(sceneApi) {
         rebuild(reach);
         lastReach = reach;
       }
-      lines.visible = view.layers.fields;
+      lines.visible = view.layers.fields && view.magnetsVisible;
       mat.opacity = 0.3 + 0.6 * Math.min(1, tel.induced + 0.15);
       mat.dashOffset -= 0.012 * (0.4 + tel.induced);
       mat.resolution.set(window.innerWidth, window.innerHeight);

@@ -1,166 +1,210 @@
-// Interfaz: barra superior, panel de telemetria y controles, camaras, graficas y
-// ventana "Como funciona". Todo el texto visible esta en espanol.
+// Interfaz. Principios: la escena manda; lo esencial (velocidad, estado, entrehierro,
+// progreso del tramo, tiempo) vive en un cuadro de mando compacto abajo; el resto va en
+// un panel plegable con pestanas. Las explicaciones largas van en informacion emergente
+// (title) o en "Como funciona", nunca como parrafos fijos en pantalla.
 
 import { History, drawChart } from "./charts.js";
 import { INFO_HTML } from "./info.js";
-import { EMS, EDS, G } from "../physics/constants.js";
+import { ICONS } from "./icons.js";
+import { EDS, G } from "../physics/constants.js";
 import { EdsSection } from "../physics/eds.js";
 import { MODES } from "../physics/train.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
-const fmt = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : "-");
+const fmt = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : "–");
 
-const STATE_TXT = {
-  reposo: "En reposo",
-  levitando: "Levitando",
-  acelerando: "Acelerando",
-  crucero: "Crucero",
-  frenando: "Frenando",
-  estacion: "En estación",
+const STATE = {
+  reposo: ["En reposo", "idle"],
+  levitando: ["Despegando", "warn"],
+  acelerando: ["Acelerando", "ok"],
+  crucero: ["Crucero", "ok"],
+  frenando: ["Frenando", "warn"],
+  estacion: ["En estación", "info"],
 };
 
-const RIG_BTNS = [
-  ["orbit", "Órbita"],
-  ["chase", "Persecución"],
-  ["section", "Sección"],
-  ["gap", "Entrehierro"],
-  ["top", "Cenital"],
+export const RIGS = [
+  ["orbit", "Órbita", "Vista general. Arrastra para girar, rueda para acercar."],
+  ["chase", "Seguir", "Cámara que acompaña al tren desde atrás."],
+  ["section", "Sección", "Corte transversal: viga, estator, imanes y entrehierro."],
+  ["gap", "Imanes", "Primer plano del entrehierro entre imán y estator."],
+  ["top", "Arriba", "Vista cenital."],
 ];
 
-// lecturas por modo: [id, etiqueta, unidad, funcion]
-const READOUTS = {
+// [id, etiqueta, unidad, valor]
+const ROWS = {
   ems: [
-    ["speed", "Velocidad", "km/h", (t) => fmt(t.speedKmh, 0)],
-    ["gap", "Entrehierro medio", "mm", (t) => fmt(t.gapMm, 2)],
     ["cur", "Corriente del imán", "A", (t) => fmt(t.current, 1)],
-    ["freq", "Frecuencia del estator", "Hz", (t) => fmt(t.frequency, 1)],
+    ["freq", "Frecuencia", "Hz", (t) => fmt(t.frequency, 1)],
     ["thr", "Empuje", "kN", (t) => fmt(t.thrust / 1e3, 0)],
-    ["ang", "Ángulo de carga", "grados", (t) => fmt(t.loadAngleDeg, 0)],
-    ["lift", "Sustentación", "kN", (t) => fmt(t.liftTotal / 1e3, 0)],
-    ["wt", "Peso", "kN", (t) => fmt(t.weight / 1e3, 0)],
+    ["ang", "Ángulo de carga", "°", (t) => fmt(t.loadAngleDeg, 0)],
+    ["lift", "Sustentación / peso", "kN", (t) => `${fmt(t.liftTotal / 1e3, 0)} / ${fmt(t.weight / 1e3, 0)}`],
     ["aero", "Arrastre aerodinámico", "kN", (t) => fmt(t.dragAero / 1e3, 1)],
     ["pow", "Potencia en red", "MW", (t) => fmt(t.gridPowerMW, 2)],
+    ["en", "Energía red / recuperada", "kWh", (t) => `${fmt(t.energyTractionKWh, 0)} / ${fmt(t.energyRegenKWh, 0)}`],
   ],
   eds: [
-    ["speed", "Velocidad", "km/h", (t) => fmt(t.speedKmh, 0)],
-    ["gap", "Elevación", "mm", (t) => fmt(t.gapMm, 1)],
-    ["cur", "Fmm del imán SC", "kA", (t) => fmt(t.current / 1e3, 0)],
     ["ind", "Corriente inducida", "%", (t) => fmt(t.induced * 100, 0)],
-    ["freq", "Frecuencia de propulsión", "Hz", (t) => fmt(t.frequency, 1)],
+    ["freq", "Frecuencia", "Hz", (t) => fmt(t.frequency, 1)],
     ["thr", "Empuje", "kN", (t) => fmt(t.thrust / 1e3, 0)],
-    ["lift", "Sustentación", "kN", (t) => fmt(t.liftTotal / 1e3, 0)],
-    ["wt", "Peso", "kN", (t) => fmt(t.weight / 1e3, 0)],
-    ["dmag", "Arrastre magnético", "kN", (t) => fmt(t.dragMag / 1e3, 0)],
-    ["aero", "Arrastre aerodinámico", "kN", (t) => fmt(t.dragAero / 1e3, 1)],
-    ["whl", "Ruedas de goma", "", (t) => (t.wheelsDown ? "extendidas" : "retraídas")],
+    ["lift", "Sustentación / peso", "kN", (t) => `${fmt(t.liftTotal / 1e3, 0)} / ${fmt(t.weight / 1e3, 0)}`],
+    ["drag", "Arrastre magnético / aire", "kN", (t) => `${fmt(t.dragMag / 1e3, 0)} / ${fmt(t.dragAero / 1e3, 0)}`],
+    ["whl", "Ruedas", "", (t) => (t.wheelsDown ? "fuera" : "recogidas")],
     ["pow", "Potencia en red", "MW", (t) => fmt(t.gridPowerMW, 2)],
+    ["en", "Energía red / recuperada", "kWh", (t) => `${fmt(t.energyTractionKWh, 0)} / ${fmt(t.energyRegenKWh, 0)}`],
   ],
 };
+
+const PERTURB = {
+  ems: [
+    ["load", "load", "Carga +12 %", "Añade un 12 % de masa a la sección central. El control sube la corriente y recupera los 10 mm.", true],
+    ["gust", "gust", "Ráfaga", "Empuje lateral del 10 % del peso durante 0,6 s. Lo corrigen los imanes de guiado."],
+    ["kick", "kick", "Golpe", "Abre el entrehierro 2 mm de golpe."],
+    ["ctrlOff", "ctrl", "Sin control", "Deja la corriente fija: el equilibrio es inestable y el imán se pega o cae en menos de un cuarto de segundo.", true],
+    ["cutPower", "power", "Sin corriente", "Corta la alimentación: el tren cae a los patines y vuelve a levitar a los pocos segundos."],
+  ],
+  eds: [
+    ["load", "load", "Carga +12 %", "Añade un 12 % de masa a la sección central. Baja un poco y se estabiliza sola.", true],
+    ["gust", "gust", "Ráfaga", "Empuje lateral del 10 % del peso. Lo devuelven las bobinas en 8 de las paredes."],
+    ["kick", "kick", "Golpe", "Sube el vehículo 15 mm de golpe: la sustentación cae y vuelve a su altura sin control."],
+  ],
+};
+
+const LEGEND = [
+  ["var(--n)", "Polo N"],
+  ["var(--s)", "Polo S"],
+  ["#ffd23f", "Flujo"],
+  ["#35e08a", "Sustentación"],
+  ["#f2f5f8", "Peso"],
+  ["#35d0ff", "Empuje"],
+  ["#ffa43a", "Resistencia"],
+  ["#ff5fd2", "Lateral"],
+];
 
 export function createUI(h) {
   const root = document.createElement("div");
   root.id = "ui";
   root.innerHTML = `
-  <div id="topbar" class="panel">
-    <div class="title"><h1>Simulador de levitación magnética</h1><span class="sub" id="sub"></span></div>
-    <span class="spacer"></span>
-    <div class="seg" role="group" aria-label="Tecnología de levitación">
-      <button data-mode="ems" aria-pressed="true">EMS · Transrapid</button>
-      <button data-mode="eds" aria-pressed="false">EDS · SCMaglev</button>
+  <header id="topbar">
+    <div class="brand panel"><span class="logo" aria-hidden="true"></span><span>Maglev</span>
+      <div class="seg" role="group" aria-label="Tecnología">
+        <button data-mode="ems" aria-pressed="true" title="Suspensión electromagnética (Transrapid): atracción bajo la vía con control activo">EMS</button>
+        <button data-mode="eds" aria-pressed="false" title="Suspensión electrodinámica (SCMaglev): repulsión por corrientes inducidas">EDS</button>
+      </div>
     </div>
-    <span class="chip" id="stateChip">En reposo</span>
-    <button class="iconbtn" id="figBtn" type="button">Láminas</button>
-    <button class="iconbtn" id="infoBtn" type="button">Cómo funciona</button>
-    <button class="iconbtn" id="themeBtn" type="button" aria-pressed="false" title="Cambiar entre tema oscuro y claro">Tema</button>
-  </div>
-
-  <aside id="side" class="panel" aria-label="Telemetría y controles">
-    <h2>Telemetría</h2>
-    <div class="grid" id="stats"></div>
-    <div class="stat wide" id="gapStat"><div class="l" id="gapLabel">Entrehierro por sección</div>
-      <div class="gauge" id="gapGauge" aria-hidden="true"><i></i><b></b><b></b><b></b></div></div>
-    <div class="grid" style="margin-top:6px">
-      <div class="stat"><div class="l">Distancia a la estación</div><div class="v" id="dist">-</div></div>
-      <div class="stat"><div class="l">Energía red / regenerada</div><div class="v" id="energy" style="font-size:14px">-</div></div>
+    <div class="tools panel">
+      <button class="ib" id="figBtn" title="Láminas explicativas">${ICONS.book}<span>Láminas</span></button>
+      <button class="ib" id="infoBtn" title="Cómo funciona (?)">${ICONS.help}</button>
+      <button class="ib" id="themeBtn" title="Tema claro u oscuro">${ICONS.moon}</button>
+      <button class="ib" id="panelBtn" aria-pressed="true" title="Mostrar u ocultar el panel (H)">${ICONS.panel}</button>
     </div>
+  </header>
 
-    <h2>Viaje</h2>
-    <div class="row"><label for="target">Velocidad objetivo</label><input id="target" type="range" min="0" max="400" step="1" value="400"><output id="targetOut"></output></div>
-    <div class="row"><label>Escala de tiempo</label>
-      <div class="btns" id="timeBtns">
-        <button class="btn" data-ts="1" aria-pressed="false">x1</button>
-        <button class="btn" data-ts="5" aria-pressed="true">x5</button>
-        <button class="btn" data-ts="20" aria-pressed="false">x20</button>
-        <button class="btn" data-ts="60" aria-pressed="false">x60</button>
-        <button class="btn" id="pauseBtn" aria-pressed="false">Pausa</button>
-      </div></div>
-    <div class="btns">
-      <button class="btn" id="goBtn">Salir ahora</button>
-      <button class="btn" id="stopBtn" aria-pressed="false">Retener en estación</button>
-      <button class="btn" id="resetBtn">Reiniciar</button>
+  <nav id="cams" class="panel" aria-label="Cámaras">
+    ${RIGS.map(([id, label, tip], i) => `<button data-rig="${id}" aria-pressed="${id === "orbit"}" title="${tip} (${i + 1})">${ICONS[["orbit", "chase", "section", "magnet", "top"][i]]}<span>${label}</span><kbd>${i + 1}</kbd></button>`).join("")}
+  </nav>
+
+  <section id="hud" class="panel" aria-label="Cuadro de mando">
+    <div class="h-speed"><output id="hSpeed">0</output><span>km/h</span></div>
+    <div class="h-state"><span class="pill" id="hState" data-k="idle">En reposo</span><span class="h-sub" id="hTarget"></span></div>
+    <div class="h-gap" title="Entrehierro de cada sección. La zona verde es la nominal.">
+      <span class="h-lbl" id="hGapLbl">Entrehierro</span>
+      <output id="hGap">–</output>
+      <div class="bar" id="hGapBar" aria-hidden="true"><i></i><b></b><b></b><b></b></div>
     </div>
-    <div class="row"><label for="spacing">Distancia entre estaciones</label><input id="spacing" type="range" min="5" max="120" step="5"><output id="spacingOut"></output></div>
-
-    <h2>Perturbaciones</h2>
-    <div class="btns" id="perturb"></div>
-    <p class="note" id="perturbNote"></p>
-
-    <h2>Visualización</h2>
-    <div class="row"><label for="exag">Exagerar entrehierro</label><input id="exag" type="range" min="1" max="24" step="1" value="8"><output id="exagOut"></output></div>
-    <div class="row"><label>Carrocería</label>
-      <div class="btns" id="bodyBtns">
-        <button class="btn" data-body="auto" aria-pressed="true">Auto</button>
-        <button class="btn" data-body="solid" aria-pressed="false">Sólida</button>
-        <button class="btn" data-body="xray" aria-pressed="false">Rayos X</button>
-        <button class="btn" data-body="cut" aria-pressed="false">Corte</button>
-      </div></div>
-    <div class="checks">
-      <label><input type="checkbox" data-layer="fields" checked> Líneas de flujo</label>
-      <label><input type="checkbox" data-layer="wave" checked> Onda del estator</label>
-      <label><input type="checkbox" data-layer="forces" checked> Fuerzas</label>
-      <label><input type="checkbox" data-layer="labels" checked> Etiquetas</label>
+    <div class="h-trip" title="Progreso hacia la próxima estación">
+      <span class="h-lbl"><span id="hFrom">E1</span><span id="hRem">–</span><span id="hTo">E2</span></span>
+      <div class="track" aria-hidden="true"><i id="hFill"></i><b id="hDot"></b></div>
     </div>
-    <div class="legend" id="legend"></div>
-    <p class="note" id="visNote"></p>
-  </aside>
-
-  <nav id="cams" class="panel" aria-label="Cámaras"></nav>
-
-  <section id="charts" aria-label="Gráficas">
-    <figure class="panel"><figcaption><span id="capA"></span><span id="valA"></span></figcaption><canvas id="chartA"></canvas></figure>
-    <figure class="panel"><figcaption><span id="capB"></span><span id="valB"></span></figcaption><canvas id="chartB"></canvas></figure>
-    <figure class="panel"><figcaption><span id="capC"></span><span id="valC"></span></figcaption><canvas id="chartC"></canvas></figure>
+    <div class="h-time">
+      <button class="ib" id="pauseBtn" aria-pressed="false" title="Pausa (Espacio)">${ICONS.pause}</button>
+      <div class="seg sm" id="timeBtns" role="group" aria-label="Escala de tiempo">
+        ${[1, 5, 20, 60].map((t) => `<button data-ts="${t}" aria-pressed="${t === 5}" title="Tiempo x${t}">x${t}</button>`).join("")}
+      </div>
+    </div>
   </section>
+
+  <aside id="side" class="panel" aria-label="Panel">
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="data" aria-selected="true">${ICONS.data}<span>Datos</span></button>
+      <button role="tab" data-tab="ctrl" aria-selected="false">${ICONS.sliders}<span>Control</span></button>
+      <button role="tab" data-tab="view" aria-selected="false">${ICONS.view}<span>Vista</span></button>
+    </div>
+
+    <div class="tab" data-pane="data">
+      <dl class="rows" id="rows"></dl>
+      <figure class="chart"><figcaption><span id="capA"></span><span id="valA"></span></figcaption><canvas id="chartA"></canvas></figure>
+      <figure class="chart"><figcaption><span id="capB"></span><span id="valB"></span></figcaption><canvas id="chartB"></canvas></figure>
+      <figure class="chart"><figcaption><span id="capC"></span><span id="valC"></span></figcaption><canvas id="chartC"></canvas></figure>
+    </div>
+
+    <div class="tab" data-pane="ctrl" hidden>
+      <label class="field"><span>Velocidad objetivo <output id="targetOut"></output></span>
+        <input id="target" type="range" min="0" max="400" step="1" value="400"></label>
+      <div class="actions">
+        <button class="btn" id="goBtn" title="Salir de la estación ahora">${ICONS.go}<span>Salir</span></button>
+        <button class="btn" id="stopBtn" aria-pressed="false" title="Quedarse en la próxima estación">${ICONS.hold}<span>Retener</span></button>
+        <button class="btn" id="resetBtn" title="Volver al inicio">${ICONS.reset}<span>Reiniciar</span></button>
+      </div>
+      <label class="field"><span>Estaciones cada <output id="spacingOut"></output></span>
+        <input id="spacing" type="range" min="5" max="120" step="5"></label>
+      <h3>Perturbaciones</h3>
+      <div class="grid2" id="perturb"></div>
+    </div>
+
+    <div class="tab" data-pane="view" hidden>
+      <h3>Carrocería</h3>
+      <div class="seg wide" id="bodyBtns" role="group" aria-label="Carrocería">
+        <button data-body="auto" aria-pressed="true" title="Según la cámara">Auto</button>
+        <button data-body="solid" aria-pressed="false">Sólida</button>
+        <button data-body="xray" aria-pressed="false" title="Carrocería translúcida">Rayos X</button>
+        <button data-body="cut" aria-pressed="false" title="Media carrocería cortada">Corte</button>
+      </div>
+      <label class="field"><span>Exagerar entrehierro <output id="exagOut"></output></span>
+        <input id="exag" type="range" min="1" max="24" step="1" value="8" title="El entrehierro real (10 mm) no se vería a esta escala"></label>
+      <h3>Capas</h3>
+      <div class="chips" id="layers">
+        <button data-layer="fields" aria-pressed="true" title="Líneas de flujo magnético">Flujo</button>
+        <button data-layer="wave" aria-pressed="true" title="Onda del estator: rojo N, azul S">Onda</button>
+        <button data-layer="forces" aria-pressed="true" title="Flechas de fuerza (escala de raíz cuadrada)">Fuerzas</button>
+        <button data-layer="labels" aria-pressed="true" title="Nombres de las piezas en las vistas de detalle">Nombres</button>
+      </div>
+      <h3>Colores</h3>
+      <ul class="legend">${LEGEND.map(([c, l]) => `<li><i style="background:${c}"></i>${l}</li>`).join("")}</ul>
+    </div>
+  </aside>
 
   <div id="labels"></div>
   <div id="toast" role="status" aria-live="polite"></div>
-  <div id="gallery" role="dialog" aria-modal="true" aria-label="Láminas explicativas"><div class="card">
+
+  <div id="gallery" class="overlay" role="dialog" aria-modal="true" aria-label="Láminas"><div class="card">
     <div class="gbar"><div class="seg" role="group" aria-label="Lámina" id="gTabs">
-      <button data-fig="ems-levitacion" aria-pressed="true">Fig 1 · Levitación EMS</button>
-      <button data-fig="lsm-sincrono" aria-pressed="false">Fig 2 · Motor lineal</button>
-      <button data-fig="eds-sustentacion" aria-pressed="false">Fig 3 · Levitación EDS</button></div>
-      <span class="spacer"></span><button class="iconbtn" id="gClose" type="button">Cerrar</button></div>
-    <iframe id="gFrame" title="Lámina explicativa" loading="lazy"></iframe>
-    <p class="note">Las láminas se generan con la skill anatomy y usan el mismo modelo físico que la simulación. Cada una se maneja con el cursor y el teclado.</p>
+      <button data-fig="ems-levitacion" aria-pressed="true">Levitación EMS</button>
+      <button data-fig="lsm-sincrono" aria-pressed="false">Motor lineal</button>
+      <button data-fig="eds-sustentacion" aria-pressed="false">Levitación EDS</button></div>
+      <button class="ib" id="gClose" title="Cerrar (Esc)">${ICONS.close}</button></div>
+    <iframe id="gFrame" title="Lámina explicativa"></iframe>
   </div></div>
-  <div id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="card"><button class="iconbtn x" id="mClose" type="button">Cerrar</button><div id="mBody"></div></div></div>
+  <div id="modal" class="overlay" role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="card">
+    <button class="ib x" id="mClose" title="Cerrar (Esc)">${ICONS.close}</button><div id="mBody"></div></div></div>
   `;
   document.body.appendChild(root);
 
   const els = {
-    stats: $("#stats"), sub: $("#sub"), stateChip: $("#stateChip"), dist: $("#dist"), energy: $("#energy"),
+    rows: $("#rows"), hSpeed: $("#hSpeed"), hState: $("#hState"), hTarget: $("#hTarget"), hGap: $("#hGap"),
+    hGapLbl: $("#hGapLbl"), hGapBar: $("#hGapBar"), hFrom: $("#hFrom"), hTo: $("#hTo"), hRem: $("#hRem"),
+    hFill: $("#hFill"), hDot: $("#hDot"),
     target: $("#target"), targetOut: $("#targetOut"), spacing: $("#spacing"), spacingOut: $("#spacingOut"),
-    exag: $("#exag"), exagOut: $("#exagOut"), perturb: $("#perturb"), perturbNote: $("#perturbNote"),
-    legend: $("#legend"), visNote: $("#visNote"), cams: $("#cams"), toast: $("#toast"), modal: $("#modal"),
-    gapGauge: $("#gapGauge"), gapLabel: $("#gapLabel"), labels: $("#labels"),
+    exag: $("#exag"), exagOut: $("#exagOut"), perturb: $("#perturb"),
+    cams: $("#cams"), toast: $("#toast"), modal: $("#modal"), labels: $("#labels"), side: $("#side"),
     cA: $("#chartA"), cB: $("#chartB"), cC: $("#chartC"),
     capA: $("#capA"), capB: $("#capB"), capC: $("#capC"), valA: $("#valA"), valB: $("#valB"), valC: $("#valC"),
   };
 
   let mode = "ems";
-  let statEls = {};
+  let rowEls = {};
+  let tab = "data";
   const hist = new History(6000, 0.02);
-  let legTrace = { xs: [], ys: [] }; // perfil de velocidad del tramo
+  let legTrace = { xs: [], ys: [] };
   let lastLeg = -1;
 
   // ---- construccion por modo ----
@@ -168,151 +212,131 @@ export function createUI(h) {
     mode = modeId;
     const m = MODES[modeId];
     for (const b of root.querySelectorAll("[data-mode]")) b.setAttribute("aria-pressed", String(b.dataset.mode === modeId));
-    els.sub.textContent =
-      modeId === "ems"
-        ? "Suspensión electromagnética: atracción bajo la vía, entrehierro de 10 mm con control activo"
-        : "Suspensión electrodinámica: repulsión por corrientes inducidas, elevación de unos 100 mm";
-    // lecturas
-    els.stats.innerHTML = "";
-    statEls = {};
-    for (const [id, label, unit] of READOUTS[modeId]) {
-      const d = document.createElement("div");
-      d.className = "stat";
-      d.innerHTML = `<div class="l">${label}</div><div class="v"><span data-v>-</span><small>${unit}</small></div>`;
-      els.stats.appendChild(d);
-      statEls[id] = $("[data-v]", d);
-    }
-    els.gapLabel.textContent = modeId === "ems" ? "Entrehierro por sección (zona verde: 10 mm +- 0.5)" : "Elevación de cada sección (zona verde: de ruedas a crucero)";
-    // objetivo
+    els.rows.innerHTML = ROWS[modeId].map(([id, label, unit]) => `<dt>${label}</dt><dd><span data-r="${id}">–</span><small>${unit}</small></dd>`).join("");
+    rowEls = {};
+    for (const [id] of ROWS[modeId]) rowEls[id] = $(`[data-r="${id}"]`, els.rows);
+    els.hGapLbl.textContent = modeId === "ems" ? "Entrehierro" : "Elevación";
     const vmax = Math.round(m.vMax * 3.6);
     els.target.max = String(vmax);
     els.target.value = String(vmax);
     els.spacing.value = String(Math.round(m.stationSpacing / 1000));
-    // perturbaciones
-    els.perturb.innerHTML = "";
-    const P = modeId === "ems"
-      ? [
-          ["load", "Carga +12 % (sección 2)"],
-          ["gust", "Ráfaga lateral"],
-          ["kick", "Golpe vertical +2 mm"],
-          ["ctrlOff", "Apagar el control", true],
-          ["cutPower", "Cortar la corriente"],
-        ]
-      : [
-          ["load", "Carga +12 % (sección 2)"],
-          ["gust", "Ráfaga lateral"],
-          ["kick", "Golpe vertical +15 mm"],
-        ];
-    for (const [id, label, toggle] of P) {
-      const b = document.createElement("button");
-      b.className = "btn" + (toggle ? " warn" : "");
-      b.textContent = label;
-      b.dataset.p = id;
-      if (toggle) b.setAttribute("aria-pressed", "false");
-      els.perturb.appendChild(b);
-    }
-    els.perturbNote.textContent =
-      modeId === "ems"
-        ? "El equilibrio EMS es inestable: sin control, una perturbación de 0,5 mm hace que el vehículo se pegue al riel o caiga en menos de un cuarto de segundo."
-        : "En el modelo EDS el equilibrio es estable por sí mismo: la sustentación cae al subir y aumenta al bajar, sin lazo de control.";
-    // leyenda
-    els.legend.innerHTML =
-      `<i style="background:var(--n)"></i><span>Polo norte / campo hacia afuera</span>
-       <i style="background:var(--s)"></i><span>Polo sur / campo hacia adentro</span>
-       <i style="background:#ff9d00"></i><span>Líneas de flujo (el sentido es el del movimiento de los trazos)</span>
-       <i style="background:#35e08a"></i><span>Sustentación</span><i style="background:#f2f5f8"></i><span>Peso</span>
-       <i style="background:#35d0ff"></i><span>Empuje</span><i style="background:#ffa43a"></i><span>Resistencia</span>
-       <i style="background:#ff5fd2"></i><span>Fuerza lateral</span>`;
-    els.visNote.textContent =
-      "Escalas: el entrehierro se exagera (lo indica el control de arriba), las flechas usan escala de raíz cuadrada y la onda del estator se dibuja en el marco del vehículo (el motor es síncrono: la onda viaja a la velocidad del tren).";
-    // camaras
-    els.cams.innerHTML = "";
-    for (const [id, label] of RIG_BTNS) {
-      const b = document.createElement("button");
-      b.className = "btn";
-      b.dataset.rig = id;
-      b.textContent = label;
-      b.setAttribute("aria-pressed", String(id === "orbit"));
-      els.cams.appendChild(b);
-    }
-    // graficas
+    els.perturb.innerHTML = PERTURB[modeId]
+      .map(([id, ic, label, tip, toggle]) => `<button class="btn" data-p="${id}" ${toggle ? 'aria-pressed="false"' : ""} title="${tip}">${ICONS[ic]}<span>${label}</span></button>`)
+      .join("");
+    $("[data-layer=wave]").title = modeId === "ems" ? "Onda del estator: rojo N, azul S" : "Corrientes en las bobinas de la vía";
     if (modeId === "ems") {
-      els.capA.textContent = "Entrehierro (mm)";
+      els.capA.textContent = "Entrehierro, mm";
       els.capB.textContent = "Corrientes del estator";
-      els.capC.textContent = "Perfil de velocidad del tramo";
     } else {
-      els.capA.innerHTML = `Fuerzas (kN): <span style="color:#35e08a">sustentación</span> · <span style="color:#ffa43a">arrastre</span>`;
+      els.capA.innerHTML = `<i class="dot" style="background:#35e08a"></i>sustentación <i class="dot" style="background:#ffa43a"></i>arrastre, kN`;
       els.capB.textContent = "Corrientes de propulsión";
-      els.capC.textContent = "Perfil de velocidad del tramo";
     }
+    els.capC.textContent = "Velocidad en el tramo";
     hist.clear();
     legTrace = { xs: [], ys: [] };
     lastLeg = -1;
-    setTimeout(() => setExagText(), 0);
+    setOutputs();
   }
 
-  const setExagText = () => {
-    els.exagOut.textContent = "x" + els.exag.value;
+  function setOutputs() {
+    els.exagOut.textContent = "×" + els.exag.value;
     els.targetOut.textContent = els.target.value + " km/h";
     els.spacingOut.textContent = els.spacing.value + " km";
-  };
+  }
+
+  function selectTab(name) {
+    tab = name;
+    for (const b of root.querySelectorAll("[data-tab]")) b.setAttribute("aria-selected", String(b.dataset.tab === name));
+    for (const p of root.querySelectorAll("[data-pane]")) p.hidden = p.dataset.pane !== name;
+  }
+
+  const press = (sel, on) => sel.setAttribute("aria-pressed", String(on));
+  function setPanel(open) {
+    els.side.classList.toggle("closed", !open);
+    press($("#panelBtn"), open);
+    try { localStorage.setItem("maglev-panel", open ? "1" : "0"); } catch {}
+  }
+  function setPaused(on) {
+    const b = $("#pauseBtn");
+    press(b, on);
+    b.innerHTML = on ? ICONS.play : ICONS.pause;
+    b.title = on ? "Reanudar (Espacio)" : "Pausa (Espacio)";
+    h.setPaused(on);
+  }
+  function setTimeScale(ts) {
+    for (const x of root.querySelectorAll("[data-ts]")) press(x, Number(x.dataset.ts) === ts);
+    h.setTimeScale(ts);
+  }
 
   // ---- eventos ----
   root.addEventListener("click", (e) => {
     const b = e.target.closest("button");
     if (!b) return;
     if (b.dataset.mode) return h.setMode(b.dataset.mode);
-    if (b.dataset.rig) {
-      for (const x of els.cams.children) x.setAttribute("aria-pressed", String(x === b));
-      return h.setRig(b.dataset.rig);
-    }
-    if (b.dataset.ts) {
-      for (const x of $("#timeBtns").querySelectorAll("[data-ts]")) x.setAttribute("aria-pressed", String(x === b));
-      return h.setTimeScale(Number(b.dataset.ts));
-    }
+    if (b.dataset.rig) return h.setRig(b.dataset.rig);
+    if (b.dataset.ts) return setTimeScale(Number(b.dataset.ts));
+    if (b.dataset.tab) return selectTab(b.dataset.tab);
     if (b.dataset.body) {
-      for (const x of $("#bodyBtns").children) x.setAttribute("aria-pressed", String(x === b));
+      for (const x of $("#bodyBtns").children) press(x, x === b);
       return h.setBody(b.dataset.body);
     }
+    if (b.dataset.layer) {
+      const on = b.getAttribute("aria-pressed") !== "true";
+      press(b, on);
+      return h.setLayer(b.dataset.layer, on);
+    }
     if (b.dataset.p) return h.perturb(b.dataset.p, b);
-    if (b.id === "pauseBtn") {
-      const on = b.getAttribute("aria-pressed") !== "true";
-      b.setAttribute("aria-pressed", String(on));
-      return h.setPaused(on);
-    }
-    if (b.id === "goBtn") return h.depart();
-    if (b.id === "stopBtn") {
-      const on = b.getAttribute("aria-pressed") !== "true";
-      b.setAttribute("aria-pressed", String(on));
-      return h.setHold(on);
-    }
-    if (b.id === "resetBtn") return h.reset();
-    if (b.id === "infoBtn") return openInfo();
-    if (b.id === "figBtn") return openGallery();
-    if (b.id === "gClose") return closeGallery();
     if (b.dataset.fig) return showFigure(b.dataset.fig);
-    if (b.id === "themeBtn") return toggleTheme();
-    if (b.id === "mClose") return closeInfo();
+    switch (b.id) {
+      case "pauseBtn": return setPaused(b.getAttribute("aria-pressed") !== "true");
+      case "goBtn": return h.depart();
+      case "stopBtn": {
+        const on = b.getAttribute("aria-pressed") !== "true";
+        press(b, on);
+        return h.setHold(on);
+      }
+      case "resetBtn": return h.reset();
+      case "infoBtn": return openInfo();
+      case "figBtn": return openGallery();
+      case "gClose": return closeGallery();
+      case "mClose": return closeInfo();
+      case "themeBtn": return toggleTheme();
+      case "panelBtn": return setPanel(els.side.classList.contains("closed"));
+    }
   });
   root.addEventListener("input", (e) => {
     const t = e.target;
     if (t.id === "target") h.setTarget(Number(t.value));
     if (t.id === "exag") h.setExag(Number(t.value));
     if (t.id === "spacing") h.setSpacing(Number(t.value) * 1000);
-    if (t.dataset.layer) h.setLayer(t.dataset.layer, t.checked);
-    setExagText();
+    setOutputs();
   });
-  els.modal.addEventListener("click", (e) => {
-    if (e.target === els.modal) closeInfo();
-  });
+  for (const o of [els.modal, $("#gallery")]) {
+    o.addEventListener("click", (e) => {
+      if (e.target === o) (o === els.modal ? closeInfo : closeGallery)();
+    });
+  }
+
+  // atajos de teclado (no actuan mientras se escribe en un control)
   window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") { closeInfo(); closeGallery(); }
+    if (e.key === "Escape") { closeInfo(); closeGallery(); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (document.querySelector(".overlay.open")) return;
+    const tag = e.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    const n = Number(e.key);
+    if (n >= 1 && n <= RIGS.length) { h.setRig(RIGS[n - 1][0]); return; }
+    if (e.key === " " && tag !== "BUTTON") { e.preventDefault(); setPaused($("#pauseBtn").getAttribute("aria-pressed") !== "true"); return; }
+    if (e.key === "h" || e.key === "H") return setPanel(els.side.classList.contains("closed"));
+    if (e.key === "?") return openInfo();
   });
+
+  // ---- laminas, ayuda y tema ----
   let figName = "ems-levitacion";
   const isLight = () => document.documentElement.dataset.theme === "light";
   function showFigure(name) {
     figName = name;
-    for (const x of $("#gTabs").children) x.setAttribute("aria-pressed", String(x.dataset.fig === name));
+    for (const x of $("#gTabs").children) press(x, x.dataset.fig === name);
     $("#gFrame").src = `figures/${name}${isLight() ? "-light" : ""}.html`;
   }
   function openGallery() {
@@ -321,22 +345,21 @@ export function createUI(h) {
     $("#gClose").focus();
   }
   function closeGallery() {
+    if (!$("#gallery").classList.contains("open")) return;
     $("#gallery").classList.remove("open");
     $("#gFrame").src = "about:blank";
   }
+  function applyTheme(t) {
+    document.documentElement.dataset.theme = t;
+    $("#themeBtn").innerHTML = t === "light" ? ICONS.moon : ICONS.sun;
+    h.setTheme?.(t);
+  }
   function toggleTheme() {
     const next = isLight() ? "dark" : "light";
-    document.documentElement.dataset.theme = next;
-    $("#themeBtn").setAttribute("aria-pressed", String(next === "light"));
+    applyTheme(next);
     try { localStorage.setItem("maglev-theme", next); } catch {}
     if ($("#gallery").classList.contains("open")) showFigure(figName);
   }
-  try {
-    const saved = localStorage.getItem("maglev-theme");
-    const pref = saved ?? (window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark");
-    document.documentElement.dataset.theme = pref;
-    $("#themeBtn").setAttribute("aria-pressed", String(pref === "light"));
-  } catch {}
   function openInfo() {
     $("#mBody").innerHTML = INFO_HTML(mode);
     els.modal.classList.add("open");
@@ -351,29 +374,23 @@ export function createUI(h) {
     els.toast.textContent = msg;
     els.toast.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => els.toast.classList.remove("show"), 3200);
+    toastTimer = setTimeout(() => els.toast.classList.remove("show"), 2200);
   }
 
   // ---- actualizacion por cuadro ----
   let lastText = 0;
   const edsRef = new EdsSection();
-  function update(tel, train, view, ctrl) {
-    // historial en tiempo de simulacion
-    const vals = {
-      speed: tel.speedKmh,
-      thrust: tel.thrust / 1e3,
-      u: tel.phases[0], v: tel.phases[1], w: tel.phases[2],
-    };
+  function update(tel, train, view) {
+    const vals = { speed: tel.speedKmh };
     train.sections.forEach((s, i) => (vals["g" + i] = s.gapMm));
     hist.push(tel.time, vals);
 
-    // perfil del tramo
     const leg = Math.round(tel.nextStation / train.stationSpacing);
     if (leg !== lastLeg) {
       lastLeg = leg;
       legTrace = { xs: [], ys: [] };
     }
-    const prevX = leg * train.stationSpacing - train.stationSpacing;
+    const prevX = (leg - 1) * train.stationSpacing;
     const dx = (tel.x - prevX) / 1000;
     const lastPoint = legTrace.xs[legTrace.xs.length - 1];
     if (lastPoint === undefined || dx - lastPoint > train.stationSpacing / 1000 / 400) {
@@ -382,46 +399,55 @@ export function createUI(h) {
     }
 
     const now = performance.now();
-    if (now - lastText > 90) {
+    if (now - lastText > 80) {
       lastText = now;
-      for (const [id, , , f] of READOUTS[mode]) statEls[id].textContent = f(tel);
-      els.stateChip.innerHTML = `<b>${STATE_TXT[tel.state] ?? tel.state}</b>${tel.levitated && tel.speed > 0.5 ? " · levitando" : ""}`;
-      els.dist.innerHTML = `<span>${fmt(Math.max(0, tel.remaining) / 1000, 2)}</span><small>km</small>`;
-      els.energy.textContent = `${fmt(tel.energyTractionKWh, 0)} / ${fmt(tel.energyRegenKWh, 0)} kWh`;
-      // medidor de entrehierro
-      const g = els.gapGauge;
-      const range = mode === "ems" ? [0, 22] : [70, 105];
+      // cuadro de mando
+      els.hSpeed.textContent = fmt(tel.speedKmh, 0);
+      let [label, kind] = STATE[tel.state] ?? [tel.state, "idle"];
+      if (tel.state === "levitando" && mode === "eds") label = "Preparado";
+      if (train.sections.some((s) => s.fallen)) [label, kind] = ["Sobre patines", "bad"];
+      if (train.sections.some((s) => s.contact)) [label, kind] = ["Pegado al riel", "bad"];
+      els.hState.textContent = label;
+      els.hState.dataset.k = kind;
+      els.hTarget.textContent = train.hold ? "retenido" : `objetivo ${Math.round(train.targetSpeed * 3.6)} km/h`;
+      els.hGap.textContent = fmt(tel.gapMm, mode === "ems" ? 1 : 0) + " mm";
+      const range = mode === "ems" ? [0, 22] : [80, 102];
       const pos = (v) => `${(Math.min(1, Math.max(0, (v - range[0]) / (range[1] - range[0]))) * 100).toFixed(1)}%`;
-      const zone = g.children[0];
-      if (mode === "ems") {
-        zone.style.left = pos(9.5);
-        zone.style.width = `calc(${pos(10.5)} - ${pos(9.5)})`;
-      } else {
-        zone.style.left = pos(EDS.gapWheels * 1000);
-        zone.style.width = `calc(${pos(EDS.gapCruise * 1000)} - ${pos(EDS.gapWheels * 1000)})`;
-      }
+      const bar = els.hGapBar;
+      const [z0, z1] = mode === "ems" ? [9.5, 10.5] : [EDS.gapWheels * 1000 + 8, EDS.gapCruise * 1000];
+      bar.children[0].style.left = pos(z0);
+      bar.children[0].style.width = `calc(${pos(z1)} - ${pos(z0)})`;
       train.sections.forEach((s, i) => {
-        if (g.children[i + 1]) g.children[i + 1].style.left = pos(s.gapMm);
+        if (bar.children[i + 1]) bar.children[i + 1].style.left = pos(s.gapMm);
       });
+      const frac = Math.min(1, Math.max(0, 1 - tel.remaining / train.stationSpacing));
+      els.hFill.style.width = `${(frac * 100).toFixed(1)}%`;
+      els.hDot.style.left = `${(frac * 100).toFixed(1)}%`;
+      els.hFrom.textContent = `E${leg}`;
+      els.hTo.textContent = `E${leg + 1}`;
+      els.hRem.textContent = `${fmt(Math.max(0, tel.remaining) / 1000, tel.remaining < 10e3 ? 1 : 0)} km`;
+      // panel de datos (solo si esta visible)
+      if (tab === "data" && !els.side.classList.contains("closed")) {
+        for (const [id, , , f] of ROWS[mode]) rowEls[id].textContent = f(tel);
+      }
     }
-    drawCharts(tel, train, view);
+    if (tab === "data" && !els.side.classList.contains("closed")) drawCharts(tel, train, view);
   }
 
   function drawCharts(tel, train, view) {
     const W = Math.min(120, Math.max(10, 10 * view.timeScale));
-    const idx = hist.range(W);
+    const idx = hist.range(W, 240);
     const tEnd = idx.length ? hist.t[idx[idx.length - 1]] : 0;
     const xs = idx.map((i) => hist.t[i] - tEnd);
     const colors = ["#5ec8ff", "#ffb454", "#8be28b"];
-    // --- A ---
     if (mode === "ems") {
       const series = train.sections.map((_, k) => ({ xs, ys: idx.map((i) => hist.cols["g" + k][i]), color: colors[k % 3] }));
       drawChart(els.cA, {
-        x: [-W, 0], y: [0, 22], series, xFmt: (v) => v.toFixed(0) + " s",
-        bands: [{ y0: 9.5, y1: 10.5, color: "rgba(74,222,128,0.18)" }],
-        refs: [{ y: 20, color: "#f87171", label: "patin" }, { y: 3, color: "#f87171", label: "contacto" }],
+        x: [-W, 0], y: [0, 22], series, xFmt: (v) => v.toFixed(0) + " s", yFmt: (v) => v.toFixed(0),
+        bands: [{ y0: 9.5, y1: 10.5, color: "rgba(74,222,128,0.2)" }],
+        refs: [{ y: 20, color: "#f87171" }, { y: 3, color: "#f87171" }],
       });
-      els.valA.textContent = `ventana ${W.toFixed(0)} s`;
+      els.valA.textContent = `${W.toFixed(0)} s`;
     } else {
       const vmaxK = Math.round(EDS.recordSpeed * 3.6);
       const n = 60;
@@ -437,50 +463,53 @@ export function createUI(h) {
       drawChart(els.cA, {
         x: [0, vmaxK], y: [0, Math.ceil((W0 * 1.1) / 1e5) * 100],
         series: [{ xs: kx, ys: lift, color: "#35e08a" }, { xs: kx, ys: drag, color: "#ffa43a" }],
-        refs: [{ y: W0 / 1e3, color: "#f2f5f8", label: "peso" }],
+        refs: [{ y: W0 / 1e3, color: "#c9d3dd", label: "peso" }],
         marker: { x: tel.speedKmh, y: tel.liftTotal / 1e3, color: "#35e08a" },
-        xFmt: (v) => v.toFixed(0), xLabel: "km/h",
+        xFmt: (v) => v.toFixed(0) + " km/h", yFmt: (v) => v.toFixed(0),
       });
       els.valA.textContent = "";
     }
-    // --- B: trifasica (3 ciclos a la frecuencia real) ---
-    {
-      const f = tel.frequency;
-      const N = 120;
-      const xs2 = [], u = [], v = [], w = [];
-      const TWO = Math.PI * 2;
-      const amp = Math.min(1, 0.3 + 0.9 * Math.abs(train.thrust) / Math.max(1, train.fMaxAt(0)));
-      for (let i = 0; i <= N; i++) {
-        const ph = (i / N) * 3 * TWO;
-        xs2.push(i / N * 3);
-        u.push(amp * Math.sin(ph - tel.theta));
-        v.push(amp * Math.sin(ph - tel.theta - TWO / 3));
-        w.push(amp * Math.sin(ph - tel.theta + TWO / 3));
-      }
-      drawChart(els.cB, {
-        x: [0, 3], y: [-1.1, 1.1],
-        series: f > 0.3 && train.v > 0.5
-          ? [{ xs: xs2, ys: u, color: "#ffb000" }, { xs: xs2, ys: v, color: "#19c37d" }, { xs: xs2, ys: w, color: "#b45cff" }]
-          : [],
-        xFmt: (q) => q.toFixed(0), xLabel: "ciclos",
-        refs: [{ y: 0, color: "rgba(160,190,220,.4)", dash: [] }],
-      });
-      els.valB.textContent = f > 0.3 ? `${fmt(f, 1)} Hz` : "sin movimiento";
+    // trifasica: tres ciclos a la frecuencia real
+    const f = tel.frequency;
+    const N = 120;
+    const xs2 = [], u = [], v = [], w = [];
+    const TWO = Math.PI * 2;
+    const amp = Math.min(1, 0.3 + 0.9 * Math.abs(train.thrust) / Math.max(1, train.fMaxAt(0)));
+    for (let i = 0; i <= N; i++) {
+      const ph = (i / N) * 3 * TWO;
+      xs2.push((i / N) * 3);
+      u.push(amp * Math.sin(ph - tel.theta));
+      v.push(amp * Math.sin(ph - tel.theta - TWO / 3));
+      w.push(amp * Math.sin(ph - tel.theta + TWO / 3));
     }
-    // --- C: perfil del tramo ---
+    const moving = f > 0.3 && train.v > 0.5;
+    drawChart(els.cB, {
+      x: [0, 3], y: [-1.1, 1.1],
+      series: moving ? [{ xs: xs2, ys: u, color: "#ffb000" }, { xs: xs2, ys: v, color: "#19c37d" }, { xs: xs2, ys: w, color: "#b45cff" }] : [],
+      xFmt: () => "", yFmt: () => "",
+      refs: [{ y: 0, color: "rgba(160,190,220,.35)", dash: [] }],
+    });
+    els.valB.textContent = moving ? `${fmt(f, 0)} Hz` : "detenido";
     drawChart(els.cC, {
       x: [0, train.stationSpacing / 1000],
-      y: [0, Math.ceil(MODES[mode].vMax * 3.6 / 100) * 100],
+      y: [0, Math.ceil((MODES[mode].vMax * 3.6) / 100) * 100],
       series: [{ xs: legTrace.xs, ys: legTrace.ys, color: "#5ec8ff", width: 1.8 }],
       marker: legTrace.xs.length ? { x: legTrace.xs[legTrace.xs.length - 1], y: tel.speedKmh, color: "#fff" } : null,
-      xFmt: (v) => v.toFixed(0), xLabel: "km", yFmt: (v) => v.toFixed(0),
+      xFmt: (q) => q.toFixed(0) + " km", yFmt: (q) => q.toFixed(0),
     });
-    els.valC.textContent = `${fmt(tel.speedKmh, 0)} km/h`;
+    els.valC.textContent = "";
   }
 
-  // arranque
+  // ---- arranque ----
   build("ems");
-  setExagText();
+  try {
+    const saved = localStorage.getItem("maglev-theme");
+    applyTheme(saved ?? (window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark"));
+    const panel = localStorage.getItem("maglev-panel");
+    setPanel(panel === null ? window.innerWidth > 900 : panel === "1");
+  } catch {
+    applyTheme("dark");
+  }
 
-  return { root, els, build, update, toast, setExagText, hist };
+  return { root, els, build, update, toast, hist, setTimeScale, setPaused, setOutputs };
 }

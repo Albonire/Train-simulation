@@ -32,16 +32,17 @@ Chromium.
 |---|---|
 | EMS / EDS | Cambia de tecnología (mismo tren, otra física). |
 | Velocidad objetivo, escala de tiempo (x1 a x60), pausa | Gobierna el viaje entre estaciones. |
-| Salir ahora / Retener en estación | En el modelo, el tren EMS aterriza en cada estación y vuelve a levitar antes de salir (decisión del modelo, no verificada contra el servicio real). |
-| Perturbaciones | Carga extra del 12 %, ráfaga lateral, golpe vertical, apagar el control, cortar la corriente. |
-| Cámaras | Órbita, persecución, sección transversal, entrehierro y cenital. |
+| Salir / Retener | En el modelo, el tren EMS aterriza en cada estación y vuelve a levitar antes de salir (decisión del modelo, no verificada contra el servicio real). |
+| Perturbaciones | Carga extra del 12 %, ráfaga lateral, golpe vertical, sin control, sin corriente. Cada botón explica su efecto al pasar el puntero. |
+| Cámaras (teclas 1 a 5) | Órbita, seguir, sección, imanes y arriba. La cámara nunca baja de 1,7 m sobre el suelo: se puede mirar la vía desde abajo, pero no atravesar el terreno. |
 | Carrocería | Sólida, rayos X o corte. |
-| Capas | Líneas de flujo, onda del estator, fuerzas, etiquetas. |
+| Capas | Flujo (solo cuando los imanes están a la vista), onda del estator, fuerzas (diagrama sobre el techo), nombres (solo en las vistas de detalle). |
 | Exagerar entrehierro | El entrehierro real (10 mm) es invisible a escala; se multiplica y la interfaz lo indica. |
 | Láminas | Tres figuras isométricas explicativas e interactivas. |
-| Cómo funciona | La física, los colores y la procedencia de cada dato. |
+| Ayuda (?) | Lo esencial de la física, los colores y los atajos; el modelo, sus límites y las fuentes de cada dato van plegados. |
+| Tema | Claro (día) u oscuro (atardecer, con luces en el tren y la estación). Espacio pausa, H oculta el panel. |
 
-**Qué probar en el EMS.** Pulsa *Apagar el control*: con la corriente fija en su valor de equilibrio,
+**Qué probar en el EMS.** En *Control*, pulsa *Sin control*: con la corriente fija en su valor de equilibrio,
 una perturbación de 0,5 mm basta para que el vehículo se pegue al riel o caiga en menos de un cuarto de
 segundo. Con el control activo, un golpe de 2 mm o una carga del 12 % se absorben (la carga se
 compensa con un término integral). **En el EDS** el equilibrio es estable por sí mismo.
