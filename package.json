@@ -1,12 +1,15 @@
 {
   "name": "maglev-simulation",
   "version": "1.0.0",
-  "description": "",
+  "description": "Simulador 3D de levitacion magnetica: EMS (Transrapid) y EDS (SCMaglev)",
   "main": "index.js",
   "scripts": {
     "test": "vitest run",
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "figures": "node scripts/build-figures.mjs",
+    "predev": "node scripts/build-figures.mjs",
+    "prebuild": "node scripts/build-figures.mjs"
   },
   "repository": {
     "type": "git",
@@ -14,7 +17,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/Albonire/Train-simulation/issues"
   },
@@ -27,5 +30,8 @@
   "devDependencies": {
     "vite": "8.3.4",
     "vitest": "5.0.5"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }

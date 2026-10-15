@@ -69,7 +69,9 @@ export function createUI(h) {
       <button data-mode="eds" aria-pressed="false">EDS · SCMaglev</button>
     </div>
     <span class="chip" id="stateChip">En reposo</span>
+    <button class="iconbtn" id="figBtn" type="button">Láminas</button>
     <button class="iconbtn" id="infoBtn" type="button">Cómo funciona</button>
+    <button class="iconbtn" id="themeBtn" type="button" aria-pressed="false" title="Cambiar entre tema oscuro y claro">Tema</button>
   </div>
 
   <aside id="side" class="panel" aria-label="Telemetría y controles">
@@ -132,6 +134,15 @@ export function createUI(h) {
 
   <div id="labels"></div>
   <div id="toast" role="status" aria-live="polite"></div>
+  <div id="gallery" role="dialog" aria-modal="true" aria-label="Láminas explicativas"><div class="card">
+    <div class="gbar"><div class="seg" role="group" aria-label="Lámina" id="gTabs">
+      <button data-fig="ems-levitacion" aria-pressed="true">Fig 1 · Levitación EMS</button>
+      <button data-fig="lsm-sincrono" aria-pressed="false">Fig 2 · Motor lineal</button>
+      <button data-fig="eds-sustentacion" aria-pressed="false">Fig 3 · Levitación EDS</button></div>
+      <span class="spacer"></span><button class="iconbtn" id="gClose" type="button">Cerrar</button></div>
+    <iframe id="gFrame" title="Lámina explicativa" loading="lazy"></iframe>
+    <p class="note">Las láminas se generan con la skill anatomy y usan el mismo modelo físico que la simulación. Cada una se maneja con el cursor y el teclado.</p>
+  </div></div>
   <div id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="card"><button class="iconbtn x" id="mClose" type="button">Cerrar</button><div id="mBody"></div></div></div>
   `;
   document.body.appendChild(root);
@@ -227,11 +238,11 @@ export function createUI(h) {
     // graficas
     if (modeId === "ems") {
       els.capA.textContent = "Entrehierro (mm)";
-      els.capB.textContent = "Corrientes del estator (3 fases)";
+      els.capB.textContent = "Corrientes del estator";
       els.capC.textContent = "Perfil de velocidad del tramo";
     } else {
-      els.capA.textContent = "Fuerzas frente a velocidad (kN)";
-      els.capB.textContent = "Corrientes de propulsión (3 fases)";
+      els.capA.innerHTML = `Fuerzas (kN): <span style="color:#35e08a">sustentación</span> · <span style="color:#ffa43a">arrastre</span>`;
+      els.capB.textContent = "Corrientes de propulsión";
       els.capC.textContent = "Perfil de velocidad del tramo";
     }
     hist.clear();
@@ -277,6 +288,10 @@ export function createUI(h) {
     }
     if (b.id === "resetBtn") return h.reset();
     if (b.id === "infoBtn") return openInfo();
+    if (b.id === "figBtn") return openGallery();
+    if (b.id === "gClose") return closeGallery();
+    if (b.dataset.fig) return showFigure(b.dataset.fig);
+    if (b.id === "themeBtn") return toggleTheme();
     if (b.id === "mClose") return closeInfo();
   });
   root.addEventListener("input", (e) => {
@@ -291,8 +306,37 @@ export function createUI(h) {
     if (e.target === els.modal) closeInfo();
   });
   window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeInfo();
+    if (e.key === "Escape") { closeInfo(); closeGallery(); }
   });
+  let figName = "ems-levitacion";
+  const isLight = () => document.documentElement.dataset.theme === "light";
+  function showFigure(name) {
+    figName = name;
+    for (const x of $("#gTabs").children) x.setAttribute("aria-pressed", String(x.dataset.fig === name));
+    $("#gFrame").src = `figures/${name}${isLight() ? "-light" : ""}.html`;
+  }
+  function openGallery() {
+    showFigure(mode === "eds" ? "eds-sustentacion" : figName);
+    $("#gallery").classList.add("open");
+    $("#gClose").focus();
+  }
+  function closeGallery() {
+    $("#gallery").classList.remove("open");
+    $("#gFrame").src = "about:blank";
+  }
+  function toggleTheme() {
+    const next = isLight() ? "dark" : "light";
+    document.documentElement.dataset.theme = next;
+    $("#themeBtn").setAttribute("aria-pressed", String(next === "light"));
+    try { localStorage.setItem("maglev-theme", next); } catch {}
+    if ($("#gallery").classList.contains("open")) showFigure(figName);
+  }
+  try {
+    const saved = localStorage.getItem("maglev-theme");
+    const pref = saved ?? (window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark");
+    document.documentElement.dataset.theme = pref;
+    $("#themeBtn").setAttribute("aria-pressed", String(pref === "light"));
+  } catch {}
   function openInfo() {
     $("#mBody").innerHTML = INFO_HTML(mode);
     els.modal.classList.add("open");
@@ -397,7 +441,7 @@ export function createUI(h) {
         marker: { x: tel.speedKmh, y: tel.liftTotal / 1e3, color: "#35e08a" },
         xFmt: (v) => v.toFixed(0), xLabel: "km/h",
       });
-      els.valA.textContent = "verde: sustentación, naranja: arrastre";
+      els.valA.textContent = "";
     }
     // --- B: trifasica (3 ciclos a la frecuencia real) ---
     {
