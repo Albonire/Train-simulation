@@ -30,5 +30,10 @@ export const ICONS = {
   keys: svg('<rect x="1.5" y="4" width="13" height="8" rx="1.6"/><path d="M4.2 7h.01M6.7 7h.01M9.2 7h.01M11.7 7h.01M5 9.6h6"/>'),
   cube: svg('<path d="M8 1.8l5.5 3.1v6.2L8 14.2 2.5 11.1V4.9z"/><path d="M2.5 4.9L8 8l5.5-3.1M8 8v6.2"/>'),
   train: svg('<rect x="3.2" y="2.2" width="9.6" height="8.8" rx="2.6"/><path d="M3.2 7.6h9.6"/><path d="M5.2 13.6h.01M10.8 13.6h.01"/>'),
+  prev: svg('<path d="M9.5 3.5L5 8l4.5 4.5"/>'),
+  next: svg('<path d="M6.5 3.5L11 8l-4.5 4.5"/>'),
+  field: svg('<path d="M2 8c2-5 10-5 12 0M2 8c2 5 10 5 12 0"/><circle cx="8" cy="8" r="1.4" class="f"/>'),
+  parts: svg('<rect x="2.5" y="6.5" width="11" height="4" rx="1"/><path d="M5 4.5V2.5M11 4.5V2.5M5 13.5v-1.5M11 13.5v-1.5"/>'),
+  explode: svg('<path d="M8 2v3M5.5 4L8 1.5 10.5 4"/><rect x="3.5" y="6.5" width="9" height="3" rx=".8"/><path d="M8 11v3M5.5 12L8 14.5 10.5 12"/>'),
   sliders: svg('<path d="M2.5 5h11M2.5 11h11"/><circle cx="6" cy="5" r="1.6" class="w"/><circle cx="10.5" cy="11" r="1.6" class="w"/>'),
 };

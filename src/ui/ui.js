@@ -10,6 +10,7 @@ import { ResponseTracker } from "./response.js";
 import { renderGuia } from "./pages/guia.js";
 import { renderLaminas, clearLaminas } from "./pages/laminas.js";
 import { KEYS } from "./info.js";
+import { createPartCard } from "./partCard.js";
 import { EDS, G } from "../physics/constants.js";
 import { EdsSection } from "../physics/eds.js";
 import { MODES } from "../physics/train.js";
@@ -33,6 +34,7 @@ export const RIGS = [
   ["section", "Sección", "Corte transversal: viga, estator, imanes y entrehierro."],
   ["gap", "Imanes", "Primer plano del entrehierro entre imán y estator."],
   ["top", "Arriba", "Vista cenital."],
+  ["field", "Campo", "Carrocería transparente y campo magnético realzado."],
 ];
 
 // [id, etiqueta, unidad, valor]
@@ -110,7 +112,10 @@ export function createUI(h) {
   </header>
 
   <nav id="cams" class="panel" aria-label="Cámaras">
-    ${RIGS.map(([id, label, tip], i) => `<button data-rig="${id}" aria-pressed="${id === "orbit"}" title="${tip}">${ICONS[["orbit", "chase", "section", "magnet", "top"][i]]}<span>${label}</span><span class="k" aria-hidden="true">${i + 1}</span></button>`).join("")}
+    ${RIGS.map(([id, label, tip], i) => `<button data-rig="${id}" aria-pressed="${id === "orbit"}" title="${tip}">${ICONS[["orbit", "chase", "section", "magnet", "top", "field"][i]]}<span>${label}</span><span class="k" aria-hidden="true">${i + 1}</span></button>`).join("")}
+    <div class="rule" role="separator"></div>
+    <button class="tool" data-tool="parts" aria-pressed="false" title="Haz clic en una pieza para acercarte y leer qué hace">${ICONS.parts}<span>Piezas</span><span class="k" aria-hidden="true">P</span></button>
+    <button class="tool" data-tool="explode" aria-pressed="false" title="Separa las piezas para verlas por dentro">${ICONS.explode}<span>Separar</span><span class="k" aria-hidden="true">E</span></button>
   </nav>
 
   <p id="hint" role="note"></p>
@@ -123,6 +128,11 @@ export function createUI(h) {
       <output id="hGap">–</output>
       <div class="bar" id="hGapBar" aria-hidden="true"><i></i><b></b><b></b><b></b></div>
     </div>
+    <button class="h-field" id="hField" title="Intensidad del campo magnético. Pulsa para verlo (6)">
+      <span class="h-lbl">Campo</span>
+      <output id="hFieldV">–</output>
+      <div class="bar" id="hFieldBar" aria-hidden="true"><i></i><b></b></div>
+    </button>
     <div class="h-trip" title="Progreso hacia la próxima estación">
       <span class="h-lbl"><span id="hFrom">E1</span><span id="hRem">–</span><span id="hTo">E2</span></span>
       <div class="track" aria-hidden="true"><i id="hFill"></i><b id="hDot"></b></div>
@@ -197,11 +207,12 @@ export function createUI(h) {
   <main id="page" hidden></main>
   `;
   document.body.appendChild(root);
+  const card = createPartCard(root, { onPrev: () => h.partStep(-1), onNext: () => h.partStep(1), onClose: () => h.partClose() });
 
   const els = {
     rows: $("#rows"), hSpeed: $("#hSpeed"), hState: $("#hState"), hTarget: $("#hTarget"), hGap: $("#hGap"),
     hGapLbl: $("#hGapLbl"), hGapBar: $("#hGapBar"), hFrom: $("#hFrom"), hTo: $("#hTo"), hRem: $("#hRem"),
-    hFill: $("#hFill"), hDot: $("#hDot"),
+    hFill: $("#hFill"), hDot: $("#hDot"), hFieldV: $("#hFieldV"), hFieldBar: $("#hFieldBar"),
     target: $("#target"), targetOut: $("#targetOut"), spacing: $("#spacing"), spacingOut: $("#spacingOut"),
     exag: $("#exag"), exagOut: $("#exagOut"), perturb: $("#perturb"),
     cams: $("#cams"), toast: $("#toast"), labels: $("#labels"), side: $("#side"), resp: $("#resp"),
@@ -302,6 +313,9 @@ export function createUI(h) {
       return h.setLayer(b.dataset.layer, on);
     }
     if (b.dataset.p) return perturbClick(b);
+    if (b.dataset.tool === "parts") return h.setParts(b.getAttribute("aria-pressed") !== "true");
+    if (b.dataset.tool === "explode") return h.setExplode(b.getAttribute("aria-pressed") !== "true");
+    if (b.id === "hField") return h.setRig("field");
     switch (b.id) {
       case "pauseBtn": return setPaused(b.getAttribute("aria-pressed") !== "true");
       case "goBtn": return h.depart();
@@ -327,8 +341,10 @@ export function createUI(h) {
   const keysPop = $("#keys");
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      // un popover abierto se cierra solo; si no, se vuelve a la simulacion
-      if (!keysPop.matches?.(":popover-open") && view.page !== "sim") router.go("sim");
+      // un popover abierto se cierra solo; despues la tarjeta de pieza; si no, se vuelve a la simulacion
+      if (keysPop.matches?.(":popover-open")) return;
+      if (view.page === "sim" && h.partEsc()) return;
+      if (view.page !== "sim") router.go("sim");
       return;
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -340,6 +356,12 @@ export function createUI(h) {
     if (n >= 1 && n <= RIGS.length) { h.setRig(RIGS[n - 1][0]); return; }
     if (e.key === " " && tag !== "BUTTON") { e.preventDefault(); setPaused($("#pauseBtn").getAttribute("aria-pressed") !== "true"); return; }
     if (e.key === "h" || e.key === "H") return setPanel(els.side.classList.contains("closed"));
+    if (e.key === "p" || e.key === "P") return h.setParts(document.querySelector('[data-tool="parts"]').getAttribute("aria-pressed") !== "true");
+    if (e.key === "e" || e.key === "E") return h.setExplode(document.querySelector('[data-tool="explode"]').getAttribute("aria-pressed") !== "true");
+    if (document.body.dataset.parts === "on" && (e.key === "ArrowRight" || e.key === "ArrowLeft") && tag !== "BUTTON") {
+      e.preventDefault();
+      return h.partStep(e.key === "ArrowRight" ? 1 : -1);
+    }
   });
 
   // ---- paginas ----
@@ -363,6 +385,7 @@ export function createUI(h) {
     view.arg = arg;
     document.body.dataset.view = page;
     keysPop.hidePopover?.();
+    if (page !== "sim") h.partClose();
     for (const a of root.querySelectorAll("[data-page]")) {
       if (a.dataset.page === page) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
@@ -511,6 +534,15 @@ export function createUI(h) {
       train.sections.forEach((s, i) => {
         if (bar.children[i + 1]) bar.children[i + 1].style.left = pos(s.gapMm);
       });
+      // indicador de campo: EMS I/g relativo al nominal (zona 95 a 105 %), EDS corriente inducida
+      const lvl = simView.fieldLevel ?? 0;
+      els.hFieldV.textContent = `${fmt(lvl * 100, 0)} %`;
+      const fr = mode === "ems" ? [0, 2] : [0, 1];
+      const fp = (v) => `${(Math.min(1, Math.max(0, (v - fr[0]) / (fr[1] - fr[0]))) * 100).toFixed(1)}%`;
+      const fb = els.hFieldBar;
+      fb.children[0].style.left = "0";
+      fb.children[0].style.width = fp(lvl);
+      fb.children[1].style.left = mode === "ems" ? fp(1) : fp(lvl);
       const frac = Math.min(1, Math.max(0, 1 - tel.remaining / train.stationSpacing));
       els.hFill.style.width = `${(frac * 100).toFixed(1)}%`;
       els.hDot.style.left = `${(frac * 100).toFixed(1)}%`;
@@ -604,5 +636,5 @@ export function createUI(h) {
 
   document.body.dataset.view = "sim";
   router.start();
-  return { root, els, build, update, sample, toast, hist, setTimeScale, setPaused, setOutputs, router, view };
+  return { root, els, card, build, update, sample, toast, hist, setTimeScale, setPaused, setOutputs, router, view };
 }

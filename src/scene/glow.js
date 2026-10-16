@@ -7,6 +7,7 @@
 // La posicion x que usa el shader es la del mundo con el tren centrado en x = 0.
 
 import * as THREE from "three";
+import { DETAIL } from "./depth.js";
 
 export const POLE_N = new THREE.Color("#ff4d3d"); // polo norte / campo +
 export const POLE_S = new THREE.Color("#2f8cff"); // polo sur / campo -
@@ -52,7 +53,7 @@ export function glowMaterial(params, set = sets.stator, opts = {}) {
   const sign = { value: opts.sign ?? 1 };
   const gain = { value: opts.gain ?? 1.25 };
   mat.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, set, { uSign: sign, uGain: gain });
+    Object.assign(shader.uniforms, set, { uSign: sign, uGain: gain, uBias: DETAIL.uBias });
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", `#include <common>\n varying float vWx;`)
       .replace(
@@ -60,7 +61,9 @@ export function glowMaterial(params, set = sets.stator, opts = {}) {
         `#include <begin_vertex>\n vec4 wp = modelMatrix * vec4(transformed, 1.0);\n vWx = wp.x;`,
       );
     shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", `#include <common>\n${GLSL}`)
+      .replace("#include <common>", `#include <common>\n${GLSL}\nuniform float uBias;`)
+      // la textura del estator (diente y ranura de 6 cm) corre con la via: se desenfoca a velocidad
+      .replace("#include <map_fragment>", "#ifdef USE_MAP\n vec4 sampledDiffuseColor = texture2D( map, vMapUv, uBias );\n diffuseColor *= sampledDiffuseColor;\n#endif")
       .replace(
         "#include <emissivemap_fragment>",
         `#include <emissivemap_fragment>
@@ -76,7 +79,7 @@ export function glowMaterial(params, set = sets.stator, opts = {}) {
          }`,
       );
   };
-  mat.customProgramCacheKey = () => "glow";
+  mat.customProgramCacheKey = () => "glow-v2";
   mat.userData.glow = { sign, gain };
   return mat;
 }

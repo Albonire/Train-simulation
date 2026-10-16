@@ -14,14 +14,16 @@ const MOTOR = `
 const COLORES = `
 <ul>
   <li><span class="sw n"></span><b>Rojo</b> es polo norte y <span class="sw s"></span><b>azul</b> polo sur. En el estator, las franjas muestran el polo opuesto al del imán que tienen enfrente, porque se atraen.</li>
-  <li><span class="sw flux"></span><b>Amarillo</b>: líneas de flujo. Solo se dibujan cuando los imanes están a la vista (cámaras Sección e Imanes, o carrocería en rayos X o corte).</li>
+  <li><b>Partículas y líneas de flujo</b>: recorren el circuito magnético con el sentido real del campo, del polo norte (rojo) al sur (azul). Se dibujan cuando los imanes están a la vista: cámaras Campo, Sección e Imanes, o carrocería en rayos X o corte. El indicador <b>Campo</b> del cuadro de mando muestra su intensidad y abre la cámara Campo.</li>
   <li>Flechas sobre el techo, en escala de raíz cuadrada para que se vean fuerzas de órdenes distintos: <span class="sw lift"></span>sustentación, <span class="sw weight"></span>peso, <span class="sw thrust"></span>empuje, <span class="sw drag"></span>resistencia y <span class="sw side"></span>fuerza lateral.</li>
 </ul>`;
 
 const CONTROLES = `
 <p>La cámara no baja de 1,7 m sobre el suelo: se puede mirar la vía desde abajo, pero no atravesar el terreno. Doble clic sobre la escena recupera la vista de la cámara activa.</p>
 <dl class="keys">
-  <dt><kbd>1</kbd> a <kbd>5</kbd></dt><dd>Cámaras: órbita, seguir, sección, imanes y arriba</dd>
+  <dt><kbd>1</kbd> a <kbd>6</kbd></dt><dd>Cámaras: órbita, seguir, sección, imanes, arriba y campo</dd>
+  <dt><kbd>P</kbd></dt><dd>Explorador de piezas: clic en una pieza para acercarte y leer qué hace; las flechas pasan a la siguiente</dd>
+  <dt><kbd>E</kbd></dt><dd>Separar las piezas para verlas por dentro</dd>
   <dt><kbd>Espacio</kbd></dt><dd>Pausa y reanuda</dd>
   <dt><kbd>H</kbd></dt><dd>Muestra u oculta el panel lateral</dd>
   <dt><kbd>?</kbd></dt><dd>Lista de atajos</dd>
@@ -130,7 +132,9 @@ export const FIGURES = [
 ];
 
 export const KEYS = [
-  [["1", "5"], "Cámaras"],
+  [["1", "6"], "Cámaras"],
+  [["P"], "Piezas"],
+  [["E"], "Separar"],
   [["Espacio"], "Pausa"],
   [["H"], "Panel lateral"],
   [["?"], "Esta lista"],

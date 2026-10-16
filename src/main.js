@@ -10,6 +10,9 @@ import { createEdsFields, updateEdsGlow } from "./scene/edsFields.js";
 import { setLineResolution } from "./scene/lines.js";
 import { createLabels } from "./scene/labels.js";
 import { createStations } from "./scene/stations.js";
+import { adaptiveNear } from "./scene/depth.js";
+import { setExplode as applyExplode, pick, setHighlight, setHighlightColor, setHighlightOpacity, focusBox } from "./scene/parts.js";
+import { partById, partIds, stepPart, poseDirection } from "./scene/partsData.js";
 import { DIM } from "./scene/ems.js";
 import { D as EDIM } from "./scene/edsGeo.js";
 import { createUI } from "./ui/ui.js";
@@ -47,6 +50,9 @@ const view = {
   rig: "orbit",
   body: "auto",
   paused: false,
+  parts: false, // explorador de piezas
+  explode: false, // vista separada
+  boost: false, // la camara Campo realza las capas de campo
   layers: { fields: true, wave: true, forces: true, labels: true },
 };
 const rigMinExag = () => active.rigs[view.rig].minExag ?? 0;
@@ -57,9 +63,18 @@ const planes = {
   x: new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0),
   z: new THREE.Plane(new THREE.Vector3(0, 0, -1), 0),
 };
+// Carroceria efectiva: el explorador de piezas y la vista separada necesitan ver dentro.
+function effBody() {
+  const rig = active.rigs[view.rig];
+  let bodyMode = view.body === "auto" ? rig.body : view.body;
+  if ((view.parts || view.explode) && bodyMode !== "cut") bodyMode = "xray";
+  if (view.explode && bodyMode === "cut") bodyMode = "xray"; // el corte no se lleva con piezas separadas
+  return bodyMode;
+}
 function applyBody() {
   const rig = active.rigs[view.rig];
-  const bodyMode = view.body === "auto" ? rig.body : view.body;
+  const bodyMode = effBody();
+  view.boost = !!rig.boost;
   let plane = null;
   if (bodyMode === "cut") {
     const cut = rig.cut ?? { axis: "z", c: 0 };
@@ -88,9 +103,7 @@ function applyBody() {
 // Las lineas de flujo se dibujan sin prueba de profundidad: solo tienen sentido
 // cuando los imanes estan a la vista (vistas de detalle, rayos X o corte).
 function magnetsVisible() {
-  const rig = active.rigs[view.rig];
-  const bodyMode = view.body === "auto" ? rig.body : view.body;
-  return DETAIL.includes(view.rig) || bodyMode !== "solid";
+  return DETAIL.includes(view.rig) || effBody() !== "solid";
 }
 
 // ---- camaras con transicion ----
@@ -127,6 +140,128 @@ function setRig(name, instant = false) {
   applyBody();
   document.querySelectorAll("#cams [data-rig]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.rig === name)));
 }
+
+// ---- explorador de piezas ----
+// Con el modo activo la carroceria se vuelve transparente, la pieza bajo el puntero se resalta
+// y un clic acerca la camara y abre su tarjeta. La via corre bajo el tren, asi que el resaltado
+// se aplica a todas las copias del pool de tramos y la seleccion no se pierde.
+let selected = null;
+let hoverId = null;
+const explode = { target: 0, k: 0 };
+const hoverTip = document.createElement("div");
+hoverTip.id = "partHover";
+hoverTip.hidden = true;
+document.body.appendChild(hoverTip);
+
+function refreshHighlight() {
+  const id = view.parts ? (hoverId ?? selected) : null;
+  // verde agua vivo en los dos temas: el acento del tema claro es demasiado oscuro para resaltar
+  setHighlightOpacity(hoverId && hoverId !== selected ? 0.22 : 0.4);
+  setHighlight(mode, id);
+}
+const pressTool = (name, on) => document.querySelector(`[data-tool="${name}"]`)?.setAttribute("aria-pressed", String(on));
+
+function setParts(on) {
+  view.parts = on;
+  document.body.dataset.parts = on ? "on" : "off";
+  pressTool("parts", on);
+  if (!on) {
+    closePart();
+    hoverId = null;
+    hoverTip.hidden = true;
+  } else {
+    ui.toast("Haz clic en una pieza, o usa las flechas");
+  }
+  applyBody();
+  refreshHighlight();
+}
+function setExplodeView(on) {
+  view.explode = on;
+  explode.target = on ? 1 : 0;
+  pressTool("explode", on);
+  applyBody();
+  // las piezas se mueven: se vuelve a encuadrar la seleccionada cuando terminan
+  if (selected) setTimeout(() => selected && flyTo(selected), 650);
+}
+function closePart() {
+  selected = null;
+  ui.card.hide();
+  document.body.dataset.card = "closed";
+  refreshHighlight();
+}
+function partEsc() {
+  if (selected) return closePart(), true;
+  if (view.parts) return setParts(false), true;
+  return false;
+}
+function selectPart(id) {
+  if (!view.parts) setParts(true);
+  selected = id;
+  const ids = partIds(mode);
+  ui.card.show(partById(mode, id), ids.indexOf(id), ids.length);
+  document.body.dataset.card = "open";
+  refreshHighlight();
+  flyTo(id);
+  // la lista de camaras deja de marcar una vista: ahora se mira una pieza
+  document.querySelectorAll("#cams [data-rig]").forEach((b) => b.setAttribute("aria-pressed", "false"));
+}
+function partStep(dir) {
+  const ids = partIds(mode);
+  selectPart(selected ? stepPart(mode, selected, dir) : ids[dir > 0 ? 0 : ids.length - 1]);
+}
+function flyTo(id) {
+  const def = partById(mode, id);
+  scene.updateMatrixWorld(true);
+  const box = focusBox(mode, id, def.span);
+  if (!box) return;
+  const c = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const radius = Math.max(0.5 * size.length(), 0.8);
+  const fov = 44;
+  // en pantalla vertical el campo horizontal es corto: se aleja un poco mas
+  const wide = camera.aspect < 0.9 ? 1.6 : 1;
+  const dist = Math.max(3.2, (radius / Math.tan(THREE.MathUtils.degToRad(fov / 2))) * def.pose.fit * wide);
+  tween.target.copy(c);
+  tween.pos.copy(c).addScaledVector(new THREE.Vector3(...poseDirection(def.pose)), dist);
+  tween.fov = fov;
+  tween.active = true;
+}
+
+// clic (sin arrastre) para elegir; el movimiento del puntero resalta y nombra la pieza
+let down = null;
+canvas.addEventListener("pointerdown", (e) => (down = { x: e.clientX, y: e.clientY, t: performance.now() }));
+canvas.addEventListener("pointerup", (e) => {
+  const d = down;
+  down = null;
+  if (!view.parts || !d) return;
+  if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 5 || performance.now() - d.t > 500) return;
+  const hit = pick(mode, camera, e.clientX, e.clientY, window.innerWidth, window.innerHeight);
+  if (hit) selectPart(hit.id);
+});
+let lastHover = 0;
+canvas.addEventListener("pointermove", (e) => {
+  if (!view.parts || e.buttons) return;
+  const now = performance.now();
+  if (now - lastHover < 60) return;
+  lastHover = now;
+  const hit = pick(mode, camera, e.clientX, e.clientY, window.innerWidth, window.innerHeight);
+  const id = hit ? hit.id : null;
+  if (id !== hoverId) {
+    hoverId = id;
+    refreshHighlight();
+  }
+  hoverTip.hidden = !id;
+  if (id) {
+    hoverTip.textContent = partById(mode, id).name;
+    hoverTip.style.left = `${e.clientX}px`;
+    hoverTip.style.top = `${e.clientY}px`;
+  }
+});
+canvas.addEventListener("pointerleave", () => {
+  hoverId = null;
+  hoverTip.hidden = true;
+  refreshHighlight();
+});
 
 // ---- etiquetas: solo en las vistas de detalle y con nombres cortos ----
 let labels;
@@ -174,6 +309,11 @@ const ui = createUI({
     ui.toast("Reiniciado");
   },
   perturb,
+  setParts: (on) => setParts(on),
+  setExplode: (on) => setExplodeView(on),
+  partStep: (dir) => partStep(dir),
+  partClose: () => closePart(),
+  partEsc: () => partEsc(),
   setTheme: (t) => {
     world.setTheme(t);
     stations.setNight(t !== "light");
@@ -188,6 +328,7 @@ labels = createLabels(ui.els.labels);
 
 function setMode(next) {
   if (next === mode) return;
+  if (selected) closePart();
   mode = next;
   train.setMode(next);
   active = scenes[next];
@@ -290,15 +431,17 @@ function freeArea() {
   const hud = document.getElementById("hud");
   const topbar = document.getElementById("topbar");
   const open = !side.classList.contains("closed");
+  const card = ui.card.open ? ui.card.el : null;
   if (w > 760) {
-    const l = cams.offsetLeft + cams.offsetWidth + 8;
+    let l = cams.offsetLeft + cams.offsetWidth + 8;
+    if (card) l = Math.max(l, card.offsetLeft + card.offsetWidth + 8);
     const r = open ? w - side.offsetLeft + 8 : 0;
     const t = topbar.offsetTop + topbar.offsetHeight;
     const b = h - hud.offsetTop;
     return { x: (l - r) / 2, y: (t - b) / 2 };
   }
   const t = cams.offsetTop + cams.offsetHeight + 4;
-  const b = h - (open ? side.offsetTop : hud.offsetTop);
+  const b = h - (card ? card.offsetTop : open ? side.offsetTop : hud.offsetTop);
   return { x: 0, y: (t - b) / 2 };
 }
 let framed = "";
@@ -364,18 +507,29 @@ function frame(now) {
     }
   }
   const sc = train.x - train.length / 2;
+  // velocidad visual del suelo: lo que el ojo ve pasar (m/s de pista por segundo real)
+  // window.__qaSpeed lo fija el script de QA visual (scripts/visual-qa.mjs)
+  world.setVisualSpeed(window.__qaSpeed ?? (view.paused ? 0 : Math.abs(train.v) * view.timeScale), wall);
   world.scroll(sc);
   stations.update(sc, train.length, train.stationSpacing, STATION_CFG[mode]);
   const tel = train.telemetry();
-  const v2 = { ...view, exag: effExag(), magnetsVisible: magnetsVisible() };
+  // vista separada: la separacion se suaviza con tiempo real
+  if (explode.k !== explode.target) {
+    explode.k += (explode.target - explode.k) * (reduced ? 1 : 1 - Math.exp(-wall * 5));
+    if (Math.abs(explode.target - explode.k) < 0.002) explode.k = explode.target;
+    applyExplode(explode.k);
+  }
+  const level = mode === "ems" ? fields.ems.fieldLevel(train) : fields.eds.fieldLevel(train, tel);
+  const v2 = { ...view, exag: effExag(), magnetsVisible: magnetsVisible(), fieldLevel: level };
   active.update(tel, train, v2, dt);
   if (mode === "ems") {
-    fields.ems.update(tel, train, v2);
+    fields.ems.update(tel, train, v2, camera, window.innerHeight);
     updateEmsGlow(tel, train, v2);
   } else {
-    fields.eds.update(tel, train, v2);
+    fields.eds.update(tel, train, v2, camera, window.innerHeight);
     updateEdsGlow(tel, train, v2);
   }
+  if (selected) ui.card.update(partById(mode, selected).live(tel, train));
 
   if (tween.active) {
     // con tiempo real (no el paso limitado): en equipos lentos la transicion dura lo mismo
@@ -400,12 +554,18 @@ function frame(now) {
   applyFraming();
   keepAboveGround();
   controls.update();
+  // plano cercano segun a que distancia se mira: mas resolucion de profundidad lejos
+  const near = adaptiveNear(camera.position.distanceTo(controls.target));
+  if (Math.abs(near - camera.near) > 0.02) {
+    camera.near = near;
+    camera.updateProjectionMatrix();
+  }
   renderer.render(scene, camera);
   labels.update(camera, view.rig, view.layers.labels, window.innerWidth, window.innerHeight);
-  ui.update(tel, train, view);
+  ui.update(tel, train, v2);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 
 window.__THREE = THREE;
-window.__app = { train, view, setRig, setMode, applyBody, camera, controls, scene, scenes, ui, perturb, depart };
+window.__app = { world, selectPart, setParts, setExplodeView, train, view, setRig, setMode, applyBody, camera, controls, scene, scenes, ui, perturb, depart };
