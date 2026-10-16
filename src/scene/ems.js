@@ -12,7 +12,9 @@
 import * as THREE from "three";
 import { glowMaterial, poleTexture, sets } from "./glow.js";
 import { loft, bodyStations } from "./loft.js";
-import { liveryTextures, bellows } from "./livery.js";
+import { liveryTextures, paintMaterial, bellows } from "./livery.js";
+import { roofEquipment, headlamps } from "./trainParts.js";
+import { patchConcrete, taperedBox } from "./textures.js";
 import { EMS } from "../physics/constants.js";
 
 export const SEG = 25.8; // 400 ranuras de 64.5 mm: el patron no salta al reciclar tramos
@@ -40,12 +42,10 @@ export const DIM = {
 };
 
 const mat = {
-  concrete: () => new THREE.MeshStandardMaterial({ color: "#9aa1a8", roughness: 0.92, metalness: 0.0 }),
+  concrete: () => patchConcrete(new THREE.MeshStandardMaterial({ color: "#b9bfc6", roughness: 0.92, metalness: 0.0 })),
   steel: () => new THREE.MeshStandardMaterial({ color: "#3a424b", roughness: 0.5, metalness: 0.7 }),
   rail: () => new THREE.MeshStandardMaterial({ color: "#c7ced6", roughness: 0.3, metalness: 0.85 }),
   copper: () => new THREE.MeshStandardMaterial({ color: "#c8742a", roughness: 0.45, metalness: 0.8 }),
-  // el color sale de la librea (livery.js)
-  body: () => new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.32, metalness: 0.35, side: THREE.DoubleSide }),
   dark: () => new THREE.MeshStandardMaterial({ color: "#14181d", roughness: 0.7, metalness: 0.3 }),
   seat: () => new THREE.MeshStandardMaterial({ color: "#2c5aa0", roughness: 0.8 }),
   floor: () => new THREE.MeshStandardMaterial({ color: "#b9c0c8", roughness: 0.9, side: THREE.DoubleSide }),
@@ -82,6 +82,9 @@ export function buildEmsSegment(shared) {
     return mesh;
   };
   add(shared.pillar, shared.m.concrete, 0, DIM.pillarH / 2, 0);
+  add(shared.cap, shared.m.concrete, 0, DIM.pillarH - 0.2, 0);
+  // junta de dilatacion al inicio del tramo
+  add(shared.joint, shared.m.dark, 0.02, (DIM.webTop + DIM.plateTop) / 2, 0, false);
   add(shared.web, shared.m.concrete, SEG / 2, (DIM.pillarH + DIM.webTop) / 2, 0);
   add(shared.plate, shared.m.concrete, SEG / 2, (DIM.webTop + DIM.plateTop) / 2, 0);
   for (const s of [-1, 1]) {
@@ -101,7 +104,10 @@ export function createEmsShared() {
   };
   return {
     m,
-    pillar: new THREE.BoxGeometry(1.6, DIM.pillarH, 2.0),
+    // pilar que se ensancha hacia la cabeza, con su cabezal
+    pillar: taperedBox(1.25, 1.7, 1.7, 2.5, DIM.pillarH),
+    cap: new THREE.BoxGeometry(2.1, 0.4, 2.8),
+    joint: new THREE.BoxGeometry(0.06, DIM.plateTop - DIM.webTop + 0.02, DIM.plateHalf * 2 + 0.02),
     web: new THREE.BoxGeometry(SEG, DIM.webTop - DIM.pillarH, 1.0),
     plate: new THREE.BoxGeometry(SEG, DIM.plateTop - DIM.webTop, DIM.plateHalf * 2),
     stator: new THREE.BoxGeometry(SEG, 0.25, DIM.statorZ1 - DIM.statorZ0),
@@ -138,7 +144,7 @@ export function outline() {
  * Una seccion del vehiculo. `role`: "front" | "mid" | "rear".
  * Devuelve { group, setGap(gapM, lateralM, exag), setCurrent(rel), bodyMats }.
  */
-export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shared, baseX = 0 }) {
+export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shared, baseX = 0, carNo = 1 }) {
   const group = new THREE.Group();
   const bodyMats = [];
   const clipMats = [];
@@ -154,6 +160,7 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
     x1: stations[stations.length - 1].x,
     len: length - 0.6,
     role,
+    carNo,
     style: {
       base: "#eef2f6",
       lower: "#9aa4ae",
@@ -163,18 +170,29 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
       windowY: [1.58, 2.36],
       winW: 1.05,
       winPitch: 1.42,
+      name: "MAGLEV",
+      signY: 1.02,
+      ventY: [0.1, 0.34],
     },
   });
-  const bodyM = mat.body();
-  bodyM.map = livery.map;
-  bodyM.emissiveMap = livery.emissiveMap;
-  bodyM.emissive = new THREE.Color("#ffffff");
+  const bodyM = paintMaterial(livery);
   bodyMats.push(bodyM);
   const body = new THREE.Mesh(loft(pts, stations), bodyM);
   body.castShadow = true;
   body.receiveShadow = true;
   group.add(body);
   clipMats.push(bodyM);
+
+  // equipos de techo
+  const roof = roofEquipment({ len: length - 0.6, role, roofY: DIM.roof });
+  group.add(roof.group);
+  for (const m of roof.mats) {
+    bodyMats.push(m);
+    clipMats.push(m);
+  }
+  // faros con luz propia (solo la cabeza del tren; se encienden con luz baja)
+  const lamps = role === "front" ? headlamps({ len: length - 0.6, noseLen: 9, y: 0.7 }) : null;
+  if (lamps) group.add(lamps.group);
 
   // fuelle hacia la seccion siguiente (la delantera no tiene)
   if (role !== "front") {
@@ -294,6 +312,9 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
         h.position.set(0, (DIM.railY0 + DIM.railY1) / 2 - (DIM.plateTop + DIM.floorClear), s * (DIM.plateHalf + 0.06 + gap0 * exag + 0.07));
       }
       return gv;
+    },
+    setNight(on) {
+      lamps?.setOn(on);
     },
     setCurrentRel(rel) {
       poleM.emissiveIntensity = 0.15 + 0.35 * Math.min(2, rel);

@@ -1,17 +1,22 @@
 // Interfaz. Principios: la escena manda; lo esencial (velocidad, estado, entrehierro,
 // progreso del tramo, tiempo) vive en un cuadro de mando compacto abajo; el resto va en
-// un panel plegable con pestanas. Las explicaciones largas van en informacion emergente
-// (title) o en "Como funciona", nunca como parrafos fijos en pantalla.
+// un panel plegable con pestanas. Lo que requiere lectura (guia y laminas) son paginas
+// con su ruta, no dialogos; los atajos, un popover pequeno.
 
 import { History, drawChart } from "./charts.js";
-import { INFO_HTML } from "./info.js";
 import { ICONS } from "./icons.js";
+import { createRouter, routeHref } from "./router.js";
+import { ResponseTracker } from "./response.js";
+import { renderGuia } from "./pages/guia.js";
+import { renderLaminas, clearLaminas } from "./pages/laminas.js";
+import { KEYS } from "./info.js";
 import { EDS, G } from "../physics/constants.js";
 import { EdsSection } from "../physics/eds.js";
 import { MODES } from "../physics/train.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
-const fmt = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : "–");
+const fmt = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d).replace(".", ",") : "–");
+const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
 const STATE = {
   reposo: ["En reposo", "idle"],
@@ -54,18 +59,19 @@ const ROWS = {
   ],
 };
 
+// [id, icono, nombre, efecto en una linea, conmutable]
 const PERTURB = {
   ems: [
-    ["load", "load", "Carga +12 %", "Añade un 12 % de masa a la sección central. El control sube la corriente y recupera los 10 mm.", true],
-    ["gust", "gust", "Ráfaga", "Empuje lateral del 10 % del peso durante 0,6 s. Lo corrigen los imanes de guiado."],
+    ["load", "load", "Carga +12 %", "Más masa en la sección central. El control sube la corriente.", true],
+    ["gust", "gust", "Ráfaga", "Empuje lateral del 10 % del peso durante 0,6 s."],
     ["kick", "kick", "Golpe", "Abre el entrehierro 2 mm de golpe."],
-    ["ctrlOff", "ctrl", "Sin control", "Deja la corriente fija: el equilibrio es inestable y el imán se pega o cae en menos de un cuarto de segundo.", true],
-    ["cutPower", "power", "Sin corriente", "Corta la alimentación: el tren cae a los patines y vuelve a levitar a los pocos segundos."],
+    ["ctrlOff", "ctrl", "Sin control", "Corriente fija: el imán se pega o cae en menos de 0,25 s.", true],
+    ["cutPower", "power", "Sin corriente", "Corta la alimentación: cae a los patines y vuelve a levitar."],
   ],
   eds: [
-    ["load", "load", "Carga +12 %", "Añade un 12 % de masa a la sección central. Baja un poco y se estabiliza sola.", true],
-    ["gust", "gust", "Ráfaga", "Empuje lateral del 10 % del peso. Lo devuelven las bobinas en 8 de las paredes."],
-    ["kick", "kick", "Golpe", "Sube el vehículo 15 mm de golpe: la sustentación cae y vuelve a su altura sin control."],
+    ["load", "load", "Carga +12 %", "Más masa en la sección central. Baja un poco y se estabiliza.", true],
+    ["gust", "gust", "Ráfaga", "Empuje lateral del 10 % del peso. Lo devuelven las bobinas en 8."],
+    ["kick", "kick", "Golpe", "Sube el vehículo 15 mm: la sustentación cae y vuelve sola."],
   ],
 };
 
@@ -85,27 +91,33 @@ export function createUI(h) {
   root.id = "ui";
   root.innerHTML = `
   <header id="topbar">
-    <div class="brand panel"><span class="logo" aria-hidden="true"></span><span>Maglev</span>
-      <div class="seg" role="group" aria-label="Tecnología">
-        <button data-mode="ems" aria-pressed="true" title="Suspensión electromagnética (Transrapid): atracción bajo la vía con control activo">EMS</button>
-        <button data-mode="eds" aria-pressed="false" title="Suspensión electrodinámica (SCMaglev): repulsión por corrientes inducidas">EDS</button>
-      </div>
+    <a class="brand" href="${routeHref("sim")}" aria-label="Simulador maglev: ir a la simulación"><span class="logo" aria-hidden="true"><i></i><i></i></span><span>Maglev</span></a>
+    <div class="seg" role="group" aria-label="Tecnología">
+      <button data-mode="ems" aria-pressed="true" title="Suspensión electromagnética: atracción bajo la vía con control activo">EMS</button>
+      <button data-mode="eds" aria-pressed="false" title="Suspensión electrodinámica: repulsión por corrientes inducidas">EDS</button>
     </div>
-    <div class="tools panel">
-      <button class="ib" id="figBtn" title="Láminas explicativas">${ICONS.book}<span>Láminas</span></button>
-      <button class="ib" id="infoBtn" title="Cómo funciona (?)">${ICONS.help}</button>
-      <button class="ib" id="themeBtn" title="Tema claro u oscuro">${ICONS.moon}</button>
-      <button class="ib" id="panelBtn" aria-pressed="true" title="Mostrar u ocultar el panel (H)">${ICONS.panel}</button>
+    <span class="mode-name" id="modeName"></span>
+    <nav class="nav" aria-label="Secciones">
+      <a href="${routeHref("sim")}" data-page="sim">${ICONS.train}<span>Simulación</span></a>
+      <a href="${routeHref("guia")}" data-page="guia" aria-label="Guía">${ICONS.book}<span>Guía</span></a>
+      <a href="${routeHref("laminas")}" data-page="laminas" aria-label="Láminas">${ICONS.cube}<span>Láminas</span></a>
+    </nav>
+    <div class="tools">
+      <button class="ib" id="keysBtn" popovertarget="keys" title="Atajos de teclado (?)" aria-label="Atajos de teclado">${ICONS.keys}</button>
+      <button class="ib" id="themeBtn" title="Tema claro u oscuro" aria-label="Cambiar tema">${ICONS.moon}</button>
+      <button class="ib" id="panelBtn" aria-pressed="true" title="Mostrar u ocultar el panel (H)" aria-label="Panel lateral">${ICONS.panel}</button>
     </div>
   </header>
 
   <nav id="cams" class="panel" aria-label="Cámaras">
-    ${RIGS.map(([id, label, tip], i) => `<button data-rig="${id}" aria-pressed="${id === "orbit"}" title="${tip} (${i + 1})">${ICONS[["orbit", "chase", "section", "magnet", "top"][i]]}<span>${label}</span><kbd>${i + 1}</kbd></button>`).join("")}
+    ${RIGS.map(([id, label, tip], i) => `<button data-rig="${id}" aria-pressed="${id === "orbit"}" title="${tip}">${ICONS[["orbit", "chase", "section", "magnet", "top"][i]]}<span>${label}</span><span class="k" aria-hidden="true">${i + 1}</span></button>`).join("")}
   </nav>
+
+  <p id="hint" role="note"></p>
 
   <section id="hud" class="panel" aria-label="Cuadro de mando">
     <div class="h-speed"><output id="hSpeed">0</output><span>km/h</span></div>
-    <div class="h-state"><span class="pill" id="hState" data-k="idle">En reposo</span><span class="h-sub" id="hTarget"></span></div>
+    <div class="h-state"><span class="pill" id="hState" data-k="idle" role="status">En reposo</span><span class="h-sub" id="hTarget"></span></div>
     <div class="h-gap" title="Entrehierro de cada sección. La zona verde es la nominal.">
       <span class="h-lbl" id="hGapLbl">Entrehierro</span>
       <output id="hGap">–</output>
@@ -116,9 +128,9 @@ export function createUI(h) {
       <div class="track" aria-hidden="true"><i id="hFill"></i><b id="hDot"></b></div>
     </div>
     <div class="h-time">
-      <button class="ib" id="pauseBtn" aria-pressed="false" title="Pausa (Espacio)">${ICONS.pause}</button>
-      <div class="seg sm" id="timeBtns" role="group" aria-label="Escala de tiempo">
-        ${[1, 5, 20, 60].map((t) => `<button data-ts="${t}" aria-pressed="${t === 5}" title="Tiempo x${t}">x${t}</button>`).join("")}
+      <button class="ib" id="pauseBtn" aria-pressed="false" title="Pausa (Espacio)" aria-label="Pausa">${ICONS.pause}</button>
+      <div class="seg sm" id="timeBtns" role="group" aria-label="Velocidad de simulación">
+        ${[1, 5, 20, 60].map((t) => `<button data-ts="${t}" aria-pressed="${t === 5}" title="Simula ${t} s por cada segundo real">x${t}</button>`).join("")}
       </div>
     </div>
   </section>
@@ -148,7 +160,8 @@ export function createUI(h) {
       <label class="field"><span>Estaciones cada <output id="spacingOut"></output></span>
         <input id="spacing" type="range" min="5" max="120" step="5"></label>
       <h3>Perturbaciones</h3>
-      <div class="grid2" id="perturb"></div>
+      <div class="acts" id="perturb"></div>
+      <p class="resp" id="resp" role="status" aria-live="polite"></p>
     </div>
 
     <div class="tab" data-pane="view" hidden>
@@ -159,7 +172,8 @@ export function createUI(h) {
         <button data-body="xray" aria-pressed="false" title="Carrocería translúcida">Rayos X</button>
         <button data-body="cut" aria-pressed="false" title="Media carrocería cortada">Corte</button>
       </div>
-      <label class="field"><span>Exagerar entrehierro <output id="exagOut"></output></span>
+      <h3>Entrehierro</h3>
+      <label class="field"><span>Exagerar <output id="exagOut"></output></span>
         <input id="exag" type="range" min="1" max="24" step="1" value="8" title="El entrehierro real (10 mm) no se vería a esta escala"></label>
       <h3>Capas</h3>
       <div class="chips" id="layers">
@@ -176,16 +190,11 @@ export function createUI(h) {
   <div id="labels"></div>
   <div id="toast" role="status" aria-live="polite"></div>
 
-  <div id="gallery" class="overlay" role="dialog" aria-modal="true" aria-label="Láminas"><div class="card">
-    <div class="gbar"><div class="seg" role="group" aria-label="Lámina" id="gTabs">
-      <button data-fig="ems-levitacion" aria-pressed="true">Levitación EMS</button>
-      <button data-fig="lsm-sincrono" aria-pressed="false">Motor lineal</button>
-      <button data-fig="eds-sustentacion" aria-pressed="false">Levitación EDS</button></div>
-      <button class="ib" id="gClose" title="Cerrar (Esc)">${ICONS.close}</button></div>
-    <iframe id="gFrame" title="Lámina explicativa"></iframe>
-  </div></div>
-  <div id="modal" class="overlay" role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="card">
-    <button class="ib x" id="mClose" title="Cerrar (Esc)">${ICONS.close}</button><div id="mBody"></div></div></div>
+  <div id="keys" popover>
+    <h2>Atajos</h2>
+    <dl>${KEYS.map(([ks, what]) => `<dt>${ks.map((k) => `<kbd>${k}</kbd>`).join(" a ")}</dt><dd>${what}</dd>`).join("")}</dl>
+  </div>
+  <main id="page" hidden></main>
   `;
   document.body.appendChild(root);
 
@@ -195,12 +204,14 @@ export function createUI(h) {
     hFill: $("#hFill"), hDot: $("#hDot"),
     target: $("#target"), targetOut: $("#targetOut"), spacing: $("#spacing"), spacingOut: $("#spacingOut"),
     exag: $("#exag"), exagOut: $("#exagOut"), perturb: $("#perturb"),
-    cams: $("#cams"), toast: $("#toast"), modal: $("#modal"), labels: $("#labels"), side: $("#side"),
+    cams: $("#cams"), toast: $("#toast"), labels: $("#labels"), side: $("#side"), resp: $("#resp"),
     cA: $("#chartA"), cB: $("#chartB"), cC: $("#chartC"),
     capA: $("#capA"), capB: $("#capB"), capC: $("#capC"), valA: $("#valA"), valB: $("#valB"), valC: $("#valC"),
   };
 
   let mode = "ems";
+  const tracker = new ResponseTracker();
+  let lastTrain = null;
   let rowEls = {};
   let tab = "data";
   const hist = new History(6000, 0.02);
@@ -210,6 +221,8 @@ export function createUI(h) {
   // ---- construccion por modo ----
   function build(modeId) {
     mode = modeId;
+    document.documentElement.dataset.mode = modeId;
+    $("#modeName").textContent = modeId === "ems" ? "Transrapid" : "SCMaglev";
     const m = MODES[modeId];
     for (const b of root.querySelectorAll("[data-mode]")) b.setAttribute("aria-pressed", String(b.dataset.mode === modeId));
     els.rows.innerHTML = ROWS[modeId].map(([id, label, unit]) => `<dt>${label}</dt><dd><span data-r="${id}">–</span><small>${unit}</small></dd>`).join("");
@@ -221,8 +234,11 @@ export function createUI(h) {
     els.target.value = String(vmax);
     els.spacing.value = String(Math.round(m.stationSpacing / 1000));
     els.perturb.innerHTML = PERTURB[modeId]
-      .map(([id, ic, label, tip, toggle]) => `<button class="btn" data-p="${id}" ${toggle ? 'aria-pressed="false"' : ""} title="${tip}">${ICONS[ic]}<span>${label}</span></button>`)
+      .map(([id, ic, label, effect, toggle]) => `<button class="act" data-p="${id}" ${toggle ? 'aria-pressed="false"' : ""}>${ICONS[ic]}<span><b>${label}</b><small>${effect}</small></span></button>`)
       .join("");
+    els.resp.textContent = "";
+    tracker.cancel();
+    refreshPage();
     $("[data-layer=wave]").title = modeId === "ems" ? "Onda del estator: rojo N, azul S" : "Corrientes en las bobinas de la vía";
     if (modeId === "ems") {
       els.capA.textContent = "Entrehierro, mm";
@@ -285,8 +301,7 @@ export function createUI(h) {
       press(b, on);
       return h.setLayer(b.dataset.layer, on);
     }
-    if (b.dataset.p) return h.perturb(b.dataset.p, b);
-    if (b.dataset.fig) return showFigure(b.dataset.fig);
+    if (b.dataset.p) return perturbClick(b);
     switch (b.id) {
       case "pauseBtn": return setPaused(b.getAttribute("aria-pressed") !== "true");
       case "goBtn": return h.depart();
@@ -296,10 +311,6 @@ export function createUI(h) {
         return h.setHold(on);
       }
       case "resetBtn": return h.reset();
-      case "infoBtn": return openInfo();
-      case "figBtn": return openGallery();
-      case "gClose": return closeGallery();
-      case "mClose": return closeInfo();
       case "themeBtn": return toggleTheme();
       case "panelBtn": return setPanel(els.side.classList.contains("closed"));
     }
@@ -311,44 +322,73 @@ export function createUI(h) {
     if (t.id === "spacing") h.setSpacing(Number(t.value) * 1000);
     setOutputs();
   });
-  for (const o of [els.modal, $("#gallery")]) {
-    o.addEventListener("click", (e) => {
-      if (e.target === o) (o === els.modal ? closeInfo : closeGallery)();
-    });
-  }
 
   // atajos de teclado (no actuan mientras se escribe en un control)
+  const keysPop = $("#keys");
   window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") { closeInfo(); closeGallery(); return; }
+    if (e.key === "Escape") {
+      // un popover abierto se cierra solo; si no, se vuelve a la simulacion
+      if (!keysPop.matches?.(":popover-open") && view.page !== "sim") router.go("sim");
+      return;
+    }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (document.querySelector(".overlay.open")) return;
     const tag = e.target.tagName;
     if (tag === "INPUT" || tag === "TEXTAREA") return;
+    if (e.key === "?") { keysPop.togglePopover?.(); return; }
+    if (view.page !== "sim") return;
     const n = Number(e.key);
     if (n >= 1 && n <= RIGS.length) { h.setRig(RIGS[n - 1][0]); return; }
     if (e.key === " " && tag !== "BUTTON") { e.preventDefault(); setPaused($("#pauseBtn").getAttribute("aria-pressed") !== "true"); return; }
     if (e.key === "h" || e.key === "H") return setPanel(els.side.classList.contains("closed"));
-    if (e.key === "?") return openInfo();
   });
 
-  // ---- laminas, ayuda y tema ----
-  let figName = "ems-levitacion";
+  // ---- paginas ----
+  const view = { page: "sim", arg: "" };
+  const pageEl = $("#page");
   const isLight = () => document.documentElement.dataset.theme === "light";
-  function showFigure(name) {
-    figName = name;
-    for (const x of $("#gTabs").children) press(x, x.dataset.fig === name);
-    $("#gFrame").src = `figures/${name}${isLight() ? "-light" : ""}.html`;
+  function renderPage() {
+    if (view.page === "guia") {
+      renderGuia(pageEl, { mode, arg: view.arg, setMode: (m) => h.setMode(m) });
+    } else if (view.page === "laminas") {
+      renderLaminas(pageEl, { arg: view.arg, theme: isLight() ? "light" : "dark", mode });
+    }
   }
-  function openGallery() {
-    showFigure(mode === "eds" ? "eds-sustentacion" : figName);
-    $("#gallery").classList.add("open");
-    $("#gClose").focus();
+  function refreshPage() {
+    if (view.page !== "sim") renderPage();
   }
-  function closeGallery() {
-    if (!$("#gallery").classList.contains("open")) return;
-    $("#gallery").classList.remove("open");
-    $("#gFrame").src = "about:blank";
+  function showPage({ page, arg }) {
+    const prev = view.page;
+    const same = prev === page;
+    view.page = page;
+    view.arg = arg;
+    document.body.dataset.view = page;
+    keysPop.hidePopover?.();
+    for (const a of root.querySelectorAll("[data-page]")) {
+      if (a.dataset.page === page) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    }
+    if (page === "sim") {
+      if (prev === "laminas") clearLaminas(pageEl);
+      pageEl.hidden = true;
+      pageEl.innerHTML = "";
+      pageEl.onscroll = null;
+      return;
+    }
+    pageEl.hidden = false;
+    // misma pagina y solo cambia la seccion: no se vuelve a construir
+    if (same && page === "guia" && pageEl.firstChild) {
+      const t = arg && pageEl.querySelector(`#sec-${CSS.escape(arg)}`);
+      if (t) t.scrollIntoView({ block: "start" });
+      else pageEl.scrollTop = 0;
+      return;
+    }
+    if (prev === "laminas") clearLaminas(pageEl);
+    renderPage();
+    if (page === "guia") $("#guiaTitulo")?.focus({ preventScroll: true });
   }
+  const router = createRouter(showPage);
+
+  // ---- tema ----
   function applyTheme(t) {
     document.documentElement.dataset.theme = t;
     $("#themeBtn").innerHTML = t === "light" ? ICONS.moon : ICONS.sun;
@@ -358,15 +398,7 @@ export function createUI(h) {
     const next = isLight() ? "dark" : "light";
     applyTheme(next);
     try { localStorage.setItem("maglev-theme", next); } catch {}
-    if ($("#gallery").classList.contains("open")) showFigure(figName);
-  }
-  function openInfo() {
-    $("#mBody").innerHTML = INFO_HTML(mode);
-    els.modal.classList.add("open");
-    $("#mClose").focus();
-  }
-  function closeInfo() {
-    els.modal.classList.remove("open");
+    if (view.page === "laminas") renderPage();
   }
 
   let toastTimer = 0;
@@ -374,13 +406,72 @@ export function createUI(h) {
     els.toast.textContent = msg;
     els.toast.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => els.toast.classList.remove("show"), 2200);
+    toastTimer = setTimeout(() => els.toast.classList.remove("show"), 2600);
   }
+
+  // ---- perturbaciones: el efecto se mide y se muestra en el panel ----
+  function perturbClick(b) {
+    const d = h.perturb(b.dataset.p, b);
+    if (!d) {
+      tracker.cancel();
+      els.resp.textContent = "";
+      return;
+    }
+    activeResp = d;
+    els.resp.textContent = "Midiendo la respuesta...";
+    selectTab("ctrl");
+    tracker.start({ label: d.label, ref: d.ref, tol: d.tol, t: lastTrain ? lastTrain.time : 0, maxTime: d.maxTime });
+    // la perturbacion ya esta aplicada: este primer valor recoge el desvio instantaneo
+    if (lastTrain) pushResponse(lastTrain);
+  }
+  function pushResponse(train) {
+    if (!tracker.active) return;
+    const r = tracker.push(train.time, activeResp.get(train));
+    if (r) showResponse(r, activeResp);
+  }
+  /** Se llama tras cada paso de simulacion (cada 20 ms de tiempo simulado, a cualquier escala). */
+  function sample(train) {
+    lastTrain = train;
+    pushResponse(train);
+  }
+  function showResponse(r, d) {
+    const peak = `${fmt(r.peak, d.digits ?? 1)} ${d.unit}`;
+    els.resp.textContent = r.settled
+      ? `${r.label}: desvío máximo ${peak}, vuelve a su valor en ${fmt(r.settle, 2)} s.`
+      : `${r.label}: desvío máximo ${peak}, no vuelve a su valor en ${d.maxTime} s.`;
+  }
+  let activeResp = null;
+
+  // ---- pista de primera visita ----
+  (function hint() {
+    const el = $("#hint");
+    let seen = false;
+    try { seen = localStorage.getItem("maglev-hint") === "1"; } catch {}
+    if (seen) return el.remove();
+    const coarse = window.matchMedia?.("(pointer: coarse)").matches;
+    el.textContent = coarse
+      ? "Arrastra para girar, pellizca para acercar, doble toque para recentrar"
+      : "Arrastra para girar, rueda para acercar, doble clic para recentrar, 1 a 5 cambian de cámara";
+    const done = () => {
+      clearTimeout(timer);
+      el.classList.add("gone");
+      setTimeout(() => el.remove(), 500);
+      try { localStorage.setItem("maglev-hint", "1"); } catch {}
+      window.removeEventListener("pointerdown", done);
+      window.removeEventListener("keydown", done);
+      window.removeEventListener("wheel", done);
+    };
+    const timer = setTimeout(done, 14000);
+    window.addEventListener("pointerdown", done);
+    window.addEventListener("keydown", done);
+    window.addEventListener("wheel", done, { passive: true });
+  })();
 
   // ---- actualizacion por cuadro ----
   let lastText = 0;
   const edsRef = new EdsSection();
-  function update(tel, train, view) {
+  function update(tel, train, simView) {
+    lastTrain = train;
     const vals = { speed: tel.speedKmh };
     train.sections.forEach((s, i) => (vals["g" + i] = s.gapMm));
     hist.push(tel.time, vals);
@@ -431,21 +522,21 @@ export function createUI(h) {
         for (const [id, , , f] of ROWS[mode]) rowEls[id].textContent = f(tel);
       }
     }
-    if (tab === "data" && !els.side.classList.contains("closed")) drawCharts(tel, train, view);
+    if (tab === "data" && !els.side.classList.contains("closed")) drawCharts(tel, train, simView);
   }
 
-  function drawCharts(tel, train, view) {
-    const W = Math.min(120, Math.max(10, 10 * view.timeScale));
+  function drawCharts(tel, train, simView) {
+    const W = Math.min(120, Math.max(10, 10 * simView.timeScale));
     const idx = hist.range(W, 240);
     const tEnd = idx.length ? hist.t[idx[idx.length - 1]] : 0;
     const xs = idx.map((i) => hist.t[i] - tEnd);
-    const colors = ["#5ec8ff", "#ffb454", "#8be28b"];
+    const colors = [cssVar("--series-1"), cssVar("--series-2"), cssVar("--series-3")];
     if (mode === "ems") {
       const series = train.sections.map((_, k) => ({ xs, ys: idx.map((i) => hist.cols["g" + k][i]), color: colors[k % 3] }));
       drawChart(els.cA, {
         x: [-W, 0], y: [0, 22], series, xFmt: (v) => v.toFixed(0) + " s", yFmt: (v) => v.toFixed(0),
-        bands: [{ y0: 9.5, y1: 10.5, color: "rgba(74,222,128,0.2)" }],
-        refs: [{ y: 20, color: "#f87171" }, { y: 3, color: "#f87171" }],
+        bands: [{ y0: 9.5, y1: 10.5, color: "rgba(92,207,138,0.22)" }],
+        refs: [{ y: 20, color: cssVar("--bad") }, { y: 3, color: cssVar("--bad") }],
       });
       els.valA.textContent = `${W.toFixed(0)} s`;
     } else {
@@ -463,7 +554,7 @@ export function createUI(h) {
       drawChart(els.cA, {
         x: [0, vmaxK], y: [0, Math.ceil((W0 * 1.1) / 1e5) * 100],
         series: [{ xs: kx, ys: lift, color: "#35e08a" }, { xs: kx, ys: drag, color: "#ffa43a" }],
-        refs: [{ y: W0 / 1e3, color: "#c9d3dd", label: "peso" }],
+        refs: [{ y: W0 / 1e3, color: cssVar("--muted"), label: "peso" }],
         marker: { x: tel.speedKmh, y: tel.liftTotal / 1e3, color: "#35e08a" },
         xFmt: (v) => v.toFixed(0) + " km/h", yFmt: (v) => v.toFixed(0),
       });
@@ -487,14 +578,14 @@ export function createUI(h) {
       x: [0, 3], y: [-1.1, 1.1],
       series: moving ? [{ xs: xs2, ys: u, color: "#ffb000" }, { xs: xs2, ys: v, color: "#19c37d" }, { xs: xs2, ys: w, color: "#b45cff" }] : [],
       xFmt: () => "", yFmt: () => "",
-      refs: [{ y: 0, color: "rgba(160,190,220,.35)", dash: [] }],
+      refs: [{ y: 0, color: cssVar("--line-strong"), dash: [] }],
     });
     els.valB.textContent = moving ? `${fmt(f, 0)} Hz` : "detenido";
     drawChart(els.cC, {
       x: [0, train.stationSpacing / 1000],
       y: [0, Math.ceil((MODES[mode].vMax * 3.6) / 100) * 100],
-      series: [{ xs: legTrace.xs, ys: legTrace.ys, color: "#5ec8ff", width: 1.8 }],
-      marker: legTrace.xs.length ? { x: legTrace.xs[legTrace.xs.length - 1], y: tel.speedKmh, color: "#fff" } : null,
+      series: [{ xs: legTrace.xs, ys: legTrace.ys, color: cssVar("--accent"), width: 2 }],
+      marker: legTrace.xs.length ? { x: legTrace.xs[legTrace.xs.length - 1], y: tel.speedKmh, color: cssVar("--text") } : null,
       xFmt: (q) => q.toFixed(0) + " km", yFmt: (q) => q.toFixed(0),
     });
     els.valC.textContent = "";
@@ -511,5 +602,7 @@ export function createUI(h) {
     applyTheme("dark");
   }
 
-  return { root, els, build, update, toast, hist, setTimeScale, setPaused, setOutputs };
+  document.body.dataset.view = "sim";
+  router.start();
+  return { root, els, build, update, sample, toast, hist, setTimeScale, setPaused, setOutputs, router, view };
 }

@@ -7,11 +7,11 @@ import { capMesh } from "./caps.js";
 import { EMS } from "../physics/constants.js";
 
 export const RIGS = {
-  orbit: { pos: [-66, 17, 60], target: [0, 6.4, 0], fov: 46, body: "solid" },
-  chase: { pos: [-95, 11, 22], target: [10, 7.0, 0], fov: 50, body: "solid" },
+  orbit: { pos: [-36, 14, 88], target: [0, 6.4, 0], fov: 40, body: "solid" },
+  chase: { pos: [-58, 9.5, 17], target: [6, 7.0, 0], fov: 50, body: "solid" },
   section: { pos: [10.5, 6.9, 0.01], target: [0, 6.55, 0], fov: 44, body: "cut", cut: { axis: "x", c: 0 } },
   gap: { pos: [3.6, 6.45, 5.2], target: [0, 6.3, 1.1], fov: 34, body: "cut", cut: { axis: "z", c: 1.62 }, minExag: 24 },
-  top: { pos: [0, 135, 0.01], target: [0, 0, 0], fov: 45, body: "solid" },
+  top: { pos: [0, 108, 0.01], target: [0, 0, 0], fov: 45, body: "solid" },
 };
 
 function buildCaps() {
@@ -65,7 +65,7 @@ export function createEmsScene(world) {
   for (let i = 0; i < n; i++) {
     const role = i === 0 ? "rear" : i === n - 1 ? "front" : "mid";
     const baseX = -((n - 1) / 2) * EMS.sectionLength + i * EMS.sectionLength;
-    const sec = buildEmsSection({ role, shared, length: EMS.sectionLength, baseX });
+    const sec = buildEmsSection({ role, shared, length: EMS.sectionLength, baseX, carNo: i + 1 });
     sec.group.position.x = baseX;
     sec.baseX = sec.group.position.x;
     group.add(sec.group);

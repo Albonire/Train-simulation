@@ -7,11 +7,11 @@ import { capMesh, sideRange } from "./caps.js";
 import { EDS } from "../physics/constants.js";
 
 export const RIGS = {
-  orbit: { pos: [-64, 17, 58], target: [0, 6.9, 0], fov: 46, body: "solid" },
-  chase: { pos: [-92, 11, 20], target: [10, 7.4, 0], fov: 50, body: "solid" },
+  orbit: { pos: [-36, 14, 88], target: [0, 6.9, 0], fov: 40, body: "solid" },
+  chase: { pos: [-58, 9.5, 17], target: [6, 7.0, 0], fov: 50, body: "solid" },
   section: { pos: [10, 7.0, 0.01], target: [0, 6.75, 0], fov: 44, body: "cut", cut: { axis: "x", c: 0 } },
   gap: { pos: [4.2, 6.95, 0.01], target: [0, 6.85, 1.75], fov: 30, body: "cut", cut: { axis: "x", c: 0 } },
-  top: { pos: [0, 135, 0.01], target: [0, 0, 0], fov: 45, body: "solid" },
+  top: { pos: [0, 108, 0.01], target: [0, 0, 0], fov: 45, body: "solid" },
 };
 
 function buildCaps() {
@@ -58,7 +58,7 @@ export function createEdsScene(world) {
   for (let i = 0; i < n; i++) {
     const role = i === 0 ? "rear" : i === n - 1 ? "front" : "mid";
     const baseX = -((n - 1) / 2) * EDS.sectionLength + i * EDS.sectionLength;
-    const sec = buildEdsSection({ role, length: EDS.sectionLength, baseX });
+    const sec = buildEdsSection({ role, length: EDS.sectionLength, baseX, carNo: i + 1 });
     sec.group.position.x = baseX;
     sec.baseX = baseX;
     sec.retract = 0;

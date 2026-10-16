@@ -23,9 +23,11 @@ export const EMS = {
   // => v = 2*tau*f = 111 m/s = 399 km/h [derivado]
   fMax: 215,
   // [fuente] vehiculo de pruebas de dos secciones: 120 t vacio, 54 m
-  // => 60 t y 27 m por seccion [derivado]
+  // => 60 t por seccion [derivado]
   sectionMass: 60e3,
-  sectionLength: 27,
+  // [ilustrativo] largo de cada seccion. La fuente da 27 m (54 m / 2); se acorta
+  // a 20 m para que el tren entero quepa en pantalla con buen tamano.
+  sectionLength: 20,
   sections: 3, // [ilustrativo] tren de tres secciones
   // [fuente] empuje maximo 85 kN para dos secciones => 42.5 kN por seccion [derivado]
   thrustPerSection: 42.5e3,
@@ -72,7 +74,8 @@ export const EDS = {
   // arrancar; las bobinas en 8 de flujo nulo lo reducen. Aqui: L/D = v/(kappa*vc).
   dragFactor: 0.35,
   sectionMass: 25e3,
-  sectionLength: 25,
+  // [ilustrativo] igual que en EMS: 20 m por seccion
+  sectionLength: 20,
   sections: 3,
   // [ilustrativo] amortiguamiento de la suspension secundaria, N*s/m por kg
   dampingPerKg: 8,

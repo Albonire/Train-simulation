@@ -6,7 +6,7 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
-const LEN = 140; // longitud del anden, m
+const LEN = 110; // longitud del anden, m
 const WIDTH = 6; // ancho del anden, m
 const COLS = 15; // columnas por fila
 
@@ -157,6 +157,12 @@ export function createStations() {
 
   return {
     group,
+    /** Luces de la marquesina y ventanas del edificio: apagadas de dia, encendidas al atardecer. */
+    setNight(on) {
+      M.lamp.emissiveIntensity = on ? 2.4 : 0.05;
+      M.window.emissive.set(on ? "#ffd9a0" : "#000000");
+      M.window.emissiveIntensity = on ? 0.6 : 0;
+    },
     /** sCenter: coordenada de pista del centro del tren; lenTrain: largo del tren */
     update(sCenter, lenTrain, spacing, cfg) {
       const k0 = Math.round((sCenter + lenTrain / 2) / spacing);
