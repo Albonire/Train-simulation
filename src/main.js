@@ -13,6 +13,12 @@ import { createStations } from "./scene/stations.js";
 import { DIM } from "./scene/ems.js";
 import { D as EDIM } from "./scene/edsGeo.js";
 import { createUI } from "./ui/ui.js";
+import "@fontsource/barlow/latin-400.css";
+import "@fontsource/barlow/latin-500.css";
+import "@fontsource/barlow/latin-600.css";
+import "@fontsource/barlow/latin-700.css";
+import "@fontsource/barlow-semi-condensed/latin-500.css";
+import "@fontsource/barlow-semi-condensed/latin-600.css";
 import "./ui/style.css";
 
 const canvas = document.getElementById("view");
@@ -90,13 +96,25 @@ function magnetsVisible() {
 // ---- camaras con transicion ----
 const tween = { active: false, pos: new THREE.Vector3(), target: new THREE.Vector3(), fov: 50 };
 controls.addEventListener("start", () => (tween.active = false));
+// Pantallas verticales: el campo horizontal es estrecho y el tren es largo. La orbita
+// pasa a un 3/4 desde la proa (el tren se aleja en profundidad en vez de cruzar la
+// pantalla) y la vista cenital gira para que la via quede vertical.
+function rigPosition(name, r) {
+  const off = new THREE.Vector3(...r.pos).sub(new THREE.Vector3(...r.target));
+  if (camera.aspect < 0.9 && name === "orbit") {
+    const d = Math.hypot(off.x, off.z) * 2.0;
+    const a = THREE.MathUtils.degToRad(42);
+    off.set(-d * Math.sin(a), off.y, d * Math.cos(a));
+  } else if (camera.aspect < 0.9 && name === "top") {
+    off.set(0.05, off.y * 1.2, 0);
+  }
+  return off.add(new THREE.Vector3(...r.target));
+}
 function setRig(name, instant = false) {
   view.rig = name;
   const r = active.rigs[name];
   tween.target.set(...r.target);
-  // en pantallas verticales el campo horizontal es estrecho: se aleja la camara
-  const far = Math.min(2.4, Math.max(1, (1.3 / camera.aspect) ** 0.6));
-  tween.pos.set(...r.pos).sub(tween.target).multiplyScalar(far).add(tween.target);
+  tween.pos.copy(rigPosition(name, r));
   tween.fov = r.fov;
   tween.active = !instant;
   if (instant) {
@@ -158,8 +176,12 @@ const ui = createUI({
   perturb,
   setTheme: (t) => {
     world.setTheme(t);
+    stations.setNight(t !== "light");
     // faros y luz de las ventanas: discretos de dia, visibles al atardecer
-    for (const sc of Object.values(scenes)) for (const m of sc.bodyMats) m.emissiveIntensity = t === "light" ? 0.08 : 1;
+    for (const sc of Object.values(scenes)) {
+      for (const m of sc.bodyMats) if (m.emissiveMap) m.emissiveIntensity = t === "light" ? 0.08 : 1;
+      for (const sec of sc.sections) sec.setNight?.(t !== "light");
+    }
   },
 });
 labels = createLabels(ui.els.labels);
@@ -194,32 +216,48 @@ function slowForPerturbation() {
 function perturb(kind, btn) {
   const s = train.sections[midIdx()];
   const W = (s.mass + s.extraMass) * G;
+  const ems = mode === "ems";
+  // respuesta que mide la interfaz: valor antes de perturbar, banda y como leerlo
+  const gapSignal = (label, tol) => ({
+    label, unit: "mm", digits: ems ? 2 : 1, ref: s.gap * 1000, tol, maxTime: 15,
+    get: (t) => t.sections[midIdx()].gap * 1000,
+  });
   slowForPerturbation();
   if (kind === "load") {
+    const d = ems ? gapSignal("Carga +12 %", 0.05) : null;
     if (s.extraMass > 0) s.clearLoad();
     else s.addLoad();
     btn.setAttribute("aria-pressed", String(s.extraMass > 0));
-    ui.toast(s.extraMass > 0 ? "Carga +12 %" : "Carga retirada");
-  } else if (kind === "gust") {
+    if (s.extraMass > 0) ui.toast(ems ? "Carga +12 %. Mira cómo sube la corriente." : "Carga +12 %. La elevación baja un poco.");
+    else ui.toast("Carga retirada");
+    return d;
+  }
+  if (kind === "gust") {
+    const d = { label: "Ráfaga", unit: "mm", digits: 2, ref: s.y * 1000, tol: ems ? 0.05 : 0.3, maxTime: 15, get: (t) => t.sections[midIdx()].y * 1000 };
     s.addGust(0.1 * W, 0.6);
-    ui.toast("Ráfaga lateral");
-  } else if (kind === "kick") {
-    s.kick(mode === "ems" ? 0.002 : 0.015);
-    ui.toast(mode === "ems" ? "Golpe de 2 mm" : "Golpe de 15 mm");
-  } else if (kind === "ctrlOff" && mode === "ems") {
+    ui.toast("Ráfaga lateral. Mira la posición lateral.");
+    return d;
+  }
+  if (kind === "kick") {
+    const d = gapSignal(ems ? "Golpe de 2 mm" : "Golpe de 15 mm", ems ? 0.05 : 0.5);
+    s.kick(ems ? 0.002 : 0.015);
+    ui.toast(ems ? "Golpe de 2 mm. Mira el entrehierro." : "Golpe de 15 mm. Mira la elevación.");
+    return d;
+  }
+  if (kind === "ctrlOff" && ems) {
     const on = btn.getAttribute("aria-pressed") !== "true";
     btn.setAttribute("aria-pressed", String(on));
     if (on) {
       s.control = false;
       s.openLoop = true;
       s.kick(0.0005);
-      ui.toast("Control apagado");
+      ui.toast("Control apagado. Sin lazo cerrado el equilibrio no se sostiene.");
     } else {
       s.openLoop = false;
       s.engage();
       ui.toast("Control activo");
     }
-  } else if (kind === "cutPower" && mode === "ems") {
+  } else if (kind === "cutPower" && ems) {
     train.sections.forEach((q) => q.release());
     ui.toast("Sin corriente: cae a los patines");
     // solo si seguimos en EMS: al cambiar de modo las secciones son otras y no tienen engage()
@@ -227,6 +265,7 @@ function perturb(kind, btn) {
       if (mode === "ems") train.sections.forEach((q) => q.engage?.());
     }, 3500);
   }
+  return null;
 }
 
 // ---- tamano ----
@@ -237,8 +276,49 @@ function resize() {
   setLineResolution(w, h);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
+  applyFraming(true);
+}
+
+// ---- encuadre: la escena se centra en el area que dejan libre los paneles ----
+// Los paneles flotan sobre el lienzo; sin esto el tren queda cortado por el carril de
+// camaras o escondido tras el panel lateral. Se desplaza la ventana de proyeccion.
+const framing = { x: 0, y: 0, tx: 0, ty: 0 };
+function freeArea() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const { cams, side } = ui.els;
+  const hud = document.getElementById("hud");
+  const topbar = document.getElementById("topbar");
+  const open = !side.classList.contains("closed");
+  if (w > 760) {
+    const l = cams.offsetLeft + cams.offsetWidth + 8;
+    const r = open ? w - side.offsetLeft + 8 : 0;
+    const t = topbar.offsetTop + topbar.offsetHeight;
+    const b = h - hud.offsetTop;
+    return { x: (l - r) / 2, y: (t - b) / 2 };
+  }
+  const t = cams.offsetTop + cams.offsetHeight + 4;
+  const b = h - (open ? side.offsetTop : hud.offsetTop);
+  return { x: 0, y: (t - b) / 2 };
+}
+let framed = "";
+function applyFraming(instant = false) {
+  const f = freeArea();
+  framing.tx = f.x;
+  framing.ty = f.y;
+  if (instant) {
+    framing.x = f.x;
+    framing.y = f.y;
+  }
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const key = `${w}|${h}|${framing.x.toFixed(1)}|${framing.y.toFixed(1)}`;
+  if (key === framed) return;
+  framed = key;
+  camera.setViewOffset(w, h, -framing.x, -framing.y, w, h);
 }
 window.addEventListener("resize", resize);
+canvas.addEventListener("dblclick", () => setRig(view.rig));
 resize();
 
 buildLabels();
@@ -264,6 +344,12 @@ function keepAboveGround() {
 let last = performance.now();
 const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 function frame(now) {
+  // en las paginas (guia, laminas) la escena se detiene: no gasta GPU ni avanza el viaje
+  if (document.body.dataset.view !== "sim") {
+    last = now;
+    requestAnimationFrame(frame);
+    return;
+  }
   const wall = Math.min(0.25, (now - last) / 1000);
   const dt = Math.min(0.05, wall);
   last = now;
@@ -273,6 +359,7 @@ function frame(now) {
     while (left > 1e-9) {
       const chunk = Math.min(left, 0.02);
       train.advance(chunk);
+      ui.sample(train);
       left -= chunk;
     }
   }
@@ -297,8 +384,20 @@ function frame(now) {
     controls.target.lerp(tween.target, k);
     camera.fov += (tween.fov - camera.fov) * k;
     camera.updateProjectionMatrix();
-    if (camera.position.distanceTo(tween.pos) < 0.02) tween.active = false;
+    if (camera.position.distanceTo(tween.pos) < 0.05) {
+      // se fija el destino exacto: con la camara cenital, una desviacion de centimetros
+      // cambia el acimut y deja el tren en diagonal
+      camera.position.copy(tween.pos);
+      controls.target.copy(tween.target);
+      camera.fov = tween.fov;
+      camera.updateProjectionMatrix();
+      tween.active = false;
+    }
   }
+  const kf = reduced ? 1 : 1 - Math.exp(-wall * 8);
+  framing.x += (framing.tx - framing.x) * kf;
+  framing.y += (framing.ty - framing.y) * kf;
+  applyFraming();
   keepAboveGround();
   controls.update();
   renderer.render(scene, camera);

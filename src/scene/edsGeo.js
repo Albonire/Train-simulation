@@ -13,7 +13,9 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { glowMaterial, poleTexture, sets } from "./glow.js";
 import { superellipse, loft, bodyStations } from "./loft.js";
-import { liveryTextures, bellows } from "./livery.js";
+import { liveryTextures, paintMaterial, bellows } from "./livery.js";
+import { roofEquipment, headlamps } from "./trainParts.js";
+import { patchConcrete, taperedBox } from "./textures.js";
 import { EDS } from "../physics/constants.js";
 
 export const SEG = 27.0; // 30 bobinas de 0.9 m
@@ -40,11 +42,9 @@ export const D = {
 };
 
 const m = {
-  concrete: () => new THREE.MeshStandardMaterial({ color: "#a3a9b0", roughness: 0.92 }),
+  concrete: () => patchConcrete(new THREE.MeshStandardMaterial({ color: "#b9bfc6", roughness: 0.92 })),
   dark: () => new THREE.MeshStandardMaterial({ color: "#1c2128", roughness: 0.7, metalness: 0.3 }),
   steel: () => new THREE.MeshStandardMaterial({ color: "#3b434d", roughness: 0.5, metalness: 0.7 }),
-  // el color sale de la librea (livery.js)
-  body: () => new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.3, metalness: 0.3, side: THREE.DoubleSide }),
   seat: () => new THREE.MeshStandardMaterial({ color: "#7a2c4a", roughness: 0.8 }),
   floor: () => new THREE.MeshStandardMaterial({ color: "#b9c0c8", roughness: 0.9, side: THREE.DoubleSide }),
   tire: () => new THREE.MeshStandardMaterial({ color: "#16191d", roughness: 0.95 }),
@@ -89,11 +89,19 @@ export function createEdsShared() {
   const alu = { color: "#9fb4c8", roughness: 0.4, metalness: 0.85 };
   const mats = {
     concrete: m.concrete(),
+    dark: m.dark(),
     levUp: glowMaterial(copper, sets.induced, { sign: 1, gain: 1.1 }),
     levDown: glowMaterial(copper, sets.induced, { sign: -1, gain: 1.1 }),
     prop: glowMaterial(alu, sets.propulsion, { sign: 1, gain: 1.3 }),
   };
-  const geos = { pillar: new THREE.BoxGeometry(1.8, D.pillarH, 2.6), slab: new THREE.BoxGeometry(SEG, 0.6, 4.7), wall: new THREE.BoxGeometry(SEG, D.wallTop - D.slabTop, 0.4) };
+  const wallH = D.wallTop - D.slabTop;
+  const geos = {
+    pillar: taperedBox(1.4, 2.1, 1.9, 3.0, D.pillarH),
+    cap: new THREE.BoxGeometry(2.4, 0.36, 3.5),
+    jointSlab: new THREE.BoxGeometry(0.06, 0.012, D.wallInner * 2),
+    jointWall: new THREE.BoxGeometry(0.06, wallH, D.wallOuter - D.wallInner + 0.02),
+    slab: new THREE.BoxGeometry(SEG, 0.6, 4.7), wall: new THREE.BoxGeometry(SEG, wallH, 0.4),
+  };
   for (const s of [-1, 1]) {
     geos["levUp" + s] = coilStrip(s, D.levY + 0.285, 0.55);
     geos["levDown" + s] = coilStrip(s, D.levY - 0.285, 0.55);
@@ -112,9 +120,13 @@ export function buildEdsSegment(sh) {
     grp.add(mesh);
   };
   add(sh.g.pillar, sh.m.concrete, 0, D.pillarH / 2, 0);
+  add(sh.g.cap, sh.m.concrete, 0, D.pillarH - 0.18, 0);
+  // juntas de dilatacion al inicio del tramo: en el suelo de la U y en las paredes
+  add(sh.g.jointSlab, sh.m.dark, 0.02, D.slabTop + 0.006, 0, false);
   add(sh.g.slab, sh.m.concrete, SEG / 2, D.slabTop - 0.3, 0);
   for (const s of [-1, 1]) {
     add(sh.g.wall, sh.m.concrete, SEG / 2, (D.wallTop + D.slabTop) / 2, s * (D.wallInner + D.wallOuter) / 2);
+    add(sh.g.jointWall, sh.m.dark, 0.02, (D.wallTop + D.slabTop) / 2, s * (D.wallInner + D.wallOuter) / 2, false);
     add(sh.g["levUp" + s], sh.m.levUp, 0, 0, 0, false);
     add(sh.g["levDown" + s], sh.m.levDown, 0, 0, 0, false);
     add(sh.g["prop" + s], sh.m.prop, 0, 0, 0, false);
@@ -130,7 +142,7 @@ export function edsOutline() {
   return [...pts.slice(36), ...pts.slice(0, 36)];
 }
 
-export function buildEdsSection({ length = EDS.sectionLength, role = "mid", baseX = 0 }) {
+export function buildEdsSection({ length = EDS.sectionLength, role = "mid", baseX = 0, carNo = 1 }) {
   const group = new THREE.Group();
   const clipMats = [];
   const bodyMats = [];
@@ -142,6 +154,7 @@ export function buildEdsSection({ length = EDS.sectionLength, role = "mid", base
     x1: stations[stations.length - 1].x,
     len: length - 0.6,
     role,
+    carNo,
     style: {
       base: "#f3f6f9",
       lower: "#c9d0d7",
@@ -151,18 +164,26 @@ export function buildEdsSection({ length = EDS.sectionLength, role = "mid", base
       windowY: [1.68, 2.42],
       winW: 0.9,
       winPitch: 1.25,
+      name: "MAGLEV",
+      signY: 0.95,
+      ventY: [0.7, 1.12],
     },
   });
-  const bodyM = m.body();
-  bodyM.map = livery.map;
-  bodyM.emissiveMap = livery.emissiveMap;
-  bodyM.emissive = new THREE.Color("#ffffff");
+  const bodyM = paintMaterial(livery);
   bodyMats.push(bodyM);
   clipMats.push(bodyM);
   const body = new THREE.Mesh(loft(pts, stations), bodyM);
   body.castShadow = true;
   body.receiveShadow = true;
   group.add(body);
+  const roof = roofEquipment({ len: length - 0.6, role, roofY: D.height });
+  group.add(roof.group);
+  for (const mm of roof.mats) {
+    bodyMats.push(mm);
+    clipMats.push(mm);
+  }
+  const lamps = role === "front" ? headlamps({ len: length - 0.6, noseLen: 9, y: 0.9 }) : null;
+  if (lamps) group.add(lamps.group);
   if (role !== "front") {
     const bel = bellows(pts, length, 0.92, 0.95);
     bodyMats.push(bel.material);
@@ -250,6 +271,9 @@ export function buildEdsSection({ length = EDS.sectionLength, role = "mid", base
     /** retract: 0 = extendidas, 1 = retraidas */
     setWheels(retract) {
       for (const w of wheels) w.position.y = w.userData.base + 0.45 * retract;
+    },
+    setNight(on) {
+      lamps?.setOn(on);
     },
     setIntensity(k) {
       poleM.emissiveIntensity = 0.3 + 0.5 * Math.min(1.5, k);

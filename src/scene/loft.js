@@ -34,6 +34,17 @@ export function perimeterV(points) {
   return acc.map((a) => a / total);
 }
 
+/** Longitud (m) del contorno cerrado: escala de v. */
+export function perimeterLength(points) {
+  let t = 0;
+  for (let j = 0; j < points.length; j++) {
+    const [z0, y0] = points[j];
+    const [z1, y1] = points[(j + 1) % points.length];
+    t += Math.hypot(z1 - z0, y1 - y0);
+  }
+  return t;
+}
+
 /**
  * v (0..1) del contorno a la altura `y` en el costado `side` (+1: z > 0, -1: z < 0).
  * Toma el primer cruce del lado pedido; los contornos de carroceria tienen uno por costado

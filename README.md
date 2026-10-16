@@ -33,14 +33,15 @@ Chromium.
 | EMS / EDS | Cambia de tecnología (mismo tren, otra física). |
 | Velocidad objetivo, escala de tiempo (x1 a x60), pausa | Gobierna el viaje entre estaciones. |
 | Salir / Retener | En el modelo, el tren EMS aterriza en cada estación y vuelve a levitar antes de salir (decisión del modelo, no verificada contra el servicio real). |
-| Perturbaciones | Carga extra del 12 %, ráfaga lateral, golpe vertical, sin control, sin corriente. Cada botón explica su efecto al pasar el puntero. |
-| Cámaras (teclas 1 a 5) | Órbita, seguir, sección, imanes y arriba. La cámara nunca baja de 1,7 m sobre el suelo: se puede mirar la vía desde abajo, pero no atravesar el terreno. |
+| Perturbaciones | Carga extra del 12 %, ráfaga lateral, golpe vertical, sin control, sin corriente. Cada fila dice su efecto y, tras pulsarla, el panel muestra el desvío máximo y el tiempo en volver, medidos en el modelo. |
+| Cámaras (teclas 1 a 5) | Órbita, seguir, sección, imanes y arriba. Doble clic recentra la vista. La escena se centra en el área que dejan libre los paneles. La cámara nunca baja de 1,7 m sobre el suelo: se puede mirar la vía desde abajo, pero no atravesar el terreno. |
 | Carrocería | Sólida, rayos X o corte. |
 | Capas | Flujo (solo cuando los imanes están a la vista), onda del estator, fuerzas (diagrama sobre el techo), nombres (solo en las vistas de detalle). |
 | Exagerar entrehierro | El entrehierro real (10 mm) es invisible a escala; se multiplica y la interfaz lo indica. |
-| Láminas | Tres figuras isométricas explicativas e interactivas. |
-| Ayuda (?) | Lo esencial de la física, los colores y los atajos; el modelo, sus límites y las fuentes de cada dato van plegados. |
-| Tema | Claro (día) u oscuro (atardecer, con luces en el tren y la estación). Espacio pausa, H oculta el panel. |
+| Láminas (`#/laminas`) | Página con las tres figuras isométricas, explicativas e interactivas. |
+| Guía (`#/guia`) | Página de lectura con índice: cómo se sostiene y avanza el tren, los colores, los controles, el modelo, sus límites y la tabla de fuentes. |
+| Atajos (?) | Lista breve de atajos en un popover. |
+| Tema | Claro (día) u oscuro (atardecer, con luces en el tren, los faros y la estación). Espacio pausa, H oculta el panel. |
 
 **Qué probar en el EMS.** En *Control*, pulsa *Sin control*: con la corriente fija en su valor de equilibrio,
 una perturbación de 0,5 mm basta para que el vehículo se pegue al riel o caiga en menos de un cuarto de
@@ -105,7 +106,8 @@ elegido para que el modelo sea coherente, **no es un dato oficial**. Cada consta
 | Entrehierro nominal EMS: 10 mm (rango 10 a 15 mm) | fuente | [US 7,637,214](https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/7637214), [US 7,814,840](https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/7814840) |
 | Paso polar del estator: 258 mm; paso de diente 63 mm | fuente | [MDPI Actuators 14(11):514](https://www.mdpi.com/2076-0825/14/11/514), [MAGLEV projects: technology aspects and choices](https://www.researchgate.net/publication/224055510_MAGLEV_projects_technology_aspects_and_choices) |
 | Vehículo de ensayo de dos secciones: 54 m, 120 t en vacío, 85 kN, 0 a 215 Hz, 4250 V, 400 km/h, 450 kW a bordo | fuente | [tabla en un documento sobre motores lineales](https://artefacts-discovery.researcher.life/full_text/DA-2/68/680fe23b46a73ba28f0969fd014f70bc/full_text/623230215391790103f89577fdb0e5e6.pdf); el motor (4250 V, 1200 A, 0 a 215 Hz) coincide con [The Transrapid Magnetic Levitation System](https://escholarship.org/content/qt6ds64496/qt6ds64496.pdf). El empuje de 85 kN solo aparece en una fuente. |
-| 60 t y 27 m por sección; 42,5 kN por sección; velocidad máxima EMS 399 km/h (= 2·τ·215 Hz) | derivado | de lo anterior |
+| 60 t por sección; 42,5 kN por sección; velocidad máxima EMS 399 km/h (= 2·τ·215 Hz) | derivado | de lo anterior |
+| 20 m por sección en EMS y EDS (la fuente da 27 m por sección en EMS) | ilustrativo | se acorta para que el tren entero quepa en pantalla |
 | Estator del Transrapid alimentado por tramos que se conmutan al paso del vehículo | fuente | [WO 1997/047493](https://patents.google.com/patent/WO1997047493A1/en) |
 | EDS: elevación de unos 100 mm | fuente | [JR Central](https://global.jr-central.co.jp/en/company/_pdf/superconducting_maglev.pdf), [KIT](https://publikationen.bibliothek.kit.edu/1000075557/4402937) |
 | EDS: ruedas hasta unos 150 km/h | fuente aprox. | [ficha educativa de JR Central](https://www.japansociety.org.uk/usercontent/572cf69871d517dad7964c455c746698/JR-Central-SCMAGLEV-Worksheet.pdf) (describe la línea de pruebas de Yamanashi) |
@@ -126,7 +128,7 @@ elegido para que el modelo sea coherente, **no es un dato oficial**. Cada consta
 - Representación: el entrehierro se exagera, las flechas de fuerza usan escala de raíz cuadrada, la
   onda del estator se dibuja en el marco del vehículo (el motor es síncrono) y las bobinas de la
   lámina EDS se animan en cámara lenta (1/40).
-- El `README` y la ventana "Cómo funciona" separan lo documentado de lo ilustrativo; si un dato importa
+- El `README` y la página Guía separan lo documentado de lo ilustrativo; si un dato importa
   para un uso real, hay que contrastarlo con la fuente primaria.
 
 ## Estructura
@@ -134,7 +136,7 @@ elegido para que el modelo sea coherente, **no es un dato oficial**. Cada consta
 ```
 src/physics/      modelo puro: constants, ems, eds, lsm, train
 src/scene/        escena Three.js: mundo, vía y vehículo EMS/EDS, campos, cámaras, etiquetas
-src/ui/           interfaz, gráficas y ventana "Cómo funciona"
+src/ui/           interfaz, gráficas, rutas (`router.js`) y páginas Guía y Láminas
 figures/          láminas (build.mjs por figura) y lib/physics-inline.mjs
 vendor/anatomy/   kit de la skill anatomy (MIT)
 tests/            tests del modelo físico
