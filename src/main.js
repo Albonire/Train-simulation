@@ -11,8 +11,9 @@ import { setLineResolution } from "./scene/lines.js";
 import { createLabels } from "./scene/labels.js";
 import { createStations } from "./scene/stations.js";
 import { adaptiveNear } from "./scene/depth.js";
+import { framePart, cameraIsSane } from "./scene/frame.js";
 import { setExplode as applyExplode, pick, setHighlight, setHighlightColor, setHighlightOpacity, focusBox } from "./scene/parts.js";
-import { partById, partIds, stepPart, poseDirection } from "./scene/partsData.js";
+import { partById, partIds, stepPart } from "./scene/partsData.js";
 import { DIM } from "./scene/ems.js";
 import { D as EDIM } from "./scene/edsGeo.js";
 import { createUI } from "./ui/ui.js";
@@ -175,15 +176,25 @@ function setParts(on) {
   applyBody();
   refreshHighlight();
 }
+let refly = 0;
 function setExplodeView(on) {
   view.explode = on;
   explode.target = on ? 1 : 0;
   pressTool("explode", on);
   applyBody();
-  // las piezas se mueven: se vuelve a encuadrar la seleccionada cuando terminan
-  if (selected) setTimeout(() => selected && flyTo(selected), 650);
+  // las piezas se mueven: se vuelve a encuadrar la seleccionada cuando terminan. Un solo
+  // temporizador: al activar y desactivar seguido, o al cambiar de pieza, solo vale el ultimo.
+  clearTimeout(refly);
+  if (selected) {
+    const id = selected;
+    const m = mode;
+    refly = setTimeout(() => {
+      if (selected === id && mode === m && view.explode === on) flyTo(id);
+    }, 650);
+  }
 }
 function closePart() {
+  clearTimeout(refly);
   selected = null;
   ui.card.hide();
   document.body.dataset.card = "closed";
@@ -211,19 +222,15 @@ function partStep(dir) {
 }
 function flyTo(id) {
   const def = partById(mode, id);
+  if (!def) return;
   scene.updateMatrixWorld(true);
   const box = focusBox(mode, id, def.span);
-  if (!box) return;
-  const c = box.getCenter(new THREE.Vector3());
-  const size = box.getSize(new THREE.Vector3());
-  const radius = Math.max(0.5 * size.length(), 0.8);
-  const fov = 44;
-  // en pantalla vertical el campo horizontal es corto: se aleja un poco mas
-  const wide = camera.aspect < 0.9 ? 1.6 : 1;
-  const dist = Math.max(3.2, (radius / Math.tan(THREE.MathUtils.degToRad(fov / 2))) * def.pose.fit * wide);
-  tween.target.copy(c);
-  tween.pos.copy(c).addScaledVector(new THREE.Vector3(...poseDirection(def.pose)), dist);
-  tween.fov = fov;
+  // sin un encuadre fiable se conserva la vista actual en vez de arriesgar una camara rota
+  const fr = box && framePart(box, def, { aspect: camera.aspect, fov: 44 });
+  if (!fr) return;
+  tween.target.set(...fr.target);
+  tween.pos.set(...fr.position);
+  tween.fov = 44;
   tween.active = true;
 }
 
@@ -444,9 +451,20 @@ function freeArea() {
   const b = h - (card ? card.offsetTop : open ? side.offsetTop : hud.offsetTop);
   return { x: 0, y: (t - b) / 2 };
 }
+// el area libre solo se usa si es un numero razonable; si no, sin desplazamiento
+function safeFreeArea() {
+  let f = null;
+  try {
+    f = freeArea();
+  } catch {
+    f = null;
+  }
+  const lim = Math.max(window.innerWidth, window.innerHeight);
+  return f && Number.isFinite(f.x) && Number.isFinite(f.y) && Math.abs(f.x) < lim && Math.abs(f.y) < lim ? f : { x: 0, y: 0 };
+}
 let framed = "";
 function applyFraming(instant = false) {
-  const f = freeArea();
+  const f = safeFreeArea();
   framing.tx = f.x;
   framing.ty = f.y;
   if (instant) {
@@ -485,12 +503,39 @@ function keepAboveGround() {
 
 // ---- bucle ----
 let last = performance.now();
+let scFrozen = null;
 const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+// Si la camara se vuelve inutilizable (valores no finitos o muy lejos) o un fotograma lanza una
+// excepcion, se vuelve a la camara activa en vez de dejar la escena vacia o el bucle parado.
+let recoveries = 0;
+function recoverView(reason) {
+  recoveries++;
+  if (recoveries <= 5) console.error("[vista] recuperada:", reason);
+  tween.active = false;
+  clearTimeout(refly);
+  framing.x = framing.tx = framing.y = framing.ty = 0;
+  framed = "";
+  camera.clearViewOffset();
+  if (selected) closePart();
+  setRig(view.rig || "orbit", true);
+  if (recoveries <= 3) ui.toast("Se restableció la cámara");
+}
 function frame(now) {
+  try {
+    step(now);
+  } catch (err) {
+    try {
+      recoverView(err?.message ?? String(err));
+    } catch (err2) {
+      console.error("[vista] sin recuperar:", err2);
+    }
+  }
+  requestAnimationFrame(frame);
+}
+function step(now) {
   // en las paginas (guia, laminas) la escena se detiene: no gasta GPU ni avanza el viaje
   if (document.body.dataset.view !== "sim") {
     last = now;
-    requestAnimationFrame(frame);
     return;
   }
   const wall = Math.min(0.25, (now - last) / 1000);
@@ -506,10 +551,15 @@ function frame(now) {
       left -= chunk;
     }
   }
-  const sc = train.x - train.length / 2;
+  // al inspeccionar una pieza de la via (riel, viga, pilar...) el decorado se detiene: a la
+  // velocidad del tren la pieza elegida pasaria de largo antes de poder mirarla
+  const inspecting = !!selected && selected !== "coche";
+  if (inspecting) scFrozen ??= train.x - train.length / 2;
+  else scFrozen = null;
+  const sc = scFrozen ?? train.x - train.length / 2;
   // velocidad visual del suelo: lo que el ojo ve pasar (m/s de pista por segundo real)
   // window.__qaSpeed lo fija el script de QA visual (scripts/visual-qa.mjs)
-  world.setVisualSpeed(window.__qaSpeed ?? (view.paused ? 0 : Math.abs(train.v) * view.timeScale), wall);
+  world.setVisualSpeed(inspecting ? 0 : (window.__qaSpeed ?? (view.paused ? 0 : Math.abs(train.v) * view.timeScale)), wall);
   world.scroll(sc);
   stations.update(sc, train.length, train.stationSpacing, STATION_CFG[mode]);
   const tel = train.telemetry();
@@ -554,6 +604,10 @@ function frame(now) {
   applyFraming();
   keepAboveGround();
   controls.update();
+  if (!cameraIsSane(camera.position, controls.target, camera.projectionMatrix.elements)) {
+    recoverView("camara no finita o demasiado lejos");
+    return;
+  }
   // plano cercano segun a que distancia se mira: mas resolucion de profundidad lejos
   const near = adaptiveNear(camera.position.distanceTo(controls.target));
   if (Math.abs(near - camera.near) > 0.02) {
@@ -563,9 +617,8 @@ function frame(now) {
   renderer.render(scene, camera);
   labels.update(camera, view.rig, view.layers.labels, window.innerWidth, window.innerHeight);
   ui.update(tel, train, v2);
-  requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 
 window.__THREE = THREE;
-window.__app = { world, selectPart, setParts, setExplodeView, train, view, setRig, setMode, applyBody, camera, controls, scene, scenes, ui, perturb, depart };
+window.__app = { world, renderer, partIds: () => partIds(mode), partStep, selectPart, setParts, setExplodeView, train, view, setRig, setMode, applyBody, camera, controls, scene, scenes, ui, perturb, depart };

@@ -9,6 +9,7 @@
 
 import * as THREE from "three";
 import { partById } from "./partsData.js";
+import { windowBox } from "./frame.js";
 
 const reg = { ems: new Map(), eds: new Map() }; // id -> [{ mesh, rest, dir }]
 const lists = { ems: [], eds: [] }; // todas las mallas, para el rayo
@@ -128,24 +129,36 @@ export function setHighlight(mode, id) {
   }
 }
 
-/** Caja (mundo) que encuadra la pieza cerca del centro del tren, recortada a +-span m en x. */
+/**
+ * Caja (mundo) que encuadra la pieza cerca del centro del tren, recortada a +-span m en x.
+ * La caja sale de la geometria de cada malla (sin su resaltado) y pasa por `windowBox`, que
+ * nunca la deja invertida ni vacia. Devuelve null si no hay ninguna malla visible cerca.
+ */
 export function focusBox(mode, id, span) {
   const box = new THREE.Box3();
   const b = new THREE.Box3();
+  const p = new THREE.Vector3();
   for (const { mesh } of reg[mode].get(id) ?? []) {
     if (!mesh.visible) continue;
     // mallas de otros coches o tramos lejanos no cuentan
-    const p = new THREE.Vector3();
     mesh.getWorldPosition(p);
-    if (Math.abs(p.x) > span + 14) continue;
+    if (!Number.isFinite(p.x) || Math.abs(p.x) > span + 14) continue;
+    const geo = mesh.geometry;
+    if (!geo) continue;
+    if (mesh.isInstancedMesh) {
+      if (!mesh.boundingBox) mesh.computeBoundingBox();
+      b.copy(mesh.boundingBox);
+    } else {
+      if (!geo.boundingBox) geo.computeBoundingBox();
+      b.copy(geo.boundingBox);
+    }
+    if (b.isEmpty()) continue;
     mesh.updateWorldMatrix(true, false);
-    b.setFromObject(mesh, true);
-    // setFromObject incluye a los hijos (el resaltado): se ignora
+    b.applyMatrix4(mesh.matrixWorld);
     box.union(b);
   }
   if (box.isEmpty()) return null;
-  box.min.x = Math.max(box.min.x, -span);
-  box.max.x = Math.min(box.max.x, span);
-  if (box.min.x > box.max.x) box.min.x = box.max.x = 0;
-  return box;
+  const w = windowBox(box, span);
+  if (!w) return null;
+  return new THREE.Box3(new THREE.Vector3(w.min.x, w.min.y, w.min.z), new THREE.Vector3(w.max.x, w.max.y, w.max.z));
 }
