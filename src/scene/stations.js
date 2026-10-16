@@ -37,7 +37,8 @@ const M = {
   roof: new THREE.MeshStandardMaterial({ color: "#e6ebf0", roughness: 0.45, metalness: 0.35 }),
   steel: new THREE.MeshStandardMaterial({ color: "#4a525b", roughness: 0.55, metalness: 0.7 }),
   glass: new THREE.MeshStandardMaterial({ color: "#a9d2ef", roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.32, depthWrite: false }),
-  edge: new THREE.MeshStandardMaterial({ color: "#f2c230", roughness: 0.7 }),
+  // la franja va a 4 mm de la losa: sin polygonOffset se pelearia con ella a distancia (depth.js)
+  edge: new THREE.MeshStandardMaterial({ color: "#f2c230", roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }),
   lamp: new THREE.MeshStandardMaterial({ color: "#fff6e0", emissive: "#fff1d0", emissiveIntensity: 0.9 }),
   build: new THREE.MeshStandardMaterial({ color: "#d9dde2", roughness: 0.8 }),
   window: new THREE.MeshStandardMaterial({ color: "#274868", roughness: 0.15, metalness: 0.6 }),

@@ -7,6 +7,7 @@ import { Sky } from "three/examples/jsm/objects/Sky.js";
 import { fieldTexture, rng } from "./textures.js";
 import { createMountains, createClouds } from "./terrain.js";
 import { createProps } from "./props.js";
+import { DETAIL, setVisualSpeed } from "./depth.js";
 
 function groundTexture() {
   // hierba: base uniforme y briznas finas de bajo contraste (el mosaico no se nota)
@@ -114,7 +115,16 @@ export function createWorld(canvas) {
   const hemi = new THREE.HemisphereLight("#bfd8f2", "#7b8f5e", 0.8);
   scene.add(hemi);
 
-  // ---- terreno: detalle fino + macro-variacion (parcelas, setos, caminos) ----
+  // Muestreo de la textura con sesgo de mipmap: cuando el suelo corre rapido, el detalle
+  // mas fino que v / (2 * 60 Hz) se funde con su media (depth.js). Sin esto parpadea.
+  const biasedMap = (sh) => {
+    sh.uniforms.uBias = DETAIL.uBias;
+    sh.fragmentShader = sh.fragmentShader
+      .replace("#include <common>", "#include <common>\nuniform float uBias;")
+      .replace("#include <map_fragment>", "#ifdef USE_MAP\n vec4 sampledDiffuseColor = texture2D( map, vMapUv, uBias );\n diffuseColor *= sampledDiffuseColor;\n#endif");
+  };
+
+  // ---- terreno: detalle fino + parcelas de baja frecuencia (sin lineas finas) ----
   const gTex = groundTexture();
   const TILE = 40;
   gTex.repeat.set(6000 / TILE, 6000 / TILE);
@@ -123,6 +133,7 @@ export function createWorld(canvas) {
   const macroU = { uMacro: { value: macro }, uMacroOff: { value: new THREE.Vector2(0, 0) } };
   const groundMat = new THREE.MeshStandardMaterial({ map: gTex, roughness: 1, metalness: 0 });
   groundMat.onBeforeCompile = (sh) => {
+    biasedMap(sh);
     sh.uniforms.uMacro = macroU.uMacro;
     sh.uniforms.uMacroOff = macroU.uMacroOff;
     sh.vertexShader = sh.vertexShader
@@ -132,6 +143,7 @@ export function createWorld(canvas) {
       .replace("#include <common>", "#include <common>\nvarying vec2 vWorldXZ;\nuniform sampler2D uMacro;\nuniform vec2 uMacroOff;")
       .replace("#include <map_fragment>", `#include <map_fragment>\ndiffuseColor.rgb *= texture2D(uMacro, (vWorldXZ + uMacroOff) / ${MACRO.toFixed(1)}).rgb * 2.0;`);
   };
+  groundMat.customProgramCacheKey = () => "ground-v2";
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
@@ -141,12 +153,14 @@ export function createWorld(canvas) {
   const vTex = gravelTexture();
   const VTILE = 12;
   vTex.repeat.set(3000 / VTILE, 1);
-  const corridor = new THREE.Mesh(
-    new THREE.PlaneGeometry(3000, 9),
-    new THREE.MeshStandardMaterial({ map: vTex, roughness: 1, metalness: 0 }),
-  );
+  // Pegado al suelo: sin `polygonOffset` y con solo 3 cm de separacion se pelearia con el
+  // terreno a mas de ~200 m (depth.js). El offset empuja el corredor hacia la camara.
+  const corridorMat = new THREE.MeshStandardMaterial({ map: vTex, roughness: 1, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
+  corridorMat.onBeforeCompile = biasedMap;
+  corridorMat.customProgramCacheKey = () => "corridor-v2";
+  const corridor = new THREE.Mesh(new THREE.PlaneGeometry(3000, 9), corridorMat);
   corridor.rotation.x = -Math.PI / 2;
-  corridor.position.y = 0.03;
+  corridor.position.y = 0.05;
   corridor.receiveShadow = true;
   scene.add(corridor);
 
@@ -324,9 +338,10 @@ export function createWorld(canvas) {
     macroU.uMacroOff.value.set(s, 0);
     updateTrees(s);
     props.update(s);
-    clouds.update(s, (performance.now() - t0) / 1000);
+    // con window.__qaSpeed (QA visual) las nubes se quedan quietas: deriva en tiempo real no es parpadeo
+    clouds.update(s, window.__qaSpeed !== undefined ? 0 : (performance.now() - t0) / 1000);
   }
 
   setTheme("light");
-  return { renderer, scene, sun, ground, gTex, GROUND_TILE: TILE, updateTrees, scroll, makePool, setTheme };
+  return { renderer, scene, sun, ground, gTex, GROUND_TILE: TILE, updateTrees, scroll, makePool, setTheme, setVisualSpeed };
 }

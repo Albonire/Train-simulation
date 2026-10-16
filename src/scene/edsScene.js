@@ -12,6 +12,7 @@ export const RIGS = {
   section: { pos: [10, 7.0, 0.01], target: [0, 6.75, 0], fov: 44, body: "cut", cut: { axis: "x", c: 0 } },
   gap: { pos: [4.2, 6.95, 0.01], target: [0, 6.85, 1.75], fov: 30, body: "cut", cut: { axis: "x", c: 0 } },
   top: { pos: [0, 108, 0.01], target: [0, 0, 0], fov: 45, body: "solid" },
+  field: { pos: [-7, 16.5, 7], target: [0, 6.3, 0], fov: 46, body: "xray", boost: true },
 };
 
 function buildCaps() {

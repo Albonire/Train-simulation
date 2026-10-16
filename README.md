@@ -34,7 +34,9 @@ Chromium.
 | Velocidad objetivo, escala de tiempo (x1 a x60), pausa | Gobierna el viaje entre estaciones. |
 | Salir / Retener | En el modelo, el tren EMS aterriza en cada estación y vuelve a levitar antes de salir (decisión del modelo, no verificada contra el servicio real). |
 | Perturbaciones | Carga extra del 12 %, ráfaga lateral, golpe vertical, sin control, sin corriente. Cada fila dice su efecto y, tras pulsarla, el panel muestra el desvío máximo y el tiempo en volver, medidos en el modelo. |
-| Cámaras (teclas 1 a 5) | Órbita, seguir, sección, imanes y arriba. Doble clic recentra la vista. La escena se centra en el área que dejan libre los paneles. La cámara nunca baja de 1,7 m sobre el suelo: se puede mirar la vía desde abajo, pero no atravesar el terreno. |
+| Cámaras (teclas 1 a 6) | Órbita, seguir, sección, imanes, arriba y campo. Doble clic recentra la vista. La escena se centra en el área que dejan libre los paneles. La cámara nunca baja de 1,7 m sobre el suelo: se puede mirar la vía desde abajo, pero no atravesar el terreno. |
+| Piezas (P) y Separar (E) | Con Piezas activo, un clic en cada pieza acerca la cámara y abre una tarjeta con su función y cifras en vivo. Separar aleja las piezas entre sí con una animación suave. Hay 7 piezas en EMS y 7 en EDS. |
+| Campo | La cámara Campo (6) vuelve transparente la carrocería y muestra el flujo con partículas que siguen el sentido del campo. El indicador Campo del cuadro de mando muestra su intensidad. |
 | Carrocería | Sólida, rayos X o corte. |
 | Capas | Flujo (solo cuando los imanes están a la vista), onda del estator, fuerzas (diagrama sobre el techo), nombres (solo en las vistas de detalle). |
 | Exagerar entrehierro | El entrehierro real (10 mm) es invisible a escala; se multiplica y la interfaz lo indica. |

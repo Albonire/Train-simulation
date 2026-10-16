@@ -12,6 +12,8 @@ export const RIGS = {
   section: { pos: [10.5, 6.9, 0.01], target: [0, 6.55, 0], fov: 44, body: "cut", cut: { axis: "x", c: 0 } },
   gap: { pos: [3.6, 6.45, 5.2], target: [0, 6.3, 1.1], fov: 34, body: "cut", cut: { axis: "z", c: 1.62 }, minExag: 24 },
   top: { pos: [0, 108, 0.01], target: [0, 0, 0], fov: 45, body: "solid" },
+  // vista oblicua y baja: carroceria transparente y capas de campo realzadas
+  field: { pos: [-11, 4.8, 10.5], target: [0, 6.5, 1.0], fov: 46, body: "xray", boost: true },
 };
 
 function buildCaps() {
