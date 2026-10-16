@@ -47,3 +47,19 @@ Qué se revisó, qué se encontró y cómo se evita que vuelva. La comprobación
 - Toda superficie a menos de 5 cm de otra lleva `polygonOffset` o se separa más. Si se añade una,
   se anota en `LAYERS` de `tests/visual.test.js`: el test obliga a decidir.
 - El ruido procedural debe atenuarse con `fwidth`.
+
+## Explorador de piezas
+
+Fallo reportado: tras elegir los rieles, activar Separar y llegar a Pilar, la escena quedaba de un color
+liso (el de la niebla). No se reprodujo con Chromium por software (`npm run qa:parts` y
+`scripts/parts-fuzz.mjs`), asi que la correccion cierra todas las rutas que podian producirlo:
+
+- El encuadre sale de `src/scene/frame.js` (puro y probado en `tests/frame.test.js`): cajas vacias,
+  invertidas, planas, con NaN o enormes dan un encuadre finito acotado, o `null` y se conserva la vista.
+- `focusBox` mide la geometria de cada malla (no su resaltado) y recorta con `windowBox`, que nunca
+  invierte la caja.
+- El reencuadre diferido de Separar se cancela al cambiar de pieza, modo o cerrar la tarjeta.
+- El area libre del encuadre se valida antes de usarla en `setViewOffset`.
+- El bucle de dibujo no se detiene por una excepcion; si la camara deja de ser finita o queda a mas de
+  1000 m, se restablece la camara activa.
+- Con una pieza de la via seleccionada el decorado se detiene: a la velocidad del tren pasaria de largo.

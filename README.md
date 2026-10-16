@@ -20,6 +20,7 @@ npm install
 npm run dev      # servidor en http://127.0.0.1:5173 (genera antes las láminas)
 npm test         # tests del modelo físico (Vitest)
 npm run build    # compilación de producción en dist/
+npm run qa:parts  # QA del explorador de piezas en Chromium (con el servidor de desarrollo activo)
 ```
 
 Requiere Node.js 22.12 o superior (lo exige Vitest 5; Vite 8 admite desde 20.19 y el kit de las láminas

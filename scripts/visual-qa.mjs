@@ -67,7 +67,7 @@ page.on("response", (r) => {
 page.on("console", (m) => {
   if (m.type() === "error" && !/Failed to load resource/.test(m.text())) errors.push(m.text());
 });
-await page.goto(URL_BASE, { waitUntil: "load" });
+await page.goto(URL_BASE, { waitUntil: "load", timeout: 120000 });
 await page.waitForFunction(() => window.__app, null, { timeout: 30000 });
 await page.addStyleTag({ content: "#ui{display:none !important}" });
 

@@ -10,7 +10,8 @@
     "figures": "node scripts/build-figures.mjs",
     "predev": "node scripts/build-figures.mjs",
     "prebuild": "node scripts/build-figures.mjs",
-    "qa:visual": "node scripts/visual-qa.mjs"
+    "qa:visual": "node scripts/visual-qa.mjs",
+    "qa:parts": "node scripts/parts-qa.mjs"
   },
   "repository": {
     "type": "git",
