@@ -6,7 +6,7 @@
 
 export const CELL = 60; // m de pista por celda
 export const CORRIDOR = 30; // m libres a cada lado de la via
-export const CAMERA_SIDE_GAP = 52; // del lado de la camara orbital (+z) no hay arboles hasta aqui (la camara queda a ~45 m)
+export const CAMERA_GAP_X = 85; // m a cada lado del tren: sin arboles entre la camara y la via (ver forest.js)
 
 /** Hash entero determinista a [0, 1). */
 export function hash(a, b) {
@@ -21,12 +21,10 @@ export function rng(seed) {
   return () => ((x = (x * 16807) % 2147483647) / 2147483647);
 }
 
-/** Una posicion es valida para un arbol: fuera del corredor y de la franja de la camara. */
+/** Una posicion es valida para un arbol: fuera del corredor de la via. */
 export function allowedTreeSpot(z) {
   if (!Number.isFinite(z)) return false;
-  if (Math.abs(z) < CORRIDOR) return false;
-  if (z > 0 && z < CAMERA_SIDE_GAP) return false;
-  return true;
+  return Math.abs(z) >= CORRIDOR;
 }
 
 /** Especie segun un numero en [0, 1): conifera, frondoso o alamo. */

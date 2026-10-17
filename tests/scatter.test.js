@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
-import { CAMERA_SIDE_GAP, CELL, CORRIDOR, allowedTreeSpot, bushLayout, hash, treesAround, treesForCell } from "../src/scene/scatter.js";
+import { CELL, CORRIDOR, allowedTreeSpot, bushLayout, hash, treesAround, treesForCell } from "../src/scene/scatter.js";
 
 describe("hash", () => {
   it("es determinista y cae en [0, 1) tambien a decenas de kilometros", () => {
@@ -16,13 +16,12 @@ describe("hash", () => {
 });
 
 describe("reparto de arboles", () => {
-  it("ninguno invade el corredor de la via ni la franja de la camara orbital", () => {
+  it("ninguno invade el corredor de la via", () => {
     expect(allowedTreeSpot(0)).toBe(false);
     expect(allowedTreeSpot(CORRIDOR - 1)).toBe(false);
     expect(allowedTreeSpot(-(CORRIDOR - 1))).toBe(false);
-    expect(allowedTreeSpot(CAMERA_SIDE_GAP - 1)).toBe(false);
     expect(allowedTreeSpot(-CORRIDOR - 1)).toBe(true);
-    expect(allowedTreeSpot(CAMERA_SIDE_GAP + 1)).toBe(true);
+    expect(allowedTreeSpot(CORRIDOR + 1)).toBe(true);
     expect(allowedTreeSpot(NaN)).toBe(false);
   });
   it("de 0 a 100 km: todo es finito, esta fuera del corredor y hay arboles a los dos lados", () => {
@@ -32,7 +31,6 @@ describe("reparto de arboles", () => {
       for (const t of trees) {
         expect([t.x, t.z, t.ang, t.sx, t.sy, t.tone].every(Number.isFinite)).toBe(true);
         expect(Math.abs(t.z)).toBeGreaterThanOrEqual(CORRIDOR);
-        expect(t.z > 0 && t.z < CAMERA_SIDE_GAP).toBe(false);
         if (t.z < 0) far++;
       }
       expect(far).toBeGreaterThan(500);

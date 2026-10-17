@@ -11,7 +11,7 @@
 
 import * as THREE from "three";
 import { mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { CELL, treesForCell } from "./scatter.js";
+import { CAMERA_GAP_X, CELL, treesForCell } from "./scatter.js";
 import { occludes, segmentPointDistance, treeSpheres } from "./sightline.js";
 
 // tamano de cada especie (altura, radio de la copa a escala 1), para la linea de mira
@@ -184,10 +184,13 @@ export function createForest(scene, { halfCells = 22, maxFillsPerFrame = 12, nea
     sight.cam.y = cam.y;
     sight.cam.z = cam.z;
   }
-  const blockedAt = (t, x0) => {
+  // Un arbol se oculta si esta entre la camara y la via, cerca del tren (un primer plano que se
+  // desplaza a cientos de m/s y tapa la escena), o si tapa la linea de mira hacia el tren.
+  const blockedAt = (t, s) => {
     if (!sight) return false;
     const c = sight.cam;
-    const x = t.x - x0; // x del mundo
+    const x = t.x - s; // x del mundo
+    if (c.z > 30 && t.z > 0 && t.z < c.z + 10 && Math.abs(x) < CAMERA_GAP_X) return true;
     const [h, r] = TREE_SIZE[t.kind];
     const d = segmentPointDistance({ x: c.x, y: 0, z: c.z }, { x: 0, y: 0, z: 0 }, { x, y: 0, z: t.z });
     if (d > r * t.sx + 32) return false;
@@ -260,8 +263,8 @@ export function createForest(scene, { halfCells = 22, maxFillsPerFrame = 12, nea
             fills++;
           } else if (!stale && sight) {
             const wx = ch.cell * CELL + CELL / 2 - s;
-            // solo las celdas por las que puede pasar la linea de mira
-            if (wx > Math.min(sight.cam.x, 0) - 140 && wx < Math.max(sight.cam.x, 0) + 140 && signatureNow(ch, s) !== ch.sig) fill(ch, ch.cell, s);
+            // solo las celdas cerca del tren o de la linea de mira
+            if (wx > Math.min(sight.cam.x, 0) - 220 && wx < Math.max(sight.cam.x, 0) + 220 && signatureNow(ch, s) !== ch.sig) fill(ch, ch.cell, s);
           }
           if (ch.cell === null) continue;
           ch.mesh.position.x = ch.cell * CELL - s;
