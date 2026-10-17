@@ -385,3 +385,14 @@ body:not([data-view="sim"]) #loupe { display: none; }
 @media (max-width: 760px) {
   #loupe { left: 8px; right: 8px; width: auto; bottom: 8px; display: none; }
 }
+
+/* ---- apertura: pie de texto y boton para saltarla ---- */
+#intro { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; max-width: calc(100% - 32px); padding: 8px 8px 8px 16px; border-radius: var(--r); background: var(--surface); border: 1px solid var(--line-strong); z-index: 2; pointer-events: auto; }
+#intro[hidden] { display: none; }
+#introCap { margin: 0; font-size: var(--t-m); font-weight: 500; }
+#introSkip { min-height: 32px; padding: 4px 12px; font-size: var(--t-b); }
+body[data-intro="on"] #hint { opacity: 0; }
+body[data-intro="on"] #loupe { opacity: 0.0; pointer-events: none; }
+@media (max-width: 760px) {
+  #intro { bottom: 190px; width: calc(100% - 16px); }
+}

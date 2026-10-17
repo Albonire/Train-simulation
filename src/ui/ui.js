@@ -123,6 +123,8 @@ export function createUI(h) {
 
   <p id="hint" role="note"></p>
 
+  <div id="intro" hidden><p id="introCap" role="status"></p><button class="btn" id="introSkip" title="Salta la apertura (cualquier tecla o clic)">Omitir</button></div>
+
   <section id="hud" class="panel" aria-label="Cuadro de mando">
     <div class="h-speed"><output id="hSpeed">0</output><span>km/h</span></div>
     <div class="h-state"><span class="pill" id="hState" data-k="idle" role="status">En reposo</span><span class="h-sub" id="hTarget"></span></div>
@@ -195,6 +197,8 @@ export function createUI(h) {
         <button data-layer="forces" aria-pressed="true" title="Flechas de fuerza (escala de raíz cuadrada)">Fuerzas</button>
         <button data-layer="labels" aria-pressed="true" title="Nombres de las piezas en las vistas de detalle">Nombres</button>
       </div>
+      <h3>Apertura</h3>
+      <button class="btn" id="introBtn" title="Vuelve a ver el primer plano de la levitación (I)">Repetir la apertura</button>
       <h3>Colores</h3>
       <ul class="legend">${LEGEND.map(([c, l]) => `<li><i style="background:${c}"></i>${l}</li>`).join("")}</ul>
     </div>
@@ -331,6 +335,7 @@ export function createUI(h) {
         return h.setHold(on);
       }
       case "resetBtn": return h.reset();
+      case "introBtn": return h.replayIntro?.();
       case "themeBtn": return toggleTheme();
       case "panelBtn": return setPanel(els.side.classList.contains("closed"));
     }
@@ -363,6 +368,7 @@ export function createUI(h) {
     if (e.key === " " && tag !== "BUTTON") { e.preventDefault(); setPaused($("#pauseBtn").getAttribute("aria-pressed") !== "true"); return; }
     if (e.key === "h" || e.key === "H") return setPanel(els.side.classList.contains("closed"));
     if (e.key === "l" || e.key === "L") return loupe.toggle();
+    if (e.key === "i" || e.key === "I") return h.replayIntro?.();
     if (e.key === "p" || e.key === "P") return h.setParts(document.querySelector('[data-tool="parts"]').getAttribute("aria-pressed") !== "true");
     if (e.key === "e" || e.key === "E") return h.setExplode(document.querySelector('[data-tool="explode"]').getAttribute("aria-pressed") !== "true");
     if (document.body.dataset.parts === "on" && (e.key === "ArrowRight" || e.key === "ArrowLeft") && tag !== "BUTTON") {
@@ -473,6 +479,7 @@ export function createUI(h) {
   let activeResp = null;
 
   // ---- pistas de primera visita: tres, una tras otra; cualquier gesto las cierra ----
+  let startHint = () => {};
   (function hint() {
     const el = $("#hint");
     let seen = false;
@@ -506,10 +513,16 @@ export function createUI(h) {
       window.removeEventListener("keydown", done);
       window.removeEventListener("wheel", done);
     };
-    show();
-    window.addEventListener("pointerdown", done);
-    window.addEventListener("keydown", done);
-    window.addEventListener("wheel", done, { passive: true });
+    // las pistas empiezan cuando termina la apertura (o ya, si no hay apertura)
+    let started = false;
+    startHint = () => {
+      if (started) return;
+      started = true;
+      show();
+      window.addEventListener("pointerdown", done);
+      window.addEventListener("keydown", done);
+      window.addEventListener("wheel", done, { passive: true });
+    };
   })();
 
   // ---- actualizacion por cuadro ----
@@ -659,5 +672,5 @@ export function createUI(h) {
 
   document.body.dataset.view = "sim";
   router.start();
-  return { root, els, card, loupe, build, update, sample, toast, hist, setTimeScale, setPaused, setOutputs, router, view };
+  return { root, els, card, loupe, startHint: () => startHint(), build, update, sample, toast, hist, setTimeScale, setPaused, setOutputs, router, view };
 }
