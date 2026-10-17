@@ -330,24 +330,37 @@ export function createLoupe(root, { setRig, toast }) {
   }
 
   let last = 0;
-  let prevKind = null;
+  let shown = null; // ultimo estado anunciado (true = levitando)
+  let pending = null;
+  let pendingSince = 0;
+  const set = (el, v) => {
+    if (el.textContent !== v) el.textContent = v;
+  };
   const t0 = performance.now();
   return {
     /** Se llama cada fotograma; dibuja a 30 por segundo como mucho. */
     update(mode, tel, train, view, hidden) {
       const [label, kind] = loupeState(mode, tel, train);
-      els.state.textContent = label;
-      els.state.dataset.k = kind;
-      els.title.textContent = mode === "ems" ? "Entrehierro" : "Elevación";
       const s = train.sections[Math.floor(train.sections.length / 2)];
-      els.val.textContent = mode === "ems" ? `${fmt(s.gap * 1000, 1)} mm` : `${fmt(tel.gapMm, 0)} mm`;
-      els.note.textContent = mode === "ems" ? "Corte transversal, hueco ampliado" : "Vista frontal, elevación ampliada";
-      // avisos de despegue y aterrizaje
+      // el texto solo se toca si cambia: asignarlo cada fotograma invalida el diseno
+      set(els.state, label);
+      if (els.state.dataset.k !== kind) els.state.dataset.k = kind;
+      set(els.title, mode === "ems" ? "Entrehierro" : "Elevación");
+      set(els.val, mode === "ems" ? `${fmt(s.gap * 1000, 1)} mm` : `${fmt(tel.gapMm, 0)} mm`);
+      set(els.note, mode === "ems" ? "Corte transversal, hueco ampliado" : "Vista frontal, elevación ampliada");
+      // avisos de despegue y aterrizaje: el estado debe mantenerse medio segundo, para que una
+      // perturbacion breve no dispare avisos
       const levitating = kind === "ok";
-      if (prevKind !== null && levitating !== prevKind) {
-        toast(levitating ? (mode === "ems" ? "Despegue: el imán ya sostiene al tren" : "Despegue: las ruedas se recogen") : (mode === "ems" ? "Aterrizaje: el tren baja a los patines" : "Aterrizaje: salen las ruedas"));
+      const nowMs = performance.now();
+      if (levitating !== pending) {
+        pending = levitating;
+        pendingSince = nowMs;
       }
-      prevKind = levitating;
+      if (shown === null) shown = levitating;
+      else if (pending !== shown && nowMs - pendingSince > 500) {
+        shown = pending;
+        toast(shown ? (mode === "ems" ? "Despegue: el imán ya sostiene al tren" : "Despegue: las ruedas se recogen") : (mode === "ems" ? "Aterrizaje: el tren baja a los patines" : "Aterrizaje: salen las ruedas"));
+      }
       if (!open || hidden) return;
       const now = performance.now();
       if (now - last < 33) return;
@@ -364,6 +377,9 @@ export function createLoupe(root, { setRig, toast }) {
       return open;
     },
     /** Al cambiar de modo se evita un aviso falso. */
-    reset: () => (prevKind = null),
+    reset: () => {
+      shown = null;
+      pending = null;
+    },
   };
 }

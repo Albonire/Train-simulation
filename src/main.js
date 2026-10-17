@@ -280,12 +280,13 @@ function buildLabels() {
   // rotulos de las flechas de fuerza y del entrehierro real en las vistas generales
   const OVERVIEW = ["orbit", "chase"];
   const f = fields[mode].forces;
-  labels.add({ text: () => `${mode === "ems" ? "Atracción" : "Repulsión"} ${(train.sections[1].lift / 1e3).toFixed(0)} kN`, pos: () => f.tips.lift, rigs: OVERVIEW, when: () => view.layers.forces });
-  labels.add({ text: () => `Peso ${(((train.sections[1].mass + train.sections[1].extraMass) * G) / 1e3).toFixed(0)} kN`, pos: () => f.tips.weight, rigs: OVERVIEW, when: () => view.layers.forces });
+  labels.add({ text: () => `${mode === "ems" ? "Atracción" : "Repulsión"} ${(train.sections[1].lift / 1e3).toFixed(0)} kN`, pos: () => f.tips.lift, rigs: OVERVIEW, when: () => view.layers.forces && !view.parts });
+  labels.add({ text: () => `Peso ${(((train.sections[1].mass + train.sections[1].extraMass) * G) / 1e3).toFixed(0)} kN`, pos: () => f.tips.weight, rigs: OVERVIEW, when: () => view.layers.forces && !view.parts });
   labels.add({
     text: () => (train.levitated ? `Levita a ${train.sections[1].gapMm.toFixed(mode === "ems" ? 1 : 0).replace(".", ",")} mm` : mode === "ems" ? "Sobre patines" : "Sobre ruedas"),
     pos: () => V(midGroup().x, mode === "ems" ? DIM.statorBottom - 1.4 : EDIM.slabTop - 0.4, mode === "ems" ? 2.5 : 2.9),
     rigs: OVERVIEW,
+    when: () => !view.parts,
     cls: "lev",
   });
   if (mode === "ems") {
