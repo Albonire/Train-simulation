@@ -12,6 +12,7 @@ import { createLabels } from "./scene/labels.js";
 import { createStations } from "./scene/stations.js";
 import { adaptiveNear } from "./scene/depth.js";
 import { framePart, cameraIsSane, fitDistance } from "./scene/frame.js";
+import { INTRO, introPose, introExag, introTimeScale, introXray, introCaption } from "./scene/intro.js";
 import { setExplode as applyExplode, pick, setHighlight, setHighlightColor, setHighlightOpacity, focusBox } from "./scene/parts.js";
 import { partById, partIds, stepPart } from "./scene/partsData.js";
 import { DIM } from "./scene/ems.js";
@@ -56,8 +57,10 @@ const view = {
   boost: false, // la camara Campo realza las capas de campo
   layers: { fields: true, wave: true, forces: true, labels: true },
 };
+// estado de la apertura (ver mas abajo): se declara aqui porque effExag y effBody lo leen
+const intro = { active: false, t: 0, cfg: null, saved: null, exag: 0, xray: false };
 const rigMinExag = () => active.rigs[view.rig].minExag ?? 0;
-const effExag = () => Math.max(view.exag[mode], rigMinExag());
+const effExag = () => Math.max(view.exag[mode], rigMinExag(), intro.active ? intro.exag : 0);
 
 // ---- carroceria: solida, rayos X o corte ----
 const planes = {
@@ -66,16 +69,19 @@ const planes = {
 };
 // Carroceria efectiva: el explorador de piezas y la vista separada necesitan ver dentro.
 function effBody() {
+  // la apertura se ve por dentro: rayos X, o la carroceria de otra camara (el corte del EDS)
+  if (intro.active && intro.xray) return introRig() ? active.rigs[introRig()].body : "xray";
   const rig = active.rigs[view.rig];
   let bodyMode = view.body === "auto" ? rig.body : view.body;
   if ((view.parts || view.explode) && bodyMode !== "cut") bodyMode = "xray";
   if (view.explode && bodyMode === "cut") bodyMode = "xray"; // el corte no se lleva con piezas separadas
   return bodyMode;
 }
+const introRig = () => (intro.active && intro.xray ? intro.cfg.bodyRig : null);
 function applyBody() {
-  const rig = active.rigs[view.rig];
+  const rig = active.rigs[introRig() ?? view.rig];
   const bodyMode = effBody();
-  view.boost = !!rig.boost;
+  view.boost = !!rig.boost || (intro.active && intro.xray);
   let plane = null;
   if (bodyMode === "cut") {
     const cut = rig.cut ?? { axis: "z", c: 0 };
@@ -319,7 +325,7 @@ function buildLabels() {
   });
   if (mode === "ems") {
     const gv = () => train.sections[1].gap * effExag();
-    labels.add({ text: () => `${(train.sections[1].gap * 1000).toFixed(1)} mm`, pos: () => V(0, DIM.statorBottom - gv() / 2, 1.15), rigs: DETAIL });
+    labels.add({ text: () => `${(train.sections[1].gap * 1000).toFixed(1).replace(".", ",")} mm`, pos: () => V(0, DIM.statorBottom - gv() / 2, 1.15), rigs: DETAIL });
     labels.add({ text: () => "Estator", pos: () => V(2.0, DIM.statorBottom + 0.3, 1.15), rigs: DETAIL, cls: "s" });
     labels.add({ text: () => "Imán de sustentación", pos: () => V(-1.6, DIM.statorBottom - gv() - 0.55, 1.15), rigs: DETAIL, cls: "n" });
     labels.add({ text: () => "Riel de guiado", pos: () => V(0, DIM.railY1 + 0.15, 1.58), rigs: ["section"] });
@@ -356,6 +362,7 @@ const ui = createUI({
     ui.toast("Reiniciado");
   },
   perturb,
+  replayIntro: () => startIntro({ replay: true }),
   setParts: (on) => setParts(on),
   setExplode: (on) => setExplodeView(on),
   partStep: (dir) => partStep(dir),
@@ -544,6 +551,107 @@ function keepAboveGround() {
   if (camera.position.y < EYE) camera.position.y = EYE;
 }
 
+// ---- apertura: primer plano de la levitacion y despues la vista general ----
+// Se avanza con el tiempo real de pared desde step(). Cualquier gesto la corta; al terminar o al
+// omitirla se devuelve todo lo que cambio (escala de tiempo, tren retenido, carroceria, exageracion).
+const introEls = { box: document.getElementById("intro"), cap: document.getElementById("introCap"), skip: document.getElementById("introSkip") };
+const qs = new URLSearchParams(location.search);
+function introAllowed() {
+  if (qs.has("nointro")) return false;
+  if (navigator.webdriver && !qs.has("intro")) return false; // los scripts de QA miden la escena sin ella
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return false;
+  return document.body.dataset.view === "sim";
+}
+const orbitPoseNow = () => {
+  const p = rigPose("orbit", active.rigs.orbit);
+  return { pos: p.pos.toArray(), tgt: p.target.toArray(), fov: active.rigs.orbit.fov };
+};
+function startIntro({ replay = false } = {}) {
+  if (intro.active) return;
+  if (selected) closePart();
+  if (view.parts) setParts(false);
+  if (view.explode) setExplodeView(false);
+  const cfg = INTRO[mode];
+  intro.cfg = cfg;
+  intro.t = 0;
+  intro.saved = { timeScale: view.timeScale };
+  if (replay || cfg.preAdvance) {
+    train.reset();
+    ui.hist.clear();
+  }
+  if (cfg.preAdvance) train.advance(cfg.preAdvance);
+  train.hold = cfg.hold > 0;
+  if (view.paused) ui.setPaused(false);
+  ui.setTimeScale(cfg.tsClose);
+  intro.active = true;
+  intro.xray = true;
+  intro.exag = introExag(cfg, 0, view.exag[mode]);
+  tween.active = false;
+  document.body.dataset.intro = "on";
+  introEls.box.hidden = false;
+  applyBody();
+}
+function endIntro({ toOrbit = false, snap = false } = {}) {
+  if (!intro.active) return;
+  intro.active = false;
+  intro.xray = false;
+  intro.exag = 0;
+  document.body.dataset.intro = "off";
+  introEls.box.hidden = true;
+  train.hold = false;
+  document.getElementById("stopBtn")?.setAttribute("aria-pressed", "false");
+  ui.setTimeScale(intro.saved?.timeScale ?? 5);
+  ui.startHint();
+  if (toOrbit) setRig("orbit", snap);
+  else applyBody();
+}
+function introTick(wall) {
+  const cfg = intro.cfg;
+  intro.t += wall;
+  if (train.hold && intro.t >= cfg.hold) train.hold = false;
+  const ts = introTimeScale(cfg, intro.t, intro.saved.timeScale);
+  if (view.timeScale !== ts) ui.setTimeScale(ts);
+  intro.exag = introExag(cfg, intro.t, view.exag[mode]);
+  const xr = introXray(cfg, intro.t);
+  if (xr !== intro.xray) {
+    intro.xray = xr;
+    applyBody();
+  }
+  if (intro.t >= cfg.duration) return endIntro({ toOrbit: true, snap: true });
+  const txt = introCaption(mode, intro.t, cfg, train.telemetry());
+  if (introEls.cap.textContent !== txt) introEls.cap.textContent = txt;
+  introEls.box.style.visibility = txt ? "visible" : "hidden";
+}
+function introCamera() {
+  const p = introPose(intro.cfg, intro.t, orbitPoseNow());
+  camera.position.set(...p.pos);
+  controls.target.set(...p.tgt);
+  camera.fov = p.fov;
+  camera.updateProjectionMatrix();
+}
+// Prueba y capturas: deja la apertura en el instante t (s), avanzando el tren como habria ido
+function seekIntro(t) {
+  if (intro.active) endIntro();
+  startIntro({ replay: true });
+  const cfg = intro.cfg;
+  for (let tt = 0; tt < t; tt += 0.05) {
+    const step = Math.min(0.05, t - tt);
+    if (train.hold && tt >= cfg.hold) train.hold = false;
+    train.advance(step * introTimeScale(cfg, tt, intro.saved.timeScale));
+  }
+  intro.t = t;
+  train.hold = train.hold && t < cfg.hold;
+  intro.xray = introXray(cfg, t);
+  intro.exag = introExag(cfg, t, view.exag[mode]);
+  ui.setTimeScale(introTimeScale(cfg, t, intro.saved.timeScale));
+  applyBody();
+  introCamera();
+}
+// cualquier gesto la corta: se va a la orbita con una transicion suave
+const skipIntro = () => endIntro({ toOrbit: true });
+for (const ev of ["pointerdown", "keydown", "wheel"]) window.addEventListener(ev, skipIntro, { capture: true, passive: true });
+introEls.skip.addEventListener("click", skipIntro);
+
 // ---- bucle ----
 let last = performance.now();
 let scFrozen = null;
@@ -584,6 +692,7 @@ function step(now) {
   const wall = Math.min(0.25, (now - last) / 1000);
   const dt = Math.min(0.05, wall);
   last = now;
+  if (intro.active) introTick(wall);
   if (!view.paused) {
     // trozos de a lo sumo 20 ms: mantiene el historial y la precision con escalas altas
     let left = dt * view.timeScale;
@@ -615,7 +724,7 @@ function step(now) {
     applyExplode(explode.k);
   }
   const level = mode === "ems" ? fields.ems.fieldLevel(train) : fields.eds.fieldLevel(train, tel);
-  const v2 = { ...view, exag: effExag(), magnetsVisible: magnetsVisible(), fieldLevel: level };
+  const v2 = { ...view, exag: effExag(), magnetsVisible: magnetsVisible(), fieldLevel: level, intro: intro.active && intro.xray };
   active.update(tel, train, v2, dt);
   if (mode === "ems") {
     fields.ems.update(tel, train, v2, camera, window.innerHeight);
@@ -643,6 +752,7 @@ function step(now) {
       tween.active = false;
     }
   }
+  if (intro.active) introCamera();
   const kf = reduced ? 1 : 1 - Math.exp(-wall * 8);
   framing.x += (framing.tx - framing.x) * kf;
   framing.y += (framing.ty - framing.y) * kf;
@@ -660,10 +770,12 @@ function step(now) {
     camera.updateProjectionMatrix();
   }
   renderer.render(scene, camera);
-  labels.update(camera, view.rig, view.layers.labels, window.innerWidth, window.innerHeight);
+  labels.update(camera, intro.active && intro.xray ? "gap" : view.rig, view.layers.labels, window.innerWidth, window.innerHeight);
   ui.update(tel, train, v2);
 }
 requestAnimationFrame(frame);
+if (introAllowed()) startIntro();
+else ui.startHint();
 
 window.__THREE = THREE;
-window.__app = { world, renderer, partIds: () => partIds(mode), partStep, selectPart, setParts, setExplodeView, train, view, setRig, setMode, applyBody, camera, controls, scene, scenes, ui, perturb, depart };
+window.__app = { intro: { start: startIntro, end: endIntro, state: intro, seek: seekIntro }, world, renderer, partIds: () => partIds(mode), partStep, selectPart, setParts, setExplodeView, train, view, setRig, setMode, applyBody, camera, controls, scene, scenes, ui, perturb, depart };

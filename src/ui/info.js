@@ -137,6 +137,7 @@ export const KEYS = [
   [["P"], "Piezas"],
   [["E"], "Separar"],
   [["L"], "Lupa del entrehierro"],
+  [["I"], "Repetir la apertura"],
   [["Espacio"], "Pausa"],
   [["H"], "Panel lateral"],
   [["?"], "Esta lista"],

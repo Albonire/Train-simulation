@@ -5,6 +5,7 @@
 // Especificacion: modo:tema:camara:AnchoxAlto[:clave=valor...]
 //   modo   ems | eds            tema   light | dark         camara   orbit chase section gap top field
 //   claves: cam=x,y,z  tgt=x,y,z   (camara y objetivo a mano)  adv=s (segundos de viaje antes)
+//           intro=t (apertura en el instante t, en s; la camara y el viaje se ignoran)
 //           ui=0 (sin interfaz)   wait=ms   speed=m/s (velocidad visual del suelo)   parts=id (elige una pieza)
 //
 //   node scripts/shot.mjs http://127.0.0.1:5174/ /tmp/shots ems:dark:orbit:1920x918 eds:light:gap:1280x720:ui=0
@@ -46,8 +47,12 @@ for (const spec of rest) {
       document.documentElement.dataset.theme = t;
       a.world.setTheme(t);
       a.setMode(m);
-      a.train.advance(Number(o.adv ?? (m === "ems" ? 80 : 150)));
-      a.setRig(r, true);
+      if (o.intro !== undefined) {
+        a.intro.seek(Number(o.intro)); // la apertura en el instante t (s)
+      } else {
+        a.train.advance(Number(o.adv ?? (m === "ems" ? 80 : 150)));
+        a.setRig(r, true);
+      }
       const v = (s) => s.split(",").map(Number);
       if (o.cam) a.camera.position.set(...v(o.cam));
       if (o.tgt) a.controls.target.set(...v(o.tgt));
@@ -63,7 +68,7 @@ for (const spec of rest) {
   await page.waitForTimeout(Number(opt.wait ?? 2500));
   if (opt.ui === "0") await page.addStyleTag({ content: "#ui,#cams,#hud,#side,#topbar,#toast,#hint{visibility:hidden !important}" });
   const name = `${mode}-${theme}-${rig}-${w}x${h}${kv.length ? "-" + kv.join("-").replace(/[^\w=.,-]/g, "") : ""}.png`;
-  await page.screenshot({ path: `${OUT}/${name}` });
+  await page.screenshot({ path: `${OUT}/${name}`, timeout: 120000 });
   console.log(`${OUT}/${name}${errors.length ? "  ERRORES: " + errors.join(" | ") : ""}`);
   await page.close();
 }
