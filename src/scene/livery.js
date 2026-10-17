@@ -58,7 +58,7 @@ export function liveryTextures({ points, x0, x1, len, role, noseLen = 9, carNo =
   const M = layer(W, H, style.base);
   const E = layer(W / 2, H / 2, "#000000");
   const B = layer(W / 2, H / 2, "#808080");
-  const O = layer(W / 2, H / 2, "rgb(255,96,36)"); // ao, rugosidad, metalicidad
+  const O = layer(W / 2, H / 2, "rgb(255,100,14)"); // ao, rugosidad, metalicidad (pintura, poco metalica)
   const all = [M, E, B, O];
 
   // faldon inferior
@@ -68,9 +68,19 @@ export function liveryTextures({ points, x0, x1, len, role, noseLen = 9, carNo =
     M.g.fillStyle = style.lower;
     M.g.fillRect(0, 0, W, vp);
     M.g.fillRect(0, vn, W, H - vn);
-    O.g.fillStyle = "rgb(255,150,70)";
+    O.g.fillStyle = "rgb(255,160,20)";
     O.g.fillRect(0, 0, W, vp);
     O.g.fillRect(0, vn, W, H - vn);
+    // suciedad del faldon: se oscurece suavemente hacia el borde inferior de cada flanco
+    const dirt = (y0, y1, yEdge) => {
+      const gr = M.g.createLinearGradient(0, y0, 0, y1);
+      gr.addColorStop(0, "rgba(46,38,30,0)");
+      gr.addColorStop(1, "rgba(46,38,30,0.30)");
+      M.g.fillStyle = gr;
+      M.g.fillRect(0, Math.min(y0, yEdge), W, Math.abs(yEdge - y0));
+    };
+    dirt(vp, 0, 0);
+    dirt(vn, H, H);
   }
 
   const half = len / 2;

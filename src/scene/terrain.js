@@ -68,6 +68,23 @@ export function createMountains() {
   g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
   g.setIndex(idx);
   g.computeVertexNormals();
+  // roca en las pendientes empinadas y nieve solo donde el terreno es casi plano y alto
+  const nor = g.getAttribute("normal");
+  const colAttr = g.getAttribute("color");
+  const rock = new THREE.Color("#7a7268");
+  const snow = new THREE.Color("#eef1f4");
+  const smooth = (a, b, x) => {
+    const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+    return t * t * (3 - 2 * t);
+  };
+  for (let v = 0; v < colAttr.count; v++) {
+    const h = pos[v * 3 + 1] + 3;
+    const flat = Math.abs(nor.getY(v));
+    c.setRGB(colAttr.getX(v), colAttr.getY(v), colAttr.getZ(v));
+    if (h > 40) c.lerp(rock, smooth(0.45, 0.75, 1 - flat) * smooth(40, 120, h) * 0.8);
+    if (h > 150) c.lerp(snow, smooth(150, 230, h) * smooth(0.55, 0.85, flat) * 0.9);
+    colAttr.setXYZ(v, c.r, c.g, c.b);
+  }
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0, side: THREE.DoubleSide });
   const mesh = new THREE.Mesh(g, mat);
   mesh.frustumCulled = false;

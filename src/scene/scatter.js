@@ -6,7 +6,7 @@
 
 export const CELL = 60; // m de pista por celda
 export const CORRIDOR = 30; // m libres a cada lado de la via
-export const CAMERA_SIDE_GAP = 70; // del lado de la camara orbital (+z) no hay arboles hasta aqui
+export const CAMERA_SIDE_GAP = 52; // del lado de la camara orbital (+z) no hay arboles hasta aqui (la camara queda a ~45 m)
 
 /** Hash entero determinista a [0, 1). */
 export function hash(a, b) {

@@ -58,6 +58,7 @@ export function createProps(scene) {
       lampPole.push({ geo: new THREE.CylinderGeometry(0.07, 0.1, 7.2, 8).translate(0, 3.6, 0), at, rotY });
       lampPole.push({ geo: new THREE.BoxGeometry(1.5, 0.07, 0.07).translate(-0.7, 7.15, 0), at, rotY });
       lampHead.push({ geo: new THREE.BoxGeometry(0.55, 0.1, 0.26).translate(-1.35, 7.08, 0), at, rotY });
+      lampPole.push({ geo: new THREE.BoxGeometry(0.34, 0.5, 0.34).translate(0, 0.25, 0), at, rotY }); // zocalo
     }
   }
   const poleMat = new THREE.MeshStandardMaterial({ color: "#5b636c", roughness: 0.6, metalness: 0.6 });
@@ -94,7 +95,7 @@ export function createProps(scene) {
   // ---- cerca de servicio: postes cada 6 m y tres alambres por tramo de 48 m ----
   const FENCE = 6;
   const FENCE_TILE = 48;
-  const fenceMat = new THREE.MeshStandardMaterial({ color: "#7d776b", roughness: 0.9 });
+  const fenceMat = new THREE.MeshStandardMaterial({ color: "#a9a69c", roughness: 0.92 });
   const wireMat = new THREE.MeshStandardMaterial({ color: "#7f7a70", roughness: 1, metalness: 0 });
   const postList = [];
   const wireList = [];
