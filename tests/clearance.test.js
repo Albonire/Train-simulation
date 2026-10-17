@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cameraFootprint, inAnyBox, stationFootprint } from "../src/scene/clearance.js";
+import { cameraFootprint, inAnyBox, stationFootprint, toWorld } from "../src/scene/clearance.js";
 
 const ZIN = 2.5;
 
@@ -29,13 +29,23 @@ describe("huella de una estacion", () => {
 
 describe("huella de una camara baja", () => {
   it("una camara junto a la via oculta lo que tiene al lado", () => {
-    const b = cameraFootprint({ x: -11, y: 4.8, z: 10.5 }, 5000);
+    const b = cameraFootprint({ x: -11, y: 4.8, z: 10.5 });
     expect(b).not.toBe(null);
-    expect(inAnyBox(5000 - 11 + 3, 7.2, [b])).toBe(true); // poste de luz a 3 m de la camara
-    expect(inAnyBox(5000 + 60, 7.2, [b])).toBe(false);
+    expect(inAnyBox(-11 + 3, 7.2, [b])).toBe(true); // poste de luz a 3 m de la camara
+    expect(inAnyBox(60, 7.2, [b])).toBe(false);
   });
   it("la orbita, lejana o alta, no oculta nada", () => {
-    expect(cameraFootprint({ x: -24, y: 11.5, z: 59 }, 0)).toBe(null);
-    expect(cameraFootprint({ x: 0, y: 58, z: 0.01 }, 0)).toBe(null);
+    expect(cameraFootprint({ x: -24, y: 11.5, z: 59 })).toBe(null);
+    expect(cameraFootprint({ x: 0, y: 58, z: 0.01 })).toBe(null);
+  });
+});
+
+describe("toWorld", () => {
+  it("la estacion se mueve con el tren: lo que esta en la huella cambia con s", () => {
+    const box = stationFootprint(1000, ZIN);
+    const w = toWorld(box, 900); // el tren esta 100 m antes de la estacion
+    expect(w.x0).toBeCloseTo(box.x0 - 900);
+    expect(inAnyBox(100, -7.2, [w])).toBe(true);
+    expect(inAnyBox(100 + 300, -7.2, [w])).toBe(false);
   });
 });

@@ -7,7 +7,7 @@ import { capMesh, sideRange } from "./caps.js";
 import { EDS } from "../physics/constants.js";
 
 export const RIGS = {
-  orbit: { pos: [-24, 11.5, 59], target: [0, 6.9, 0], fov: 40, body: "solid" },
+  orbit: { pos: [-24, 11.5, 59], target: [0, 6.9, 0], fov: 40, body: "solid", fit: { y: [5.0, 9.6], fill: 0.88 } },
   chase: { pos: [-45, 9, 13.5], target: [6, 7.0, 0], fov: 50, body: "solid" },
   section: { pos: [10, 7.0, 0.01], target: [0, 6.75, 0], fov: 44, body: "cut", cut: { axis: "x", c: 0 } },
   gap: { pos: [4.2, 6.95, 0.01], target: [0, 6.85, 1.75], fov: 30, body: "cut", cut: { axis: "x", c: 0 } },

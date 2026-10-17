@@ -11,7 +11,7 @@ import { setLineResolution } from "./scene/lines.js";
 import { createLabels } from "./scene/labels.js";
 import { createStations } from "./scene/stations.js";
 import { adaptiveNear } from "./scene/depth.js";
-import { framePart, cameraIsSane } from "./scene/frame.js";
+import { framePart, cameraIsSane, fitDistance } from "./scene/frame.js";
 import { setExplode as applyExplode, pick, setHighlight, setHighlightColor, setHighlightOpacity, focusBox } from "./scene/parts.js";
 import { partById, partIds, stepPart } from "./scene/partsData.js";
 import { DIM } from "./scene/ems.js";
@@ -109,12 +109,19 @@ function magnetsVisible() {
 
 // ---- camaras con transicion ----
 const tween = { active: false, pos: new THREE.Vector3(), target: new THREE.Vector3(), fov: 50 };
-controls.addEventListener("start", () => (tween.active = false));
+controls.addEventListener("start", () => {
+  tween.active = false;
+  userMoved = true;
+});
 // Pantallas verticales: el campo horizontal es estrecho y el tren es largo. La orbita
 // pasa a un 3/4 desde la proa (el tren se aleja en profundidad en vez de cruzar la
 // pantalla) y la vista cenital gira para que la via quede vertical.
-function rigPosition(name, r) {
-  const off = new THREE.Vector3(...r.pos).sub(new THREE.Vector3(...r.target));
+// La orbita se encuadra por calculo: el tren llena el 88 % del area libre de la pantalla,
+// centrado en ella, sea cual sea el tamano de la ventana y los paneles abiertos.
+const NOSE_LEN = 6.5; // largo de la nariz de las secciones de cabeza y cola (ems.js, edsGeo.js)
+function rigPose(name, r) {
+  const target = new THREE.Vector3(...r.target);
+  const off = new THREE.Vector3(...r.pos).sub(target);
   if (camera.aspect < 0.9 && name === "orbit") {
     const d = Math.hypot(off.x, off.z) * 2.0;
     const a = THREE.MathUtils.degToRad(42);
@@ -122,13 +129,34 @@ function rigPosition(name, r) {
   } else if (camera.aspect < 0.9 && name === "top") {
     off.set(0.05, off.y * 1.2, 0);
   }
-  return off.add(new THREE.Vector3(...r.target));
+  if (name === "orbit" && r.fit) {
+    const half = train.length / 2 + NOSE_LEN;
+    const dir = off.clone().normalize();
+    const free = safeFreeArea();
+    const fit = fitDistance({
+      target: target.toArray(),
+      dir: dir.toArray(),
+      fov: r.fov,
+      aspect: camera.aspect,
+      free: { fx: free.fx, fy: free.fy },
+      box: { min: [-half, r.fit.y[0], -2.4], max: [half, r.fit.y[1], 2.4] },
+      fill: r.fit.fill,
+    });
+    if (fit) {
+      target.add(new THREE.Vector3(...fit.shift));
+      return { pos: target.clone().addScaledVector(dir, fit.distance), target };
+    }
+  }
+  return { pos: off.add(target), target };
 }
+let userMoved = false;
 function setRig(name, instant = false) {
   view.rig = name;
   const r = active.rigs[name];
-  tween.target.set(...r.target);
-  tween.pos.copy(rigPosition(name, r));
+  const pose = rigPose(name, r);
+  userMoved = false;
+  tween.target.copy(pose.target);
+  tween.pos.copy(pose.pos);
   tween.fov = r.fov;
   tween.active = !instant;
   if (instant) {
@@ -437,6 +465,8 @@ function resize() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   applyFraming(true);
+  // con la orbita sin tocar, se vuelve a encuadrar el tren al cambiar la ventana
+  if (view.rig === "orbit" && !userMoved && !selected && !tween.active) setRig("orbit", true);
 }
 
 // ---- encuadre: la escena se centra en el area que dejan libre los paneles ----
@@ -457,11 +487,11 @@ function freeArea() {
     const r = open ? w - side.offsetLeft + 8 : 0;
     const t = topbar.offsetTop + topbar.offsetHeight;
     const b = h - hud.offsetTop;
-    return { x: (l - r) / 2, y: (t - b) / 2 };
+    return { x: (l - r) / 2, y: (t - b) / 2, fx: (w - l - r) / w, fy: (h - t - b) / h };
   }
   const t = cams.offsetTop + cams.offsetHeight + 4;
   const b = h - (card ? card.offsetTop : open ? side.offsetTop : hud.offsetTop);
-  return { x: 0, y: (t - b) / 2 };
+  return { x: 0, y: (t - b) / 2, fx: 1, fy: (h - t - b) / h };
 }
 // el area libre solo se usa si es un numero razonable; si no, sin desplazamiento
 function safeFreeArea() {
@@ -472,7 +502,8 @@ function safeFreeArea() {
     f = null;
   }
   const lim = Math.max(window.innerWidth, window.innerHeight);
-  return f && Number.isFinite(f.x) && Number.isFinite(f.y) && Math.abs(f.x) < lim && Math.abs(f.y) < lim ? f : { x: 0, y: 0 };
+  const good = f && [f.x, f.y, f.fx, f.fy].every(Number.isFinite) && Math.abs(f.x) < lim && Math.abs(f.y) < lim && f.fx > 0.2 && f.fx <= 1 && f.fy > 0.2 && f.fy <= 1;
+  return good ? f : { x: 0, y: 0, fx: 0.7, fy: 0.75 };
 }
 let framed = "";
 function applyFraming(instant = false) {

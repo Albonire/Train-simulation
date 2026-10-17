@@ -60,3 +60,77 @@ export function cameraIsSane(position, target, projection, maxFromOrigin = 1000)
   if (projection && !projection.every(fin)) return false;
   return Math.hypot(position.x, position.y, position.z) <= maxFromOrigin && Math.hypot(target.x, target.y, target.z) <= maxFromOrigin;
 }
+
+/**
+ * Encuadre de la camara orbital: distancia y desplazamiento del objetivo para que una caja (el
+ * tren) llene `fill` del area libre de la pantalla, CENTRADA en ella. La camara mira a `target`
+ * desde la direccion `dir` (hacia la camara, unitaria); `fov` es el vertical en grados y `aspect`
+ * el de la ventana. `free`: { fx, fy } = fraccion del ancho y del alto de la ventana que dejan
+ * libre los paneles; el objetivo se muestra en el centro de esa area (lo hace `setViewOffset`).
+ *
+ * Como el extremo cercano del tren se ve mas grande que el lejano, centrar el objetivo en el tren
+ * deja un lado casi vacio. Por eso se desplaza el objetivo (a lo largo de la derecha y la vertical
+ * de la camara) hasta que el tren queda centrado, y se busca por biseccion la distancia a la que su
+ * extension proyectada ocupa `fill`. Devuelve { distance, shift: [x, y, z] } o null.
+ */
+export function fitDistance({ target, dir, fov, aspect, free, box, fill = 0.88, min = 6, max = 420 }) {
+  const ok = [...target, ...dir, fov, aspect, free?.fx, free?.fy, fill].every(fin) && box && [...box.min, ...box.max].every(fin);
+  if (!ok || fov <= 1 || fov >= 120 || aspect <= 0 || free.fx <= 0 || free.fy <= 0) return null;
+  const len = Math.hypot(...dir);
+  if (len < 1e-6) return null;
+  const d0 = dir.map((v) => v / len);
+  // base de la camara: f hacia el objetivo, R a la derecha, U arriba
+  const f = d0.map((v) => -v);
+  let R = [-f[2], 0, f[0]];
+  const rl = Math.hypot(...R);
+  if (rl < 1e-6) R = [1, 0, 0];
+  else R = R.map((v) => v / rl);
+  const U = [R[1] * f[2] - R[2] * f[1], R[2] * f[0] - R[0] * f[2], R[0] * f[1] - R[1] * f[0]];
+  const th = Math.tan((fov * Math.PI) / 360);
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const corners = [];
+  for (const x of [box.min[0], box.max[0]]) for (const y of [box.min[1], box.max[1]]) for (const z of [box.min[2], box.max[2]]) corners.push([x - target[0], y - target[1], z - target[2]]);
+  const lat = corners.map((c) => dot(c, R));
+  const ver = corners.map((c) => dot(c, U));
+  const dep = corners.map((c) => dot(c, f));
+  // a la distancia d: extension proyectada (mitad de la anchura y del alto, en NDC) con el tren
+  // centrado, y el desplazamiento del objetivo que lo centra
+  const at = (d) => {
+    const depth = dep.map((z) => d + z);
+    if (depth.some((z) => z < 0.5)) return null;
+    const k = depth.map((z) => 1 / (z * th));
+    let dx = 0;
+    let dy = 0;
+    let hx = 0;
+    let hy = 0;
+    for (let it = 0; it < 4; it++) {
+      const xs = lat.map((v, i) => ((v - dx) * k[i]) / aspect);
+      const ys = ver.map((v, i) => (v - dy) * k[i]);
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+      hx = (x1 - x0) / 2;
+      hy = (y1 - y0) / 2;
+      // pasar el centro de la extension al centro de la pantalla: en NDC cx equivale a cx / k metros
+      const mk = k.reduce((a, v) => a + v, 0) / k.length;
+      dx += ((x0 + x1) / 2) * aspect / mk;
+      dy += ((y0 + y1) / 2) / mk;
+    }
+    return { w: Math.max(hx / (fill * free.fx), hy / (fill * free.fy)), dx, dy };
+  };
+  const done = (d) => {
+    const r = at(d);
+    return { distance: d, shift: [0, 1, 2].map((i) => R[i] * r.dx + U[i] * r.dy) };
+  };
+  const top = at(max);
+  if (!top || top.w > 1) return done(max); // no cabe ni a la maxima distancia
+  let lo = min;
+  let hi = max;
+  const near = at(lo);
+  if (near && near.w <= 1) return done(lo);
+  for (let i = 0; i < 48; i++) {
+    const mid = (lo + hi) / 2;
+    const r = at(mid);
+    if (!r || r.w > 1) lo = mid;
+    else hi = mid;
+  }
+  return done(hi);
+}
