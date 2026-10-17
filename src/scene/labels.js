@@ -18,6 +18,9 @@ export function createLabels(container) {
       items.push({ spec, el, last: "" });
     },
     update(camera, rig, enabled, w, h) {
+      // las que se solapan con una anterior (orden de alta) se ocultan: en pantallas
+      // estrechas varias piezas caen en el mismo sitio
+      const placed = [];
       for (const it of items) {
         const show = enabled && it.spec.rigs.includes(rig);
         if (!show) {
@@ -35,8 +38,15 @@ export function createLabels(container) {
           it.last = t;
         }
         it.el.style.display = "block";
-        it.el.style.left = `${((v.x + 1) / 2) * w}px`;
-        it.el.style.top = `${((1 - v.y) / 2) * h}px`;
+        if (it.size?.text !== t) it.size = { text: t, w: it.el.offsetWidth, h: it.el.offsetHeight };
+        const x = ((v.x + 1) / 2) * w;
+        const y = ((1 - v.y) / 2) * h;
+        const r = { x0: x - it.size.w / 2 - 3, x1: x + it.size.w / 2 + 3, y0: y - it.size.h - 3, y1: y + 3 };
+        const hit = placed.some((p) => r.x0 < p.x1 && r.x1 > p.x0 && r.y0 < p.y1 && r.y1 > p.y0);
+        it.el.style.visibility = hit ? "hidden" : "visible";
+        if (!hit) placed.push(r);
+        it.el.style.left = `${x}px`;
+        it.el.style.top = `${y}px`;
       }
     },
   };

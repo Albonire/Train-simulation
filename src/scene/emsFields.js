@@ -1,5 +1,5 @@
-// Capa de campos del modo EMS: lazos de flujo en el entrehierro, onda del
-// estator y flechas de fuerza.
+// Capa de campos del modo EMS: lazos de flujo con particulas que recorren el circuito
+// magnetico (estator, entrehierro, iman), onda del estator y flechas de fuerza.
 
 import * as THREE from "three";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
@@ -8,42 +8,47 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { sets } from "./glow.js";
 import { DIM } from "./ems.js";
 import { createForceArrows } from "./forceArrows.js";
+import { createEmsFlux } from "./flux.js";
 import { EMS } from "../physics/constants.js";
 
 const ARROW_RIGS = ["orbit", "chase", "top"];
 const TAU = EMS.polePitch;
+const N_COL = new THREE.Color("#ff4d3d");
+const S_COL = new THREE.Color("#2f8cff");
+const IRON = new THREE.Color("#ffe3a8");
 
 export function createEmsFields(sceneApi) {
   const mid = sceneApi.sections[Math.floor(sceneApi.sections.length / 2)];
   const midBaseX = mid.baseX;
-
-  // ---- lazos de flujo (en el marco de levGroup: y = 0 es la cara polar) ----
   const zc = (DIM.statorZ0 + DIM.statorZ1) / 2;
-  const loops = [];
-  for (const side of [-1, 1]) {
-    const c0 = Math.max(0, Math.floor((mid.modules.length - 3) / 2));
-    for (const m of mid.modules.slice(c0, c0 + 3)) {
-      for (let p = 0; p < 6; p++) {
-        const xa = m.x0 - midBaseX + (2 * p + 0.5) * TAU;
-        for (const dz of [-0.14, 0.14]) loops.push({ xa, z: side * zc + dz });
+
+  // lazos de una seccion (marco local: x respecto de la seccion, y = 0 en la cara polar)
+  const loopsOf = (sec) => {
+    const out = [];
+    for (const side of [-1, 1]) {
+      for (const m of sec.modules) {
+        for (let p = 0; p < 6; p++) {
+          const xa = m.x0 - sec.baseX + (2 * p + 0.5) * TAU;
+          for (const dz of [-0.14, 0.14]) out.push({ xa, z: side * zc + dz });
+        }
       }
     }
-  }
-  // modulos de ambos lados: mid.modules solo guarda s > 0, se repite en los dos lados arriba
+    return out;
+  };
 
+  // particulas en las tres secciones (se mueven con el entrehierro de cada una)
+  const fluxes = sceneApi.sections.map((sec) => {
+    const f = createEmsFlux(loopsOf(sec), TAU);
+    sec.levGroup.add(f.object);
+    return f;
+  });
+
+  // lazos finos y continuos en la seccion central: dan la forma, las particulas el sentido
+  const loops = loopsOf(mid).filter((_, i) => i % 2 === 0);
   const ARC = 10;
   let lastGv = -1;
   const geo = new LineSegmentsGeometry();
-  const mat = new LineMaterial({
-    color: new THREE.Color("#ff9d00"),
-    linewidth: 2.2,
-    dashed: true,
-    dashSize: 0.1,
-    gapSize: 0.09,
-    transparent: true,
-    opacity: 0.9,
-    depthTest: false,
-  });
+  const mat = new LineMaterial({ vertexColors: true, linewidth: 1.4, transparent: true, opacity: 0.55, depthTest: false });
   mat.resolution.set(window.innerWidth, window.innerHeight);
   sceneApi.clipMats.push(mat); // las lineas tambien se recortan con el plano de corte
   const lines = new LineSegments2(geo, mat);
@@ -53,45 +58,69 @@ export function createEmsFields(sceneApi) {
 
   function rebuild(gv) {
     const pos = [];
-    const seg = (a, b) => pos.push(a[0], a[1], a[2], b[0], b[1], b[2]);
+    const col = [];
+    const seg = (a, ca, b, cb) => {
+      pos.push(a[0], a[1], a[2], b[0], b[1], b[2]);
+      col.push(ca.r, ca.g, ca.b, cb.r, cb.g, cb.b);
+    };
+    const c = new THREE.Color();
     for (const { xa, z } of loops) {
       const xb = xa + TAU;
       const xm = (xa + xb) / 2;
       const r = TAU / 2;
-      const path = [[xa, 0, z], [xa, gv, z]];
+      // [punto, color]: sube por el polo N (rojo), cruza el hierro (calido), baja por el S (azul)
+      const path = [[[xa, 0, z], N_COL], [[xa, gv, z], N_COL]];
       for (let i = 1; i <= ARC; i++) {
         const f = (Math.PI * i) / ARC;
-        path.push([xm - r * Math.cos(f), gv + 0.75 * r * Math.sin(f), z]);
+        const u = i / ARC;
+        c.copy(N_COL).lerp(IRON, Math.min(1, u / 0.3)).lerp(S_COL, Math.max(0, (u - 0.7) / 0.3));
+        path.push([[xm - r * Math.cos(f), gv + 0.75 * r * Math.sin(f), z], c.clone()]);
       }
-      path.push([xb, 0, z]);
+      path.push([[xb, 0, z], S_COL]);
       for (let i = 1; i <= ARC; i++) {
         const f = (Math.PI * i) / ARC;
-        path.push([xm + r * Math.cos(f), -0.75 * r * Math.sin(f), z]);
+        path.push([[xm + r * Math.cos(f), -0.75 * r * Math.sin(f), z], S_COL.clone().lerp(IRON, 0.35)]);
       }
-      for (let i = 0; i < path.length - 1; i++) seg(path[i], path[i + 1]);
+      for (let i = 0; i < path.length - 1; i++) seg(path[i][0], path[i][1], path[i + 1][0], path[i + 1][1]);
     }
     geo.setPositions(pos);
-    lines.computeLineDistances();
+    geo.setColors(col);
   }
 
-  const arrowsApi = createForceArrows(mid.group, 1.9);
+  const arrowsApi = createForceArrows(mid.group, DIM.roof);
+  const t0 = performance.now();
 
   return {
     arrows: arrowsApi.group,
     lines,
-    update(tel, train, view) {
+    /** Intensidad relativa del campo (1 = nominal): I/I0 por g0/g. */
+    fieldLevel(train) {
       const s = train.sections[Math.floor(train.sections.length / 2)];
-      // lazos de flujo
+      return (s.I / s.I0) * (s.gap0 / s.gap);
+    },
+    update(tel, train, view, camera, h) {
+      const s = train.sections[Math.floor(train.sections.length / 2)];
       const gv = s.gap * view.exag;
       if (Math.abs(gv - lastGv) > 0.002) {
         rebuild(gv);
         lastGv = gv;
       }
       const B = Math.min(2.2, (s.I / s.I0) * (s.gap0 / s.gap));
-      lines.visible = view.layers.fields && !train.sections[0].fallen;
-      mat.opacity = Math.min(1, 0.25 + 0.55 * B);
-      mat.dashOffset -= 0.012 * (0.4 + B);
+      const show = view.layers.fields && view.magnetsVisible && !train.sections[0].fallen;
+      lines.visible = show;
+      mat.opacity = Math.min(0.8, 0.25 + 0.4 * B) * (view.boost ? 1.2 : 1);
       mat.resolution.set(window.innerWidth, window.innerHeight);
+
+      // particulas: en la vista Campo mas grandes y brillantes
+      const px = (h / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+      const t = (performance.now() - t0) / 1000;
+      train.sections.forEach((sec, i) => {
+        const f = fluxes[i];
+        f.object.visible = show;
+        if (!show) return;
+        const gap = sec.gap * view.exag;
+        f.update(t, gap, Math.min(0.7, 0.2 + 0.3 * B) * (view.boost ? 1 : 0.8), view.boost ? 0.075 : 0.05, px);
+      });
 
       arrowsApi.update(s, train, train.resistance(train.v) / train.sections.length, view.layers.forces && ARROW_RIGS.includes(view.rig));
     },
@@ -106,7 +135,7 @@ export function updateEmsGlow(tel, train, view) {
   shared.uShift.value = (tel.loadAngleDeg / 180) * TAU;
   const moving = train.v > 0.5 && train.levitated;
   const amp = moving ? Math.min(1, 0.3 + 0.9 * Math.abs(train.thrust) / Math.max(1, train.fMaxAt(0))) : 0;
-  shared.uAmp.value = view.layers.wave ? amp : 0;
+  shared.uAmp.value = view.layers.wave ? Math.min(1.4, amp * (view.boost ? 1.4 : 1)) : 0;
   shared.uRangeMin.value = -L / 2 - 28;
   shared.uRangeMax.value = L / 2 + 28;
   shared.uFade.value = 18;

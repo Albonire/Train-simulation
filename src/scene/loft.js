@@ -21,21 +21,90 @@ export function superellipse(halfW, height, n = 3, steps = 48, y0 = 0) {
  * stations: [{ x, sy, sz, dy }]  escala vertical/lateral y desplazamiento en y
  * de la seccion en cada estacion. Devuelve BufferGeometry con normales suaves.
  */
-export function loft(points, stations, { close = true } = {}) {
+/** Fraccion de perimetro acumulado de cada punto del contorno cerrado (n + 1 valores). */
+export function perimeterV(points) {
   const n = points.length;
+  const acc = [0];
+  for (let j = 0; j < n; j++) {
+    const [z0, y0] = points[j];
+    const [z1, y1] = points[(j + 1) % n];
+    acc.push(acc[j] + Math.hypot(z1 - z0, y1 - y0));
+  }
+  const total = acc[n];
+  return acc.map((a) => a / total);
+}
+
+/** Longitud (m) del contorno cerrado: escala de v. */
+export function perimeterLength(points) {
+  let t = 0;
+  for (let j = 0; j < points.length; j++) {
+    const [z0, y0] = points[j];
+    const [z1, y1] = points[(j + 1) % points.length];
+    t += Math.hypot(z1 - z0, y1 - y0);
+  }
+  return t;
+}
+
+/**
+ * v (0..1) del contorno a la altura `y` en el costado `side` (+1: z > 0, -1: z < 0).
+ * Toma el primer cruce del lado pedido; los contornos de carroceria tienen uno por costado
+ * en la zona de ventanas.
+ */
+export function vAt(points, side, y) {
+  const vs = perimeterV(points);
+  const n = points.length;
+  for (let j = 0; j < n; j++) {
+    const [z0, y0] = points[j];
+    const [z1, y1] = points[(j + 1) % n];
+    if (Math.sign(z0 + z1) !== Math.sign(side)) continue;
+    if ((y0 - y) * (y1 - y) > 0 || y0 === y1) continue;
+    const t = (y - y0) / (y1 - y0);
+    return vs[j] + t * (vs[j + 1] - vs[j]);
+  }
+  return null;
+}
+
+/** Subdivide los tramos largos del contorno (misma polilinea, mismo v). */
+function densify(points, maxSeg) {
+  const out = [];
+  const n = points.length;
+  for (let j = 0; j < n; j++) {
+    const [z0, y0] = points[j];
+    const [z1, y1] = points[(j + 1) % n];
+    const k = Math.max(1, Math.ceil(Math.hypot(z1 - z0, y1 - y0) / maxSeg));
+    for (let i = 0; i < k; i++) out.push([z0 + ((z1 - z0) * i) / k, y0 + ((y1 - y0) * i) / k]);
+  }
+  return out;
+}
+
+export function loft(rawPoints, stations, { close = true, maxSeg = 0.25 } = {}) {
+  // Los costados planos se subdividen: en la nariz cada estacion escala el contorno
+  // y un triangulo grande deformaria la textura (franja dentada).
+  const points = densify(rawPoints, maxSeg);
+  // n + 1 vertices por anillo: el ultimo repite el primero para que la textura
+  // no se envuelva (costura en el centro inferior, que no se ve).
+  const n = points.length;
+  const m = n + 1;
+  const vs = perimeterV(points);
+  const x0 = stations[0].x;
+  const x1 = stations[stations.length - 1].x;
   const pos = [];
+  const uv = [];
   const idx = [];
   for (const st of stations) {
-    for (const [z, y] of points) {
+    const u = (st.x - x0) / (x1 - x0);
+    for (let j = 0; j <= n; j++) {
+      const [z, y] = points[j % n];
       pos.push(st.x, y * st.sy + (st.dy ?? 0), z * st.sz);
+      uv.push(u, vs[j]);
     }
   }
   for (let i = 0; i < stations.length - 1; i++) {
     for (let j = 0; j < n; j++) {
-      const a = i * n + j;
-      const b = i * n + ((j + 1) % n);
-      const c = (i + 1) * n + j;
-      const d = (i + 1) * n + ((j + 1) % n);
+      const a = i * m + j;
+      const b = i * m + j + 1;
+      const c = (i + 1) * m + j;
+      const d = (i + 1) * m + j + 1;
       idx.push(a, c, b, b, c, d);
     }
   }
@@ -45,14 +114,15 @@ export function loft(points, stations, { close = true } = {}) {
       let cy = 0;
       let cz = 0;
       for (let j = 0; j < n; j++) {
-        cy += pos[(i * n + j) * 3 + 1];
-        cz += pos[(i * n + j) * 3 + 2];
+        cy += pos[(i * m + j) * 3 + 1];
+        cz += pos[(i * m + j) * 3 + 2];
       }
       const ci = pos.length / 3;
       pos.push(stations[i].x, cy / n, cz / n);
+      uv.push(i === 0 ? 0 : 1, 0.5);
       for (let j = 0; j < n; j++) {
-        const a = i * n + j;
-        const b = i * n + ((j + 1) % n);
+        const a = i * m + j;
+        const b = i * m + j + 1;
         if (flip) idx.push(ci, a, b);
         else idx.push(ci, b, a);
       }
@@ -62,6 +132,7 @@ export function loft(points, stations, { close = true } = {}) {
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx);
   g.computeVertexNormals();
   return g;

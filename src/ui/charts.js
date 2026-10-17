@@ -71,7 +71,7 @@ export function setupCanvas(canvas) {
  */
 export function drawChart(canvas, spec) {
   const { g, w, h } = setupCanvas(canvas);
-  const padL = 34, padR = 6, padT = 6, padB = 16;
+  const padL = 38, padR = 6, padT = 8, padB = 18;
   const iw = w - padL - padR;
   const ih = h - padT - padB;
   const [x0, x1] = spec.x;
@@ -79,9 +79,9 @@ export function drawChart(canvas, spec) {
   const X = (x) => padL + ((x - x0) / (x1 - x0 || 1)) * iw;
   const Y = (y) => padT + (1 - (y - y0) / (y1 - y0 || 1)) * ih;
   g.clearRect(0, 0, w, h);
-  const muted = css("--muted") || "#9db0c4";
-  const line = css("--line") || "rgba(160,190,220,.22)";
-  g.font = "10px " + (css("--mono") || "monospace");
+  const muted = css("--muted") || "#aab4bf";
+  const line = css("--line") || "#313b46";
+  g.font = "12px " + (css("--num") || "sans-serif");
   g.textBaseline = "middle";
 
   for (const b of spec.bands ?? []) {
@@ -105,8 +105,8 @@ export function drawChart(canvas, spec) {
   g.textAlign = "center";
   g.textBaseline = "alphabetic";
   const xf = spec.xFmt ?? ((q) => q.toFixed(0));
-  g.fillText(xf(x0), padL + 8, h - 3);
-  g.fillText(xf(x1), padL + iw - 10, h - 3);
+  g.fillText(xf(x0), padL + 10, h - 3);
+  g.fillText(xf(x1), padL + iw - 12, h - 3);
   if (spec.xLabel) g.fillText(spec.xLabel, padL + iw / 2, h - 3);
 
   for (const r of spec.refs ?? []) {
