@@ -7,7 +7,7 @@ import { capMesh } from "./caps.js";
 import { EMS } from "../physics/constants.js";
 
 export const RIGS = {
-  orbit: { pos: [-24, 11.5, 59], target: [0, 6.4, 0], fov: 40, body: "solid" },
+  orbit: { pos: [-24, 11.5, 59], target: [0, 6.4, 0], fov: 40, body: "solid", fit: { y: [4.5, 11.4], fill: 0.88 } },
   chase: { pos: [-45, 9, 13.5], target: [6, 7.0, 0], fov: 50, body: "solid" },
   section: { pos: [10.5, 6.9, 0.01], target: [0, 6.55, 0], fov: 44, body: "cut", cut: { axis: "x", c: 0 } },
   gap: { pos: [3.6, 6.45, 5.2], target: [0, 6.3, 1.1], fov: 34, body: "cut", cut: { axis: "z", c: 1.62 }, minExag: 24 },
