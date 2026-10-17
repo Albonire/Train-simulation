@@ -12,6 +12,10 @@
 import * as THREE from "three";
 import { glowMaterial, poleTexture, sets } from "./glow.js";
 import { loft, bodyStations } from "./loft.js";
+import { liveryTextures, paintMaterial, bellows } from "./livery.js";
+import { roofEquipment, headlamps } from "./trainParts.js";
+import { patchConcrete, taperedBox } from "./textures.js";
+import { tagPart, tagPartTree } from "./parts.js";
 import { EMS } from "../physics/constants.js";
 
 export const SEG = 25.8; // 400 ranuras de 64.5 mm: el patron no salta al reciclar tramos
@@ -39,13 +43,10 @@ export const DIM = {
 };
 
 const mat = {
-  concrete: () => new THREE.MeshStandardMaterial({ color: "#9aa1a8", roughness: 0.92, metalness: 0.0 }),
+  concrete: () => patchConcrete(new THREE.MeshStandardMaterial({ color: "#b9bfc6", roughness: 0.92, metalness: 0.0 })),
   steel: () => new THREE.MeshStandardMaterial({ color: "#3a424b", roughness: 0.5, metalness: 0.7 }),
   rail: () => new THREE.MeshStandardMaterial({ color: "#c7ced6", roughness: 0.3, metalness: 0.85 }),
   copper: () => new THREE.MeshStandardMaterial({ color: "#c8742a", roughness: 0.45, metalness: 0.8 }),
-  body: () => new THREE.MeshStandardMaterial({ color: "#eef2f6", roughness: 0.32, metalness: 0.35, side: THREE.DoubleSide }),
-  glass: () => new THREE.MeshStandardMaterial({ color: "#10202e", roughness: 0.12, metalness: 0.6 }),
-  accent: () => new THREE.MeshStandardMaterial({ color: "#16a085", roughness: 0.4, metalness: 0.3 }),
   dark: () => new THREE.MeshStandardMaterial({ color: "#14181d", roughness: 0.7, metalness: 0.3 }),
   seat: () => new THREE.MeshStandardMaterial({ color: "#2c5aa0", roughness: 0.8 }),
   floor: () => new THREE.MeshStandardMaterial({ color: "#b9c0c8", roughness: 0.9, side: THREE.DoubleSide }),
@@ -81,13 +82,17 @@ export function buildEmsSegment(shared) {
     g.add(mesh);
     return mesh;
   };
-  add(shared.pillar, shared.m.concrete, 0, DIM.pillarH / 2, 0);
-  add(shared.web, shared.m.concrete, SEG / 2, (DIM.pillarH + DIM.webTop) / 2, 0);
-  add(shared.plate, shared.m.concrete, SEG / 2, (DIM.webTop + DIM.plateTop) / 2, 0);
+  // cada malla se etiqueta con su pieza para el explorador (parts.js)
+  tagPart("ems", "pier", add(shared.pillar, shared.m.concrete, 0, DIM.pillarH / 2, 0));
+  tagPart("ems", "pier", add(shared.cap, shared.m.concrete, 0, DIM.pillarH - 0.2, 0));
+  // junta de dilatacion al inicio del tramo
+  tagPart("ems", "beam", add(shared.joint, shared.m.dark, 0.02, (DIM.webTop + DIM.plateTop) / 2, 0, false));
+  tagPart("ems", "beam", add(shared.web, shared.m.concrete, SEG / 2, (DIM.pillarH + DIM.webTop) / 2, 0));
+  tagPart("ems", "beam", add(shared.plate, shared.m.concrete, SEG / 2, (DIM.webTop + DIM.plateTop) / 2, 0));
   for (const s of [-1, 1]) {
-    add(shared.stator, shared.m.stator, SEG / 2, DIM.statorBottom + 0.125, s * (DIM.statorZ0 + DIM.statorZ1) / 2, false);
-    add(shared.rail, shared.m.rail, SEG / 2, (DIM.railY0 + DIM.railY1) / 2, s * (DIM.plateHalf + 0.03), false);
-    add(shared.tray, shared.m.dark, SEG / 2, DIM.webTop - 0.25, s * 0.52, false);
+    tagPart("ems", "stator", add(shared.stator, shared.m.stator, SEG / 2, DIM.statorBottom + 0.125, s * (DIM.statorZ0 + DIM.statorZ1) / 2, false), s);
+    tagPart("ems", "rail", add(shared.rail, shared.m.rail, SEG / 2, (DIM.railY0 + DIM.railY1) / 2, s * (DIM.plateHalf + 0.03), false), s);
+    tagPart("ems", "beam", add(shared.tray, shared.m.dark, SEG / 2, DIM.webTop - 0.25, s * 0.52, false));
   }
   return g;
 }
@@ -101,7 +106,10 @@ export function createEmsShared() {
   };
   return {
     m,
-    pillar: new THREE.BoxGeometry(1.6, DIM.pillarH, 2.0),
+    // pilar que se ensancha hacia la cabeza, con su cabezal
+    pillar: taperedBox(1.25, 1.7, 1.7, 2.5, DIM.pillarH),
+    cap: new THREE.BoxGeometry(2.1, 0.4, 2.8),
+    joint: new THREE.BoxGeometry(0.06, DIM.plateTop - DIM.webTop + 0.04, DIM.plateHalf * 2 + 0.04),
     web: new THREE.BoxGeometry(SEG, DIM.webTop - DIM.pillarH, 1.0),
     plate: new THREE.BoxGeometry(SEG, DIM.plateTop - DIM.webTop, DIM.plateHalf * 2),
     stator: new THREE.BoxGeometry(SEG, 0.25, DIM.statorZ1 - DIM.statorZ0),
@@ -138,45 +146,74 @@ export function outline() {
  * Una seccion del vehiculo. `role`: "front" | "mid" | "rear".
  * Devuelve { group, setGap(gapM, lateralM, exag), setCurrent(rel), bodyMats }.
  */
-export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shared, baseX = 0 }) {
+export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shared, baseX = 0, carNo = 1 }) {
   const group = new THREE.Group();
   const bodyMats = [];
   const clipMats = [];
 
-  const bodyM = mat.body();
+  const pts = outline();
+  const stations = bodyStations(length - 0.6, {
+    noseFront: role === "front" ? 9 : 0,
+    noseRear: role === "rear" ? 9 : 0,
+  });
+  const livery = liveryTextures({
+    points: pts,
+    x0: stations[0].x,
+    x1: stations[stations.length - 1].x,
+    len: length - 0.6,
+    role,
+    carNo,
+    style: {
+      base: "#eef2f6",
+      lower: "#9aa4ae",
+      lowerY: 0.05,
+      accent: "#16a085",
+      stripeY: [0.42, 0.66],
+      windowY: [1.58, 2.36],
+      winW: 1.05,
+      winPitch: 1.42,
+      name: "MAGLEV",
+      signY: 1.02,
+      ventY: [0.1, 0.34],
+    },
+  });
+  const bodyM = paintMaterial(livery);
   bodyMats.push(bodyM);
-  const body = new THREE.Mesh(
-    loft(outline(), bodyStations(length - 0.6, {
-      noseFront: role === "front" ? 9 : 0,
-      noseRear: role === "rear" ? 9 : 0,
-    })),
-    bodyM,
-  );
+  const body = new THREE.Mesh(loft(pts, stations), bodyM);
   body.castShadow = true;
   body.receiveShadow = true;
   group.add(body);
   clipMats.push(bodyM);
 
+  // equipos de techo
+  const roof = roofEquipment({ len: length - 0.6, role, roofY: DIM.roof });
+  group.add(roof.group);
+  for (const m of roof.mats) {
+    bodyMats.push(m);
+    clipMats.push(m);
+  }
+  // faros con luz propia (solo la cabeza del tren; se encienden con luz baja)
+  const lamps = role === "front" ? headlamps({ len: length - 0.6, noseLen: 9, y: 0.7 }) : null;
+  if (lamps) group.add(lamps.group);
+
+  // fuelle hacia la seccion siguiente (la delantera no tiene)
+  if (role !== "front") {
+    const bel = bellows(pts, length, 0.94, 0.96);
+    bodyMats.push(bel.material);
+    clipMats.push(bel.material);
+    group.add(bel);
+    tagPart("ems", "coche", bel);
+  }
+
   const Lb = length - 0.6 - (role === "mid" ? 0 : 3);
   const xc = role === "front" ? -1.5 : role === "rear" ? 1.5 : 0;
-  // ventanas y franja
-  const glassM = mat.glass();
-  const accentM = mat.accent();
-  clipMats.push(glassM, accentM);
-  for (const s of [-1, 1]) {
-    const win = new THREE.Mesh(new THREE.BoxGeometry(Lb - 3, 0.85, 0.02), glassM);
-    win.position.set(xc, 1.95, s * (DIM.halfW * 0.985 + 0.012));
-    group.add(win);
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(Lb, 0.28, 0.02), accentM);
-    stripe.position.set(xc, 0.55, s * (DIM.halfW + 0.006));
-    group.add(stripe);
-  }
 
   // interior visible en el corte: suelo y asientos
   const interior = new THREE.Group();
   const floorM = mat.floor();
   const seatM = mat.seat();
   clipMats.push(floorM, seatM);
+  bodyMats.push(floorM, seatM); // en rayos X el interior tambien se vuelve transparente
   const fl = new THREE.Mesh(new THREE.BoxGeometry(Lb, 0.08, DIM.halfW * 2 - 0.1), floorM);
   fl.position.set(xc, 0.5, 0);
   interior.add(fl);
@@ -198,6 +235,7 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
   const darkM = mat.dark();
   const poleTex = poleTexture(12);
   const poleM = new THREE.MeshStandardMaterial({
+    polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2, // la cara polar va a 2 mm del nucleo
     map: poleTex,
     emissiveMap: poleTex,
     emissive: new THREE.Color("#ffffff"),
@@ -256,6 +294,13 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
     });
   }
 
+  // piezas del explorador: el coche (carroceria, techo, fuelle, interior) y los imanes
+  tagPart("ems", "coche", body);
+  tagPartTree("ems", "coche", roof.group);
+  tagPartTree("ems", "coche", interior);
+  levGroup.children.forEach((c) => c.isMesh && tagPart("ems", "lev", c, Math.sign(c.position.z) || 1));
+  guideGroup.children.forEach((h) => h.children.forEach((c) => tagPart("ems", "guide", c, h.userData.side)));
+
   // refs
   const api = {
     group,
@@ -279,6 +324,9 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
         h.position.set(0, (DIM.railY0 + DIM.railY1) / 2 - (DIM.plateTop + DIM.floorClear), s * (DIM.plateHalf + 0.06 + gap0 * exag + 0.07));
       }
       return gv;
+    },
+    setNight(on) {
+      lamps?.setOn(on);
     },
     setCurrentRel(rel) {
       poleM.emissiveIntensity = 0.15 + 0.35 * Math.min(2, rel);

@@ -1,349 +1,427 @@
-// Interfaz: barra superior, panel de telemetria y controles, camaras, graficas y
-// ventana "Como funciona". Todo el texto visible esta en espanol.
+// Interfaz. Principios: la escena manda; lo esencial (velocidad, estado, entrehierro,
+// progreso del tramo, tiempo) vive en un cuadro de mando compacto abajo; el resto va en
+// un panel plegable con pestanas. Lo que requiere lectura (guia y laminas) son paginas
+// con su ruta, no dialogos; los atajos, un popover pequeno.
 
 import { History, drawChart } from "./charts.js";
-import { INFO_HTML } from "./info.js";
-import { EMS, EDS, G } from "../physics/constants.js";
+import { ICONS } from "./icons.js";
+import { createRouter, routeHref } from "./router.js";
+import { ResponseTracker } from "./response.js";
+import { renderGuia } from "./pages/guia.js";
+import { renderLaminas, clearLaminas } from "./pages/laminas.js";
+import { KEYS } from "./info.js";
+import { createPartCard } from "./partCard.js";
+import { EDS, G } from "../physics/constants.js";
 import { EdsSection } from "../physics/eds.js";
 import { MODES } from "../physics/train.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
-const fmt = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : "-");
+const fmt = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d).replace(".", ",") : "–");
+const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
-const STATE_TXT = {
-  reposo: "En reposo",
-  levitando: "Levitando",
-  acelerando: "Acelerando",
-  crucero: "Crucero",
-  frenando: "Frenando",
-  estacion: "En estación",
+const STATE = {
+  reposo: ["En reposo", "idle"],
+  levitando: ["Despegando", "warn"],
+  acelerando: ["Acelerando", "ok"],
+  crucero: ["Crucero", "ok"],
+  frenando: ["Frenando", "warn"],
+  estacion: ["En estación", "info"],
 };
 
-const RIG_BTNS = [
-  ["orbit", "Órbita"],
-  ["chase", "Persecución"],
-  ["section", "Sección"],
-  ["gap", "Entrehierro"],
-  ["top", "Cenital"],
+export const RIGS = [
+  ["orbit", "Órbita", "Vista general. Arrastra para girar, rueda para acercar."],
+  ["chase", "Seguir", "Cámara que acompaña al tren desde atrás."],
+  ["section", "Sección", "Corte transversal: viga, estator, imanes y entrehierro."],
+  ["gap", "Imanes", "Primer plano del entrehierro entre imán y estator."],
+  ["top", "Arriba", "Vista cenital."],
+  ["field", "Campo", "Carrocería transparente y campo magnético realzado."],
 ];
 
-// lecturas por modo: [id, etiqueta, unidad, funcion]
-const READOUTS = {
+// [id, etiqueta, unidad, valor]
+const ROWS = {
   ems: [
-    ["speed", "Velocidad", "km/h", (t) => fmt(t.speedKmh, 0)],
-    ["gap", "Entrehierro medio", "mm", (t) => fmt(t.gapMm, 2)],
     ["cur", "Corriente del imán", "A", (t) => fmt(t.current, 1)],
-    ["freq", "Frecuencia del estator", "Hz", (t) => fmt(t.frequency, 1)],
+    ["freq", "Frecuencia", "Hz", (t) => fmt(t.frequency, 1)],
     ["thr", "Empuje", "kN", (t) => fmt(t.thrust / 1e3, 0)],
-    ["ang", "Ángulo de carga", "grados", (t) => fmt(t.loadAngleDeg, 0)],
-    ["lift", "Sustentación", "kN", (t) => fmt(t.liftTotal / 1e3, 0)],
-    ["wt", "Peso", "kN", (t) => fmt(t.weight / 1e3, 0)],
+    ["ang", "Ángulo de carga", "°", (t) => fmt(t.loadAngleDeg, 0)],
+    ["lift", "Sustentación / peso", "kN", (t) => `${fmt(t.liftTotal / 1e3, 0)} / ${fmt(t.weight / 1e3, 0)}`],
     ["aero", "Arrastre aerodinámico", "kN", (t) => fmt(t.dragAero / 1e3, 1)],
     ["pow", "Potencia en red", "MW", (t) => fmt(t.gridPowerMW, 2)],
+    ["en", "Energía red / recuperada", "kWh", (t) => `${fmt(t.energyTractionKWh, 0)} / ${fmt(t.energyRegenKWh, 0)}`],
   ],
   eds: [
-    ["speed", "Velocidad", "km/h", (t) => fmt(t.speedKmh, 0)],
-    ["gap", "Elevación", "mm", (t) => fmt(t.gapMm, 1)],
-    ["cur", "Fmm del imán SC", "kA", (t) => fmt(t.current / 1e3, 0)],
     ["ind", "Corriente inducida", "%", (t) => fmt(t.induced * 100, 0)],
-    ["freq", "Frecuencia de propulsión", "Hz", (t) => fmt(t.frequency, 1)],
+    ["freq", "Frecuencia", "Hz", (t) => fmt(t.frequency, 1)],
     ["thr", "Empuje", "kN", (t) => fmt(t.thrust / 1e3, 0)],
-    ["lift", "Sustentación", "kN", (t) => fmt(t.liftTotal / 1e3, 0)],
-    ["wt", "Peso", "kN", (t) => fmt(t.weight / 1e3, 0)],
-    ["dmag", "Arrastre magnético", "kN", (t) => fmt(t.dragMag / 1e3, 0)],
-    ["aero", "Arrastre aerodinámico", "kN", (t) => fmt(t.dragAero / 1e3, 1)],
-    ["whl", "Ruedas de goma", "", (t) => (t.wheelsDown ? "extendidas" : "retraídas")],
+    ["lift", "Sustentación / peso", "kN", (t) => `${fmt(t.liftTotal / 1e3, 0)} / ${fmt(t.weight / 1e3, 0)}`],
+    ["drag", "Arrastre magnético / aire", "kN", (t) => `${fmt(t.dragMag / 1e3, 0)} / ${fmt(t.dragAero / 1e3, 0)}`],
+    ["whl", "Ruedas", "", (t) => (t.wheelsDown ? "fuera" : "recogidas")],
     ["pow", "Potencia en red", "MW", (t) => fmt(t.gridPowerMW, 2)],
+    ["en", "Energía red / recuperada", "kWh", (t) => `${fmt(t.energyTractionKWh, 0)} / ${fmt(t.energyRegenKWh, 0)}`],
   ],
 };
+
+// [id, icono, nombre, efecto en una linea, conmutable]
+const PERTURB = {
+  ems: [
+    ["load", "load", "Carga +12 %", "Más masa en la sección central. El control sube la corriente.", true],
+    ["gust", "gust", "Ráfaga", "Empuje lateral del 10 % del peso durante 0,6 s."],
+    ["kick", "kick", "Golpe", "Abre el entrehierro 2 mm de golpe."],
+    ["ctrlOff", "ctrl", "Sin control", "Corriente fija: el imán se pega o cae en menos de 0,25 s.", true],
+    ["cutPower", "power", "Sin corriente", "Corta la alimentación: cae a los patines y vuelve a levitar."],
+  ],
+  eds: [
+    ["load", "load", "Carga +12 %", "Más masa en la sección central. Baja un poco y se estabiliza.", true],
+    ["gust", "gust", "Ráfaga", "Empuje lateral del 10 % del peso. Lo devuelven las bobinas en 8."],
+    ["kick", "kick", "Golpe", "Sube el vehículo 15 mm: la sustentación cae y vuelve sola."],
+  ],
+};
+
+const LEGEND = [
+  ["var(--n)", "Polo N"],
+  ["var(--s)", "Polo S"],
+  ["#ffd23f", "Flujo"],
+  ["#35e08a", "Sustentación"],
+  ["#f2f5f8", "Peso"],
+  ["#35d0ff", "Empuje"],
+  ["#ffa43a", "Resistencia"],
+  ["#ff5fd2", "Lateral"],
+];
 
 export function createUI(h) {
   const root = document.createElement("div");
   root.id = "ui";
   root.innerHTML = `
-  <div id="topbar" class="panel">
-    <div class="title"><h1>Simulador de levitación magnética</h1><span class="sub" id="sub"></span></div>
-    <span class="spacer"></span>
-    <div class="seg" role="group" aria-label="Tecnología de levitación">
-      <button data-mode="ems" aria-pressed="true">EMS · Transrapid</button>
-      <button data-mode="eds" aria-pressed="false">EDS · SCMaglev</button>
+  <header id="topbar">
+    <a class="brand" href="${routeHref("sim")}" aria-label="Simulador maglev: ir a la simulación"><span class="logo" aria-hidden="true"><i></i><i></i></span><span>Maglev</span></a>
+    <div class="seg" role="group" aria-label="Tecnología">
+      <button data-mode="ems" aria-pressed="true" title="Suspensión electromagnética: atracción bajo la vía con control activo">EMS</button>
+      <button data-mode="eds" aria-pressed="false" title="Suspensión electrodinámica: repulsión por corrientes inducidas">EDS</button>
     </div>
-    <span class="chip" id="stateChip">En reposo</span>
-    <button class="iconbtn" id="figBtn" type="button">Láminas</button>
-    <button class="iconbtn" id="infoBtn" type="button">Cómo funciona</button>
-    <button class="iconbtn" id="themeBtn" type="button" aria-pressed="false" title="Cambiar entre tema oscuro y claro">Tema</button>
-  </div>
-
-  <aside id="side" class="panel" aria-label="Telemetría y controles">
-    <h2>Telemetría</h2>
-    <div class="grid" id="stats"></div>
-    <div class="stat wide" id="gapStat"><div class="l" id="gapLabel">Entrehierro por sección</div>
-      <div class="gauge" id="gapGauge" aria-hidden="true"><i></i><b></b><b></b><b></b></div></div>
-    <div class="grid" style="margin-top:6px">
-      <div class="stat"><div class="l">Distancia a la estación</div><div class="v" id="dist">-</div></div>
-      <div class="stat"><div class="l">Energía red / regenerada</div><div class="v" id="energy" style="font-size:14px">-</div></div>
+    <span class="mode-name" id="modeName"></span>
+    <nav class="nav" aria-label="Secciones">
+      <a href="${routeHref("sim")}" data-page="sim">${ICONS.train}<span>Simulación</span></a>
+      <a href="${routeHref("guia")}" data-page="guia" aria-label="Guía">${ICONS.book}<span>Guía</span></a>
+      <a href="${routeHref("laminas")}" data-page="laminas" aria-label="Láminas">${ICONS.cube}<span>Láminas</span></a>
+    </nav>
+    <div class="tools">
+      <button class="ib" id="keysBtn" popovertarget="keys" title="Atajos de teclado (?)" aria-label="Atajos de teclado">${ICONS.keys}</button>
+      <button class="ib" id="themeBtn" title="Tema claro u oscuro" aria-label="Cambiar tema">${ICONS.moon}</button>
+      <button class="ib" id="panelBtn" aria-pressed="true" title="Mostrar u ocultar el panel (H)" aria-label="Panel lateral">${ICONS.panel}</button>
     </div>
+  </header>
 
-    <h2>Viaje</h2>
-    <div class="row"><label for="target">Velocidad objetivo</label><input id="target" type="range" min="0" max="400" step="1" value="400"><output id="targetOut"></output></div>
-    <div class="row"><label>Escala de tiempo</label>
-      <div class="btns" id="timeBtns">
-        <button class="btn" data-ts="1" aria-pressed="false">x1</button>
-        <button class="btn" data-ts="5" aria-pressed="true">x5</button>
-        <button class="btn" data-ts="20" aria-pressed="false">x20</button>
-        <button class="btn" data-ts="60" aria-pressed="false">x60</button>
-        <button class="btn" id="pauseBtn" aria-pressed="false">Pausa</button>
-      </div></div>
-    <div class="btns">
-      <button class="btn" id="goBtn">Salir ahora</button>
-      <button class="btn" id="stopBtn" aria-pressed="false">Retener en estación</button>
-      <button class="btn" id="resetBtn">Reiniciar</button>
+  <nav id="cams" class="panel" aria-label="Cámaras">
+    ${RIGS.map(([id, label, tip], i) => `<button data-rig="${id}" aria-pressed="${id === "orbit"}" title="${tip}">${ICONS[["orbit", "chase", "section", "magnet", "top", "field"][i]]}<span>${label}</span><span class="k" aria-hidden="true">${i + 1}</span></button>`).join("")}
+    <div class="rule" role="separator"></div>
+    <button class="tool" data-tool="parts" aria-pressed="false" title="Haz clic en una pieza para acercarte y leer qué hace">${ICONS.parts}<span>Piezas</span><span class="k" aria-hidden="true">P</span></button>
+    <button class="tool" data-tool="explode" aria-pressed="false" title="Separa las piezas para verlas por dentro">${ICONS.explode}<span>Separar</span><span class="k" aria-hidden="true">E</span></button>
+  </nav>
+
+  <p id="hint" role="note"></p>
+
+  <section id="hud" class="panel" aria-label="Cuadro de mando">
+    <div class="h-speed"><output id="hSpeed">0</output><span>km/h</span></div>
+    <div class="h-state"><span class="pill" id="hState" data-k="idle" role="status">En reposo</span><span class="h-sub" id="hTarget"></span></div>
+    <div class="h-gap" title="Entrehierro de cada sección. La zona verde es la nominal.">
+      <span class="h-lbl" id="hGapLbl">Entrehierro</span>
+      <output id="hGap">–</output>
+      <div class="bar" id="hGapBar" aria-hidden="true"><i></i><b></b><b></b><b></b></div>
     </div>
-    <div class="row"><label for="spacing">Distancia entre estaciones</label><input id="spacing" type="range" min="5" max="120" step="5"><output id="spacingOut"></output></div>
-
-    <h2>Perturbaciones</h2>
-    <div class="btns" id="perturb"></div>
-    <p class="note" id="perturbNote"></p>
-
-    <h2>Visualización</h2>
-    <div class="row"><label for="exag">Exagerar entrehierro</label><input id="exag" type="range" min="1" max="24" step="1" value="8"><output id="exagOut"></output></div>
-    <div class="row"><label>Carrocería</label>
-      <div class="btns" id="bodyBtns">
-        <button class="btn" data-body="auto" aria-pressed="true">Auto</button>
-        <button class="btn" data-body="solid" aria-pressed="false">Sólida</button>
-        <button class="btn" data-body="xray" aria-pressed="false">Rayos X</button>
-        <button class="btn" data-body="cut" aria-pressed="false">Corte</button>
-      </div></div>
-    <div class="checks">
-      <label><input type="checkbox" data-layer="fields" checked> Líneas de flujo</label>
-      <label><input type="checkbox" data-layer="wave" checked> Onda del estator</label>
-      <label><input type="checkbox" data-layer="forces" checked> Fuerzas</label>
-      <label><input type="checkbox" data-layer="labels" checked> Etiquetas</label>
+    <button class="h-field" id="hField" title="Intensidad del campo magnético. Pulsa para verlo (6)">
+      <span class="h-lbl">Campo</span>
+      <output id="hFieldV">–</output>
+      <div class="bar" id="hFieldBar" aria-hidden="true"><i></i><b></b></div>
+    </button>
+    <div class="h-trip" title="Progreso hacia la próxima estación">
+      <span class="h-lbl"><span id="hFrom">E1</span><span id="hRem">–</span><span id="hTo">E2</span></span>
+      <div class="track" aria-hidden="true"><i id="hFill"></i><b id="hDot"></b></div>
     </div>
-    <div class="legend" id="legend"></div>
-    <p class="note" id="visNote"></p>
-  </aside>
-
-  <nav id="cams" class="panel" aria-label="Cámaras"></nav>
-
-  <section id="charts" aria-label="Gráficas">
-    <figure class="panel"><figcaption><span id="capA"></span><span id="valA"></span></figcaption><canvas id="chartA"></canvas></figure>
-    <figure class="panel"><figcaption><span id="capB"></span><span id="valB"></span></figcaption><canvas id="chartB"></canvas></figure>
-    <figure class="panel"><figcaption><span id="capC"></span><span id="valC"></span></figcaption><canvas id="chartC"></canvas></figure>
+    <div class="h-time">
+      <button class="ib" id="pauseBtn" aria-pressed="false" title="Pausa (Espacio)" aria-label="Pausa">${ICONS.pause}</button>
+      <div class="seg sm" id="timeBtns" role="group" aria-label="Velocidad de simulación">
+        ${[1, 5, 20, 60].map((t) => `<button data-ts="${t}" aria-pressed="${t === 5}" title="Simula ${t} s por cada segundo real">x${t}</button>`).join("")}
+      </div>
+    </div>
   </section>
+
+  <aside id="side" class="panel" aria-label="Panel">
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="data" aria-selected="true">${ICONS.data}<span>Datos</span></button>
+      <button role="tab" data-tab="ctrl" aria-selected="false">${ICONS.sliders}<span>Control</span></button>
+      <button role="tab" data-tab="view" aria-selected="false">${ICONS.view}<span>Vista</span></button>
+    </div>
+
+    <div class="tab" data-pane="data">
+      <dl class="rows" id="rows"></dl>
+      <figure class="chart"><figcaption><span id="capA"></span><span id="valA"></span></figcaption><canvas id="chartA"></canvas></figure>
+      <figure class="chart"><figcaption><span id="capB"></span><span id="valB"></span></figcaption><canvas id="chartB"></canvas></figure>
+      <figure class="chart"><figcaption><span id="capC"></span><span id="valC"></span></figcaption><canvas id="chartC"></canvas></figure>
+    </div>
+
+    <div class="tab" data-pane="ctrl" hidden>
+      <label class="field"><span>Velocidad objetivo <output id="targetOut"></output></span>
+        <input id="target" type="range" min="0" max="400" step="1" value="400"></label>
+      <div class="actions">
+        <button class="btn" id="goBtn" title="Salir de la estación ahora">${ICONS.go}<span>Salir</span></button>
+        <button class="btn" id="stopBtn" aria-pressed="false" title="Quedarse en la próxima estación">${ICONS.hold}<span>Retener</span></button>
+        <button class="btn" id="resetBtn" title="Volver al inicio">${ICONS.reset}<span>Reiniciar</span></button>
+      </div>
+      <label class="field"><span>Estaciones cada <output id="spacingOut"></output></span>
+        <input id="spacing" type="range" min="5" max="120" step="5"></label>
+      <h3>Perturbaciones</h3>
+      <div class="acts" id="perturb"></div>
+      <p class="resp" id="resp" role="status" aria-live="polite"></p>
+    </div>
+
+    <div class="tab" data-pane="view" hidden>
+      <h3>Carrocería</h3>
+      <div class="seg wide" id="bodyBtns" role="group" aria-label="Carrocería">
+        <button data-body="auto" aria-pressed="true" title="Según la cámara">Auto</button>
+        <button data-body="solid" aria-pressed="false">Sólida</button>
+        <button data-body="xray" aria-pressed="false" title="Carrocería translúcida">Rayos X</button>
+        <button data-body="cut" aria-pressed="false" title="Media carrocería cortada">Corte</button>
+      </div>
+      <h3>Entrehierro</h3>
+      <label class="field"><span>Exagerar <output id="exagOut"></output></span>
+        <input id="exag" type="range" min="1" max="24" step="1" value="8" title="El entrehierro real (10 mm) no se vería a esta escala"></label>
+      <h3>Capas</h3>
+      <div class="chips" id="layers">
+        <button data-layer="fields" aria-pressed="true" title="Líneas de flujo magnético">Flujo</button>
+        <button data-layer="wave" aria-pressed="true" title="Onda del estator: rojo N, azul S">Onda</button>
+        <button data-layer="forces" aria-pressed="true" title="Flechas de fuerza (escala de raíz cuadrada)">Fuerzas</button>
+        <button data-layer="labels" aria-pressed="true" title="Nombres de las piezas en las vistas de detalle">Nombres</button>
+      </div>
+      <h3>Colores</h3>
+      <ul class="legend">${LEGEND.map(([c, l]) => `<li><i style="background:${c}"></i>${l}</li>`).join("")}</ul>
+    </div>
+  </aside>
 
   <div id="labels"></div>
   <div id="toast" role="status" aria-live="polite"></div>
-  <div id="gallery" role="dialog" aria-modal="true" aria-label="Láminas explicativas"><div class="card">
-    <div class="gbar"><div class="seg" role="group" aria-label="Lámina" id="gTabs">
-      <button data-fig="ems-levitacion" aria-pressed="true">Fig 1 · Levitación EMS</button>
-      <button data-fig="lsm-sincrono" aria-pressed="false">Fig 2 · Motor lineal</button>
-      <button data-fig="eds-sustentacion" aria-pressed="false">Fig 3 · Levitación EDS</button></div>
-      <span class="spacer"></span><button class="iconbtn" id="gClose" type="button">Cerrar</button></div>
-    <iframe id="gFrame" title="Lámina explicativa" loading="lazy"></iframe>
-    <p class="note">Las láminas se generan con la skill anatomy y usan el mismo modelo físico que la simulación. Cada una se maneja con el cursor y el teclado.</p>
-  </div></div>
-  <div id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="card"><button class="iconbtn x" id="mClose" type="button">Cerrar</button><div id="mBody"></div></div></div>
+
+  <div id="keys" popover>
+    <h2>Atajos</h2>
+    <dl>${KEYS.map(([ks, what]) => `<dt>${ks.map((k) => `<kbd>${k}</kbd>`).join(" a ")}</dt><dd>${what}</dd>`).join("")}</dl>
+  </div>
+  <main id="page" hidden></main>
   `;
   document.body.appendChild(root);
+  const card = createPartCard(root, { onPrev: () => h.partStep(-1), onNext: () => h.partStep(1), onClose: () => h.partClose() });
 
   const els = {
-    stats: $("#stats"), sub: $("#sub"), stateChip: $("#stateChip"), dist: $("#dist"), energy: $("#energy"),
+    rows: $("#rows"), hSpeed: $("#hSpeed"), hState: $("#hState"), hTarget: $("#hTarget"), hGap: $("#hGap"),
+    hGapLbl: $("#hGapLbl"), hGapBar: $("#hGapBar"), hFrom: $("#hFrom"), hTo: $("#hTo"), hRem: $("#hRem"),
+    hFill: $("#hFill"), hDot: $("#hDot"), hFieldV: $("#hFieldV"), hFieldBar: $("#hFieldBar"),
     target: $("#target"), targetOut: $("#targetOut"), spacing: $("#spacing"), spacingOut: $("#spacingOut"),
-    exag: $("#exag"), exagOut: $("#exagOut"), perturb: $("#perturb"), perturbNote: $("#perturbNote"),
-    legend: $("#legend"), visNote: $("#visNote"), cams: $("#cams"), toast: $("#toast"), modal: $("#modal"),
-    gapGauge: $("#gapGauge"), gapLabel: $("#gapLabel"), labels: $("#labels"),
+    exag: $("#exag"), exagOut: $("#exagOut"), perturb: $("#perturb"),
+    cams: $("#cams"), toast: $("#toast"), labels: $("#labels"), side: $("#side"), resp: $("#resp"),
     cA: $("#chartA"), cB: $("#chartB"), cC: $("#chartC"),
     capA: $("#capA"), capB: $("#capB"), capC: $("#capC"), valA: $("#valA"), valB: $("#valB"), valC: $("#valC"),
   };
 
   let mode = "ems";
-  let statEls = {};
+  const tracker = new ResponseTracker();
+  let lastTrain = null;
+  let rowEls = {};
+  let tab = "data";
   const hist = new History(6000, 0.02);
-  let legTrace = { xs: [], ys: [] }; // perfil de velocidad del tramo
+  let legTrace = { xs: [], ys: [] };
   let lastLeg = -1;
 
   // ---- construccion por modo ----
   function build(modeId) {
     mode = modeId;
+    document.documentElement.dataset.mode = modeId;
+    $("#modeName").textContent = modeId === "ems" ? "Transrapid" : "SCMaglev";
     const m = MODES[modeId];
     for (const b of root.querySelectorAll("[data-mode]")) b.setAttribute("aria-pressed", String(b.dataset.mode === modeId));
-    els.sub.textContent =
-      modeId === "ems"
-        ? "Suspensión electromagnética: atracción bajo la vía, entrehierro de 10 mm con control activo"
-        : "Suspensión electrodinámica: repulsión por corrientes inducidas, elevación de unos 100 mm";
-    // lecturas
-    els.stats.innerHTML = "";
-    statEls = {};
-    for (const [id, label, unit] of READOUTS[modeId]) {
-      const d = document.createElement("div");
-      d.className = "stat";
-      d.innerHTML = `<div class="l">${label}</div><div class="v"><span data-v>-</span><small>${unit}</small></div>`;
-      els.stats.appendChild(d);
-      statEls[id] = $("[data-v]", d);
-    }
-    els.gapLabel.textContent = modeId === "ems" ? "Entrehierro por sección (zona verde: 10 mm +- 0.5)" : "Elevación de cada sección (zona verde: de ruedas a crucero)";
-    // objetivo
+    els.rows.innerHTML = ROWS[modeId].map(([id, label, unit]) => `<dt>${label}</dt><dd><span data-r="${id}">–</span><small>${unit}</small></dd>`).join("");
+    rowEls = {};
+    for (const [id] of ROWS[modeId]) rowEls[id] = $(`[data-r="${id}"]`, els.rows);
+    els.hGapLbl.textContent = modeId === "ems" ? "Entrehierro" : "Elevación";
     const vmax = Math.round(m.vMax * 3.6);
     els.target.max = String(vmax);
     els.target.value = String(vmax);
     els.spacing.value = String(Math.round(m.stationSpacing / 1000));
-    // perturbaciones
-    els.perturb.innerHTML = "";
-    const P = modeId === "ems"
-      ? [
-          ["load", "Carga +12 % (sección 2)"],
-          ["gust", "Ráfaga lateral"],
-          ["kick", "Golpe vertical +2 mm"],
-          ["ctrlOff", "Apagar el control", true],
-          ["cutPower", "Cortar la corriente"],
-        ]
-      : [
-          ["load", "Carga +12 % (sección 2)"],
-          ["gust", "Ráfaga lateral"],
-          ["kick", "Golpe vertical +15 mm"],
-        ];
-    for (const [id, label, toggle] of P) {
-      const b = document.createElement("button");
-      b.className = "btn" + (toggle ? " warn" : "");
-      b.textContent = label;
-      b.dataset.p = id;
-      if (toggle) b.setAttribute("aria-pressed", "false");
-      els.perturb.appendChild(b);
-    }
-    els.perturbNote.textContent =
-      modeId === "ems"
-        ? "El equilibrio EMS es inestable: sin control, una perturbación de 0,5 mm hace que el vehículo se pegue al riel o caiga en menos de un cuarto de segundo."
-        : "En el modelo EDS el equilibrio es estable por sí mismo: la sustentación cae al subir y aumenta al bajar, sin lazo de control.";
-    // leyenda
-    els.legend.innerHTML =
-      `<i style="background:var(--n)"></i><span>Polo norte / campo hacia afuera</span>
-       <i style="background:var(--s)"></i><span>Polo sur / campo hacia adentro</span>
-       <i style="background:#ff9d00"></i><span>Líneas de flujo (el sentido es el del movimiento de los trazos)</span>
-       <i style="background:#35e08a"></i><span>Sustentación</span><i style="background:#f2f5f8"></i><span>Peso</span>
-       <i style="background:#35d0ff"></i><span>Empuje</span><i style="background:#ffa43a"></i><span>Resistencia</span>
-       <i style="background:#ff5fd2"></i><span>Fuerza lateral</span>`;
-    els.visNote.textContent =
-      "Escalas: el entrehierro se exagera (lo indica el control de arriba), las flechas usan escala de raíz cuadrada y la onda del estator se dibuja en el marco del vehículo (el motor es síncrono: la onda viaja a la velocidad del tren).";
-    // camaras
-    els.cams.innerHTML = "";
-    for (const [id, label] of RIG_BTNS) {
-      const b = document.createElement("button");
-      b.className = "btn";
-      b.dataset.rig = id;
-      b.textContent = label;
-      b.setAttribute("aria-pressed", String(id === "orbit"));
-      els.cams.appendChild(b);
-    }
-    // graficas
+    els.perturb.innerHTML = PERTURB[modeId]
+      .map(([id, ic, label, effect, toggle]) => `<button class="act" data-p="${id}" ${toggle ? 'aria-pressed="false"' : ""}>${ICONS[ic]}<span><b>${label}</b><small>${effect}</small></span></button>`)
+      .join("");
+    els.resp.textContent = "";
+    tracker.cancel();
+    refreshPage();
+    $("[data-layer=wave]").title = modeId === "ems" ? "Onda del estator: rojo N, azul S" : "Corrientes en las bobinas de la vía";
     if (modeId === "ems") {
-      els.capA.textContent = "Entrehierro (mm)";
+      els.capA.textContent = "Entrehierro, mm";
       els.capB.textContent = "Corrientes del estator";
-      els.capC.textContent = "Perfil de velocidad del tramo";
     } else {
-      els.capA.innerHTML = `Fuerzas (kN): <span style="color:#35e08a">sustentación</span> · <span style="color:#ffa43a">arrastre</span>`;
+      els.capA.innerHTML = `<i class="dot" style="background:#35e08a"></i>sustentación <i class="dot" style="background:#ffa43a"></i>arrastre, kN`;
       els.capB.textContent = "Corrientes de propulsión";
-      els.capC.textContent = "Perfil de velocidad del tramo";
     }
+    els.capC.textContent = "Velocidad en el tramo";
     hist.clear();
     legTrace = { xs: [], ys: [] };
     lastLeg = -1;
-    setTimeout(() => setExagText(), 0);
+    setOutputs();
   }
 
-  const setExagText = () => {
-    els.exagOut.textContent = "x" + els.exag.value;
+  function setOutputs() {
+    els.exagOut.textContent = "×" + els.exag.value;
     els.targetOut.textContent = els.target.value + " km/h";
     els.spacingOut.textContent = els.spacing.value + " km";
-  };
+  }
+
+  function selectTab(name) {
+    tab = name;
+    for (const b of root.querySelectorAll("[data-tab]")) b.setAttribute("aria-selected", String(b.dataset.tab === name));
+    for (const p of root.querySelectorAll("[data-pane]")) p.hidden = p.dataset.pane !== name;
+  }
+
+  const press = (sel, on) => sel.setAttribute("aria-pressed", String(on));
+  function setPanel(open) {
+    els.side.classList.toggle("closed", !open);
+    press($("#panelBtn"), open);
+    try { localStorage.setItem("maglev-panel", open ? "1" : "0"); } catch {}
+  }
+  function setPaused(on) {
+    const b = $("#pauseBtn");
+    press(b, on);
+    b.innerHTML = on ? ICONS.play : ICONS.pause;
+    b.title = on ? "Reanudar (Espacio)" : "Pausa (Espacio)";
+    h.setPaused(on);
+  }
+  function setTimeScale(ts) {
+    for (const x of root.querySelectorAll("[data-ts]")) press(x, Number(x.dataset.ts) === ts);
+    h.setTimeScale(ts);
+  }
 
   // ---- eventos ----
   root.addEventListener("click", (e) => {
     const b = e.target.closest("button");
     if (!b) return;
     if (b.dataset.mode) return h.setMode(b.dataset.mode);
-    if (b.dataset.rig) {
-      for (const x of els.cams.children) x.setAttribute("aria-pressed", String(x === b));
-      return h.setRig(b.dataset.rig);
-    }
-    if (b.dataset.ts) {
-      for (const x of $("#timeBtns").querySelectorAll("[data-ts]")) x.setAttribute("aria-pressed", String(x === b));
-      return h.setTimeScale(Number(b.dataset.ts));
-    }
+    if (b.dataset.rig) return h.setRig(b.dataset.rig);
+    if (b.dataset.ts) return setTimeScale(Number(b.dataset.ts));
+    if (b.dataset.tab) return selectTab(b.dataset.tab);
     if (b.dataset.body) {
-      for (const x of $("#bodyBtns").children) x.setAttribute("aria-pressed", String(x === b));
+      for (const x of $("#bodyBtns").children) press(x, x === b);
       return h.setBody(b.dataset.body);
     }
-    if (b.dataset.p) return h.perturb(b.dataset.p, b);
-    if (b.id === "pauseBtn") {
+    if (b.dataset.layer) {
       const on = b.getAttribute("aria-pressed") !== "true";
-      b.setAttribute("aria-pressed", String(on));
-      return h.setPaused(on);
+      press(b, on);
+      return h.setLayer(b.dataset.layer, on);
     }
-    if (b.id === "goBtn") return h.depart();
-    if (b.id === "stopBtn") {
-      const on = b.getAttribute("aria-pressed") !== "true";
-      b.setAttribute("aria-pressed", String(on));
-      return h.setHold(on);
+    if (b.dataset.p) return perturbClick(b);
+    if (b.dataset.tool === "parts") return h.setParts(b.getAttribute("aria-pressed") !== "true");
+    if (b.dataset.tool === "explode") return h.setExplode(b.getAttribute("aria-pressed") !== "true");
+    if (b.id === "hField") return h.setRig("field");
+    switch (b.id) {
+      case "pauseBtn": return setPaused(b.getAttribute("aria-pressed") !== "true");
+      case "goBtn": return h.depart();
+      case "stopBtn": {
+        const on = b.getAttribute("aria-pressed") !== "true";
+        press(b, on);
+        return h.setHold(on);
+      }
+      case "resetBtn": return h.reset();
+      case "themeBtn": return toggleTheme();
+      case "panelBtn": return setPanel(els.side.classList.contains("closed"));
     }
-    if (b.id === "resetBtn") return h.reset();
-    if (b.id === "infoBtn") return openInfo();
-    if (b.id === "figBtn") return openGallery();
-    if (b.id === "gClose") return closeGallery();
-    if (b.dataset.fig) return showFigure(b.dataset.fig);
-    if (b.id === "themeBtn") return toggleTheme();
-    if (b.id === "mClose") return closeInfo();
   });
   root.addEventListener("input", (e) => {
     const t = e.target;
     if (t.id === "target") h.setTarget(Number(t.value));
     if (t.id === "exag") h.setExag(Number(t.value));
     if (t.id === "spacing") h.setSpacing(Number(t.value) * 1000);
-    if (t.dataset.layer) h.setLayer(t.dataset.layer, t.checked);
-    setExagText();
+    setOutputs();
   });
-  els.modal.addEventListener("click", (e) => {
-    if (e.target === els.modal) closeInfo();
-  });
+
+  // atajos de teclado (no actuan mientras se escribe en un control)
+  const keysPop = $("#keys");
   window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") { closeInfo(); closeGallery(); }
+    if (e.key === "Escape") {
+      // un popover abierto se cierra solo; despues la tarjeta de pieza; si no, se vuelve a la simulacion
+      if (keysPop.matches?.(":popover-open")) return;
+      if (view.page === "sim" && h.partEsc()) return;
+      if (view.page !== "sim") router.go("sim");
+      return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const tag = e.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    if (e.key === "?") { keysPop.togglePopover?.(); return; }
+    if (view.page !== "sim") return;
+    const n = Number(e.key);
+    if (n >= 1 && n <= RIGS.length) { h.setRig(RIGS[n - 1][0]); return; }
+    if (e.key === " " && tag !== "BUTTON") { e.preventDefault(); setPaused($("#pauseBtn").getAttribute("aria-pressed") !== "true"); return; }
+    if (e.key === "h" || e.key === "H") return setPanel(els.side.classList.contains("closed"));
+    if (e.key === "p" || e.key === "P") return h.setParts(document.querySelector('[data-tool="parts"]').getAttribute("aria-pressed") !== "true");
+    if (e.key === "e" || e.key === "E") return h.setExplode(document.querySelector('[data-tool="explode"]').getAttribute("aria-pressed") !== "true");
+    if (document.body.dataset.parts === "on" && (e.key === "ArrowRight" || e.key === "ArrowLeft") && tag !== "BUTTON") {
+      e.preventDefault();
+      return h.partStep(e.key === "ArrowRight" ? 1 : -1);
+    }
   });
-  let figName = "ems-levitacion";
+
+  // ---- paginas ----
+  const view = { page: "sim", arg: "" };
+  const pageEl = $("#page");
   const isLight = () => document.documentElement.dataset.theme === "light";
-  function showFigure(name) {
-    figName = name;
-    for (const x of $("#gTabs").children) x.setAttribute("aria-pressed", String(x.dataset.fig === name));
-    $("#gFrame").src = `figures/${name}${isLight() ? "-light" : ""}.html`;
+  function renderPage() {
+    if (view.page === "guia") {
+      renderGuia(pageEl, { mode, arg: view.arg, setMode: (m) => h.setMode(m) });
+    } else if (view.page === "laminas") {
+      renderLaminas(pageEl, { arg: view.arg, theme: isLight() ? "light" : "dark", mode });
+    }
   }
-  function openGallery() {
-    showFigure(mode === "eds" ? "eds-sustentacion" : figName);
-    $("#gallery").classList.add("open");
-    $("#gClose").focus();
+  function refreshPage() {
+    if (view.page !== "sim") renderPage();
   }
-  function closeGallery() {
-    $("#gallery").classList.remove("open");
-    $("#gFrame").src = "about:blank";
+  function showPage({ page, arg }) {
+    const prev = view.page;
+    const same = prev === page;
+    view.page = page;
+    view.arg = arg;
+    document.body.dataset.view = page;
+    keysPop.hidePopover?.();
+    if (page !== "sim") h.partClose();
+    for (const a of root.querySelectorAll("[data-page]")) {
+      if (a.dataset.page === page) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    }
+    if (page === "sim") {
+      if (prev === "laminas") clearLaminas(pageEl);
+      pageEl.hidden = true;
+      pageEl.innerHTML = "";
+      pageEl.onscroll = null;
+      return;
+    }
+    pageEl.hidden = false;
+    // misma pagina y solo cambia la seccion: no se vuelve a construir
+    if (same && page === "guia" && pageEl.firstChild) {
+      const t = arg && pageEl.querySelector(`#sec-${CSS.escape(arg)}`);
+      if (t) t.scrollIntoView({ block: "start" });
+      else pageEl.scrollTop = 0;
+      return;
+    }
+    if (prev === "laminas") clearLaminas(pageEl);
+    renderPage();
+    if (page === "guia") $("#guiaTitulo")?.focus({ preventScroll: true });
+  }
+  const router = createRouter(showPage);
+
+  // ---- tema ----
+  function applyTheme(t) {
+    document.documentElement.dataset.theme = t;
+    $("#themeBtn").innerHTML = t === "light" ? ICONS.moon : ICONS.sun;
+    h.setTheme?.(t);
   }
   function toggleTheme() {
     const next = isLight() ? "dark" : "light";
-    document.documentElement.dataset.theme = next;
-    $("#themeBtn").setAttribute("aria-pressed", String(next === "light"));
+    applyTheme(next);
     try { localStorage.setItem("maglev-theme", next); } catch {}
-    if ($("#gallery").classList.contains("open")) showFigure(figName);
-  }
-  try {
-    const saved = localStorage.getItem("maglev-theme");
-    const pref = saved ?? (window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark");
-    document.documentElement.dataset.theme = pref;
-    $("#themeBtn").setAttribute("aria-pressed", String(pref === "light"));
-  } catch {}
-  function openInfo() {
-    $("#mBody").innerHTML = INFO_HTML(mode);
-    els.modal.classList.add("open");
-    $("#mClose").focus();
-  }
-  function closeInfo() {
-    els.modal.classList.remove("open");
+    if (view.page === "laminas") renderPage();
   }
 
   let toastTimer = 0;
@@ -351,29 +429,82 @@ export function createUI(h) {
     els.toast.textContent = msg;
     els.toast.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => els.toast.classList.remove("show"), 3200);
+    toastTimer = setTimeout(() => els.toast.classList.remove("show"), 2600);
   }
+
+  // ---- perturbaciones: el efecto se mide y se muestra en el panel ----
+  function perturbClick(b) {
+    const d = h.perturb(b.dataset.p, b);
+    if (!d) {
+      tracker.cancel();
+      els.resp.textContent = "";
+      return;
+    }
+    activeResp = d;
+    els.resp.textContent = "Midiendo la respuesta...";
+    selectTab("ctrl");
+    tracker.start({ label: d.label, ref: d.ref, tol: d.tol, t: lastTrain ? lastTrain.time : 0, maxTime: d.maxTime });
+    // la perturbacion ya esta aplicada: este primer valor recoge el desvio instantaneo
+    if (lastTrain) pushResponse(lastTrain);
+  }
+  function pushResponse(train) {
+    if (!tracker.active) return;
+    const r = tracker.push(train.time, activeResp.get(train));
+    if (r) showResponse(r, activeResp);
+  }
+  /** Se llama tras cada paso de simulacion (cada 20 ms de tiempo simulado, a cualquier escala). */
+  function sample(train) {
+    lastTrain = train;
+    pushResponse(train);
+  }
+  function showResponse(r, d) {
+    const peak = `${fmt(r.peak, d.digits ?? 1)} ${d.unit}`;
+    els.resp.textContent = r.settled
+      ? `${r.label}: desvío máximo ${peak}, vuelve a su valor en ${fmt(r.settle, 2)} s.`
+      : `${r.label}: desvío máximo ${peak}, no vuelve a su valor en ${d.maxTime} s.`;
+  }
+  let activeResp = null;
+
+  // ---- pista de primera visita ----
+  (function hint() {
+    const el = $("#hint");
+    let seen = false;
+    try { seen = localStorage.getItem("maglev-hint") === "1"; } catch {}
+    if (seen) return el.remove();
+    const coarse = window.matchMedia?.("(pointer: coarse)").matches;
+    el.textContent = coarse
+      ? "Arrastra para girar, pellizca para acercar, doble toque para recentrar"
+      : "Arrastra para girar, rueda para acercar, doble clic para recentrar, 1 a 5 cambian de cámara";
+    const done = () => {
+      clearTimeout(timer);
+      el.classList.add("gone");
+      setTimeout(() => el.remove(), 500);
+      try { localStorage.setItem("maglev-hint", "1"); } catch {}
+      window.removeEventListener("pointerdown", done);
+      window.removeEventListener("keydown", done);
+      window.removeEventListener("wheel", done);
+    };
+    const timer = setTimeout(done, 14000);
+    window.addEventListener("pointerdown", done);
+    window.addEventListener("keydown", done);
+    window.addEventListener("wheel", done, { passive: true });
+  })();
 
   // ---- actualizacion por cuadro ----
   let lastText = 0;
   const edsRef = new EdsSection();
-  function update(tel, train, view, ctrl) {
-    // historial en tiempo de simulacion
-    const vals = {
-      speed: tel.speedKmh,
-      thrust: tel.thrust / 1e3,
-      u: tel.phases[0], v: tel.phases[1], w: tel.phases[2],
-    };
+  function update(tel, train, simView) {
+    lastTrain = train;
+    const vals = { speed: tel.speedKmh };
     train.sections.forEach((s, i) => (vals["g" + i] = s.gapMm));
     hist.push(tel.time, vals);
 
-    // perfil del tramo
     const leg = Math.round(tel.nextStation / train.stationSpacing);
     if (leg !== lastLeg) {
       lastLeg = leg;
       legTrace = { xs: [], ys: [] };
     }
-    const prevX = leg * train.stationSpacing - train.stationSpacing;
+    const prevX = (leg - 1) * train.stationSpacing;
     const dx = (tel.x - prevX) / 1000;
     const lastPoint = legTrace.xs[legTrace.xs.length - 1];
     if (lastPoint === undefined || dx - lastPoint > train.stationSpacing / 1000 / 400) {
@@ -382,46 +513,64 @@ export function createUI(h) {
     }
 
     const now = performance.now();
-    if (now - lastText > 90) {
+    if (now - lastText > 80) {
       lastText = now;
-      for (const [id, , , f] of READOUTS[mode]) statEls[id].textContent = f(tel);
-      els.stateChip.innerHTML = `<b>${STATE_TXT[tel.state] ?? tel.state}</b>${tel.levitated && tel.speed > 0.5 ? " · levitando" : ""}`;
-      els.dist.innerHTML = `<span>${fmt(Math.max(0, tel.remaining) / 1000, 2)}</span><small>km</small>`;
-      els.energy.textContent = `${fmt(tel.energyTractionKWh, 0)} / ${fmt(tel.energyRegenKWh, 0)} kWh`;
-      // medidor de entrehierro
-      const g = els.gapGauge;
-      const range = mode === "ems" ? [0, 22] : [70, 105];
+      // cuadro de mando
+      els.hSpeed.textContent = fmt(tel.speedKmh, 0);
+      let [label, kind] = STATE[tel.state] ?? [tel.state, "idle"];
+      if (tel.state === "levitando" && mode === "eds") label = "Preparado";
+      if (train.sections.some((s) => s.fallen)) [label, kind] = ["Sobre patines", "bad"];
+      if (train.sections.some((s) => s.contact)) [label, kind] = ["Pegado al riel", "bad"];
+      els.hState.textContent = label;
+      els.hState.dataset.k = kind;
+      els.hTarget.textContent = train.hold ? "retenido" : `objetivo ${Math.round(train.targetSpeed * 3.6)} km/h`;
+      els.hGap.textContent = fmt(tel.gapMm, mode === "ems" ? 1 : 0) + " mm";
+      const range = mode === "ems" ? [0, 22] : [80, 102];
       const pos = (v) => `${(Math.min(1, Math.max(0, (v - range[0]) / (range[1] - range[0]))) * 100).toFixed(1)}%`;
-      const zone = g.children[0];
-      if (mode === "ems") {
-        zone.style.left = pos(9.5);
-        zone.style.width = `calc(${pos(10.5)} - ${pos(9.5)})`;
-      } else {
-        zone.style.left = pos(EDS.gapWheels * 1000);
-        zone.style.width = `calc(${pos(EDS.gapCruise * 1000)} - ${pos(EDS.gapWheels * 1000)})`;
-      }
+      const bar = els.hGapBar;
+      const [z0, z1] = mode === "ems" ? [9.5, 10.5] : [EDS.gapWheels * 1000 + 8, EDS.gapCruise * 1000];
+      bar.children[0].style.left = pos(z0);
+      bar.children[0].style.width = `calc(${pos(z1)} - ${pos(z0)})`;
       train.sections.forEach((s, i) => {
-        if (g.children[i + 1]) g.children[i + 1].style.left = pos(s.gapMm);
+        if (bar.children[i + 1]) bar.children[i + 1].style.left = pos(s.gapMm);
       });
+      // indicador de campo: EMS I/g relativo al nominal (zona 95 a 105 %), EDS corriente inducida
+      const lvl = simView.fieldLevel ?? 0;
+      els.hFieldV.textContent = `${fmt(lvl * 100, 0)} %`;
+      const fr = mode === "ems" ? [0, 2] : [0, 1];
+      const fp = (v) => `${(Math.min(1, Math.max(0, (v - fr[0]) / (fr[1] - fr[0]))) * 100).toFixed(1)}%`;
+      const fb = els.hFieldBar;
+      fb.children[0].style.left = "0";
+      fb.children[0].style.width = fp(lvl);
+      fb.children[1].style.left = mode === "ems" ? fp(1) : fp(lvl);
+      const frac = Math.min(1, Math.max(0, 1 - tel.remaining / train.stationSpacing));
+      els.hFill.style.width = `${(frac * 100).toFixed(1)}%`;
+      els.hDot.style.left = `${(frac * 100).toFixed(1)}%`;
+      els.hFrom.textContent = `E${leg}`;
+      els.hTo.textContent = `E${leg + 1}`;
+      els.hRem.textContent = `${fmt(Math.max(0, tel.remaining) / 1000, tel.remaining < 10e3 ? 1 : 0)} km`;
+      // panel de datos (solo si esta visible)
+      if (tab === "data" && !els.side.classList.contains("closed")) {
+        for (const [id, , , f] of ROWS[mode]) rowEls[id].textContent = f(tel);
+      }
     }
-    drawCharts(tel, train, view);
+    if (tab === "data" && !els.side.classList.contains("closed")) drawCharts(tel, train, simView);
   }
 
-  function drawCharts(tel, train, view) {
-    const W = Math.min(120, Math.max(10, 10 * view.timeScale));
-    const idx = hist.range(W);
+  function drawCharts(tel, train, simView) {
+    const W = Math.min(120, Math.max(10, 10 * simView.timeScale));
+    const idx = hist.range(W, 240);
     const tEnd = idx.length ? hist.t[idx[idx.length - 1]] : 0;
     const xs = idx.map((i) => hist.t[i] - tEnd);
-    const colors = ["#5ec8ff", "#ffb454", "#8be28b"];
-    // --- A ---
+    const colors = [cssVar("--series-1"), cssVar("--series-2"), cssVar("--series-3")];
     if (mode === "ems") {
       const series = train.sections.map((_, k) => ({ xs, ys: idx.map((i) => hist.cols["g" + k][i]), color: colors[k % 3] }));
       drawChart(els.cA, {
-        x: [-W, 0], y: [0, 22], series, xFmt: (v) => v.toFixed(0) + " s",
-        bands: [{ y0: 9.5, y1: 10.5, color: "rgba(74,222,128,0.18)" }],
-        refs: [{ y: 20, color: "#f87171", label: "patin" }, { y: 3, color: "#f87171", label: "contacto" }],
+        x: [-W, 0], y: [0, 22], series, xFmt: (v) => v.toFixed(0) + " s", yFmt: (v) => v.toFixed(0),
+        bands: [{ y0: 9.5, y1: 10.5, color: "rgba(92,207,138,0.22)" }],
+        refs: [{ y: 20, color: cssVar("--bad") }, { y: 3, color: cssVar("--bad") }],
       });
-      els.valA.textContent = `ventana ${W.toFixed(0)} s`;
+      els.valA.textContent = `${W.toFixed(0)} s`;
     } else {
       const vmaxK = Math.round(EDS.recordSpeed * 3.6);
       const n = 60;
@@ -437,50 +586,55 @@ export function createUI(h) {
       drawChart(els.cA, {
         x: [0, vmaxK], y: [0, Math.ceil((W0 * 1.1) / 1e5) * 100],
         series: [{ xs: kx, ys: lift, color: "#35e08a" }, { xs: kx, ys: drag, color: "#ffa43a" }],
-        refs: [{ y: W0 / 1e3, color: "#f2f5f8", label: "peso" }],
+        refs: [{ y: W0 / 1e3, color: cssVar("--muted"), label: "peso" }],
         marker: { x: tel.speedKmh, y: tel.liftTotal / 1e3, color: "#35e08a" },
-        xFmt: (v) => v.toFixed(0), xLabel: "km/h",
+        xFmt: (v) => v.toFixed(0) + " km/h", yFmt: (v) => v.toFixed(0),
       });
       els.valA.textContent = "";
     }
-    // --- B: trifasica (3 ciclos a la frecuencia real) ---
-    {
-      const f = tel.frequency;
-      const N = 120;
-      const xs2 = [], u = [], v = [], w = [];
-      const TWO = Math.PI * 2;
-      const amp = Math.min(1, 0.3 + 0.9 * Math.abs(train.thrust) / Math.max(1, train.fMaxAt(0)));
-      for (let i = 0; i <= N; i++) {
-        const ph = (i / N) * 3 * TWO;
-        xs2.push(i / N * 3);
-        u.push(amp * Math.sin(ph - tel.theta));
-        v.push(amp * Math.sin(ph - tel.theta - TWO / 3));
-        w.push(amp * Math.sin(ph - tel.theta + TWO / 3));
-      }
-      drawChart(els.cB, {
-        x: [0, 3], y: [-1.1, 1.1],
-        series: f > 0.3 && train.v > 0.5
-          ? [{ xs: xs2, ys: u, color: "#ffb000" }, { xs: xs2, ys: v, color: "#19c37d" }, { xs: xs2, ys: w, color: "#b45cff" }]
-          : [],
-        xFmt: (q) => q.toFixed(0), xLabel: "ciclos",
-        refs: [{ y: 0, color: "rgba(160,190,220,.4)", dash: [] }],
-      });
-      els.valB.textContent = f > 0.3 ? `${fmt(f, 1)} Hz` : "sin movimiento";
+    // trifasica: tres ciclos a la frecuencia real
+    const f = tel.frequency;
+    const N = 120;
+    const xs2 = [], u = [], v = [], w = [];
+    const TWO = Math.PI * 2;
+    const amp = Math.min(1, 0.3 + 0.9 * Math.abs(train.thrust) / Math.max(1, train.fMaxAt(0)));
+    for (let i = 0; i <= N; i++) {
+      const ph = (i / N) * 3 * TWO;
+      xs2.push((i / N) * 3);
+      u.push(amp * Math.sin(ph - tel.theta));
+      v.push(amp * Math.sin(ph - tel.theta - TWO / 3));
+      w.push(amp * Math.sin(ph - tel.theta + TWO / 3));
     }
-    // --- C: perfil del tramo ---
+    const moving = f > 0.3 && train.v > 0.5;
+    drawChart(els.cB, {
+      x: [0, 3], y: [-1.1, 1.1],
+      series: moving ? [{ xs: xs2, ys: u, color: "#ffb000" }, { xs: xs2, ys: v, color: "#19c37d" }, { xs: xs2, ys: w, color: "#b45cff" }] : [],
+      xFmt: () => "", yFmt: () => "",
+      refs: [{ y: 0, color: cssVar("--line-strong"), dash: [] }],
+    });
+    els.valB.textContent = moving ? `${fmt(f, 0)} Hz` : "detenido";
     drawChart(els.cC, {
       x: [0, train.stationSpacing / 1000],
-      y: [0, Math.ceil(MODES[mode].vMax * 3.6 / 100) * 100],
-      series: [{ xs: legTrace.xs, ys: legTrace.ys, color: "#5ec8ff", width: 1.8 }],
-      marker: legTrace.xs.length ? { x: legTrace.xs[legTrace.xs.length - 1], y: tel.speedKmh, color: "#fff" } : null,
-      xFmt: (v) => v.toFixed(0), xLabel: "km", yFmt: (v) => v.toFixed(0),
+      y: [0, Math.ceil((MODES[mode].vMax * 3.6) / 100) * 100],
+      series: [{ xs: legTrace.xs, ys: legTrace.ys, color: cssVar("--accent"), width: 2 }],
+      marker: legTrace.xs.length ? { x: legTrace.xs[legTrace.xs.length - 1], y: tel.speedKmh, color: cssVar("--text") } : null,
+      xFmt: (q) => q.toFixed(0) + " km", yFmt: (q) => q.toFixed(0),
     });
-    els.valC.textContent = `${fmt(tel.speedKmh, 0)} km/h`;
+    els.valC.textContent = "";
   }
 
-  // arranque
+  // ---- arranque ----
   build("ems");
-  setExagText();
+  try {
+    const saved = localStorage.getItem("maglev-theme");
+    applyTheme(saved ?? (window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark"));
+    const panel = localStorage.getItem("maglev-panel");
+    setPanel(panel === null ? window.innerWidth > 900 : panel === "1");
+  } catch {
+    applyTheme("dark");
+  }
 
-  return { root, els, build, update, toast, setExagText, hist };
+  document.body.dataset.view = "sim";
+  router.start();
+  return { root, els, card, build, update, sample, toast, hist, setTimeScale, setPaused, setOutputs, router, view };
 }

@@ -13,6 +13,10 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { glowMaterial, poleTexture, sets } from "./glow.js";
 import { superellipse, loft, bodyStations } from "./loft.js";
+import { liveryTextures, paintMaterial, bellows } from "./livery.js";
+import { roofEquipment, headlamps } from "./trainParts.js";
+import { patchConcrete, taperedBox } from "./textures.js";
+import { tagPart, tagPartTree } from "./parts.js";
 import { EDS } from "../physics/constants.js";
 
 export const SEG = 27.0; // 30 bobinas de 0.9 m
@@ -39,12 +43,9 @@ export const D = {
 };
 
 const m = {
-  concrete: () => new THREE.MeshStandardMaterial({ color: "#a3a9b0", roughness: 0.92 }),
+  concrete: () => patchConcrete(new THREE.MeshStandardMaterial({ color: "#b9bfc6", roughness: 0.92 })),
   dark: () => new THREE.MeshStandardMaterial({ color: "#1c2128", roughness: 0.7, metalness: 0.3 }),
   steel: () => new THREE.MeshStandardMaterial({ color: "#3b434d", roughness: 0.5, metalness: 0.7 }),
-  body: () => new THREE.MeshStandardMaterial({ color: "#f3f6f9", roughness: 0.3, metalness: 0.3, side: THREE.DoubleSide }),
-  glass: () => new THREE.MeshStandardMaterial({ color: "#10202e", roughness: 0.12, metalness: 0.6 }),
-  accent: () => new THREE.MeshStandardMaterial({ color: "#1d4ed8", roughness: 0.4, metalness: 0.3 }),
   seat: () => new THREE.MeshStandardMaterial({ color: "#7a2c4a", roughness: 0.8 }),
   floor: () => new THREE.MeshStandardMaterial({ color: "#b9c0c8", roughness: 0.9, side: THREE.DoubleSide }),
   tire: () => new THREE.MeshStandardMaterial({ color: "#16191d", roughness: 0.95 }),
@@ -89,11 +90,19 @@ export function createEdsShared() {
   const alu = { color: "#9fb4c8", roughness: 0.4, metalness: 0.85 };
   const mats = {
     concrete: m.concrete(),
+    dark: m.dark(),
     levUp: glowMaterial(copper, sets.induced, { sign: 1, gain: 1.1 }),
     levDown: glowMaterial(copper, sets.induced, { sign: -1, gain: 1.1 }),
     prop: glowMaterial(alu, sets.propulsion, { sign: 1, gain: 1.3 }),
   };
-  const geos = { pillar: new THREE.BoxGeometry(1.8, D.pillarH, 2.6), slab: new THREE.BoxGeometry(SEG, 0.6, 4.7), wall: new THREE.BoxGeometry(SEG, D.wallTop - D.slabTop, 0.4) };
+  const wallH = D.wallTop - D.slabTop;
+  const geos = {
+    pillar: taperedBox(1.4, 2.1, 1.9, 3.0, D.pillarH),
+    cap: new THREE.BoxGeometry(2.4, 0.36, 3.5),
+    jointSlab: new THREE.BoxGeometry(0.06, 0.03, D.wallInner * 2),
+    jointWall: new THREE.BoxGeometry(0.06, wallH, D.wallOuter - D.wallInner + 0.02),
+    slab: new THREE.BoxGeometry(SEG, 0.6, 4.7), wall: new THREE.BoxGeometry(SEG, wallH, 0.4),
+  };
   for (const s of [-1, 1]) {
     geos["levUp" + s] = coilStrip(s, D.levY + 0.285, 0.55);
     geos["levDown" + s] = coilStrip(s, D.levY - 0.285, 0.55);
@@ -110,14 +119,20 @@ export function buildEdsSegment(sh) {
     mesh.castShadow = cast;
     mesh.receiveShadow = true;
     grp.add(mesh);
+    return mesh;
   };
-  add(sh.g.pillar, sh.m.concrete, 0, D.pillarH / 2, 0);
-  add(sh.g.slab, sh.m.concrete, SEG / 2, D.slabTop - 0.3, 0);
+  // cada malla se etiqueta con su pieza para el explorador (parts.js)
+  tagPart("eds", "pier", add(sh.g.pillar, sh.m.concrete, 0, D.pillarH / 2, 0));
+  tagPart("eds", "pier", add(sh.g.cap, sh.m.concrete, 0, D.pillarH - 0.18, 0));
+  // juntas de dilatacion al inicio del tramo: en el suelo de la U y en las paredes
+  tagPart("eds", "pier", add(sh.g.jointSlab, sh.m.dark, 0.02, D.slabTop + 0.01, 0, false));
+  tagPart("eds", "pier", add(sh.g.slab, sh.m.concrete, SEG / 2, D.slabTop - 0.3, 0));
   for (const s of [-1, 1]) {
-    add(sh.g.wall, sh.m.concrete, SEG / 2, (D.wallTop + D.slabTop) / 2, s * (D.wallInner + D.wallOuter) / 2);
-    add(sh.g["levUp" + s], sh.m.levUp, 0, 0, 0, false);
-    add(sh.g["levDown" + s], sh.m.levDown, 0, 0, 0, false);
-    add(sh.g["prop" + s], sh.m.prop, 0, 0, 0, false);
+    tagPart("eds", "wall", add(sh.g.wall, sh.m.concrete, SEG / 2, (D.wallTop + D.slabTop) / 2, s * (D.wallInner + D.wallOuter) / 2), s);
+    tagPart("eds", "wall", add(sh.g.jointWall, sh.m.dark, 0.02, (D.wallTop + D.slabTop) / 2, s * (D.wallInner + D.wallOuter) / 2, false), s);
+    tagPart("eds", "lev8", add(sh.g["levUp" + s], sh.m.levUp, 0, 0, 0, false), s);
+    tagPart("eds", "lev8", add(sh.g["levDown" + s], sh.m.levDown, 0, 0, 0, false), s);
+    tagPart("eds", "prop", add(sh.g["prop" + s], sh.m.prop, 0, 0, 0, false), s);
   }
   return grp;
 }
@@ -125,41 +140,68 @@ export function buildEdsSegment(sh) {
 // ---------------------------------------------------------------- vehiculo
 
 export function edsOutline() {
-  return superellipse(D.halfW, D.height, 4, 48, 0);
+  // empieza en el centro inferior: ahi queda la costura de la textura (loft.js)
+  const pts = superellipse(D.halfW, D.height, 4, 48, 0);
+  return [...pts.slice(36), ...pts.slice(0, 36)];
 }
 
-export function buildEdsSection({ length = EDS.sectionLength, role = "mid", baseX = 0 }) {
+export function buildEdsSection({ length = EDS.sectionLength, role = "mid", baseX = 0, carNo = 1 }) {
   const group = new THREE.Group();
   const clipMats = [];
   const bodyMats = [];
-  const bodyM = m.body();
+  const pts = edsOutline();
+  const stations = bodyStations(length - 0.6, { noseFront: role === "front" ? 9 : 0, noseRear: role === "rear" ? 9 : 0, noseDrop: 0.4 });
+  const livery = liveryTextures({
+    points: pts,
+    x0: stations[0].x,
+    x1: stations[stations.length - 1].x,
+    len: length - 0.6,
+    role,
+    carNo,
+    style: {
+      base: "#f3f6f9",
+      lower: "#c9d0d7",
+      lowerY: 0.3,
+      accent: "#1d4ed8",
+      stripeY: [1.4, 1.56], // bajo las ventanas: lo de abajo queda tras las paredes de la via
+      windowY: [1.68, 2.42],
+      winW: 0.9,
+      winPitch: 1.25,
+      name: "MAGLEV",
+      signY: 0.95,
+      ventY: [0.7, 1.12],
+    },
+  });
+  const bodyM = paintMaterial(livery);
   bodyMats.push(bodyM);
   clipMats.push(bodyM);
-  const body = new THREE.Mesh(
-    loft(edsOutline(), bodyStations(length - 0.6, { noseFront: role === "front" ? 9 : 0, noseRear: role === "rear" ? 9 : 0, noseDrop: 0.4 })),
-    bodyM,
-  );
+  const body = new THREE.Mesh(loft(pts, stations), bodyM);
   body.castShadow = true;
   body.receiveShadow = true;
   group.add(body);
+  const roof = roofEquipment({ len: length - 0.6, role, roofY: D.height });
+  group.add(roof.group);
+  for (const mm of roof.mats) {
+    bodyMats.push(mm);
+    clipMats.push(mm);
+  }
+  const lamps = role === "front" ? headlamps({ len: length - 0.6, noseLen: 9, y: 0.9 }) : null;
+  if (lamps) group.add(lamps.group);
+  if (role !== "front") {
+    const bel = bellows(pts, length, 0.92, 0.95);
+    bodyMats.push(bel.material);
+    clipMats.push(bel.material);
+    group.add(bel);
+    tagPart("eds", "coche", bel);
+  }
 
   const Lb = length - 0.6 - (role === "mid" ? 0 : 3);
   const xc = role === "front" ? -1.5 : role === "rear" ? 1.5 : 0;
-  const glassM = m.glass();
-  const accentM = m.accent();
-  clipMats.push(glassM, accentM);
-  for (const s of [-1, 1]) {
-    const win = new THREE.Mesh(new THREE.BoxGeometry(Lb - 3, 0.8, 0.02), glassM);
-    win.position.set(xc, 2.05, s * (D.halfW * 0.975 + 0.012));
-    group.add(win);
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(Lb, 0.3, 0.02), accentM);
-    stripe.position.set(xc, 0.75, s * (D.halfW + 0.006));
-    group.add(stripe);
-  }
   // interior
   const floorM = m.floor();
   const seatM = m.seat();
   clipMats.push(floorM, seatM);
+  bodyMats.push(floorM, seatM); // en rayos X el interior tambien se vuelve transparente
   const fl = new THREE.Mesh(new THREE.BoxGeometry(Lb, 0.08, D.halfW * 2 - 0.1), floorM);
   fl.position.set(xc, 0.5, 0);
   group.add(fl);
@@ -176,6 +218,7 @@ export function buildEdsSection({ length = EDS.sectionLength, role = "mid", base
   const cryoM = m.steel();
   const poleTex = poleTexture(4, { rounded: true });
   const poleM = new THREE.MeshStandardMaterial({
+    polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2, // la cara polar va a 2 mm del nucleo
     map: poleTex, emissiveMap: poleTex, emissive: new THREE.Color("#ffffff"), emissiveIntensity: 0.55, roughness: 0.5,
   });
   clipMats.push(cryoM, poleM);
@@ -199,6 +242,8 @@ export function buildEdsSection({ length = EDS.sectionLength, role = "mid", base
       face.position.set(x, yc, s * (D.cryoZ1 + 0.002));
       face.rotation.y = s > 0 ? 0 : Math.PI; // mira hacia la pared de su lado
       cryoGroup.add(box, face);
+      tagPart("eds", "cryo", box, s);
+      tagPart("eds", "cryo", face, s);
     }
   }
 
@@ -216,6 +261,8 @@ export function buildEdsSection({ length = EDS.sectionLength, role = "mid", base
       const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.34, 16), hubM);
       hub.rotation.x = Math.PI / 2;
       g.add(tire, hub);
+      tagPart("eds", "wheels", tire);
+      tagPart("eds", "wheels", hub);
       g.position.set(wx, 0.265, s * 0.85);
       g.userData.base = 0.265;
       tire.castShadow = true;
@@ -223,6 +270,12 @@ export function buildEdsSection({ length = EDS.sectionLength, role = "mid", base
       wheels.push(g);
     }
   }
+
+  // piezas del explorador: el coche (carroceria, techo, interior)
+  tagPart("eds", "coche", body);
+  tagPartTree("eds", "coche", roof.group);
+  tagPart("eds", "coche", fl);
+  group.children.forEach((c) => c.isMesh && c.geometry?.type === "BoxGeometry" && c.userData.part === undefined && tagPart("eds", "coche", c)); // asientos
 
   return {
     group, bodyMats, clipMats, modules, poleM, wheels, length,
@@ -234,6 +287,9 @@ export function buildEdsSection({ length = EDS.sectionLength, role = "mid", base
     /** retract: 0 = extendidas, 1 = retraidas */
     setWheels(retract) {
       for (const w of wheels) w.position.y = w.userData.base + 0.45 * retract;
+    },
+    setNight(on) {
+      lamps?.setOn(on);
     },
     setIntensity(k) {
       poleM.emissiveIntensity = 0.3 + 0.5 * Math.min(1.5, k);

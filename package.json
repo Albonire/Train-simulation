@@ -9,7 +9,9 @@
     "build": "vite build",
     "figures": "node scripts/build-figures.mjs",
     "predev": "node scripts/build-figures.mjs",
-    "prebuild": "node scripts/build-figures.mjs"
+    "prebuild": "node scripts/build-figures.mjs",
+    "qa:visual": "node scripts/visual-qa.mjs",
+    "qa:parts": "node scripts/parts-qa.mjs"
   },
   "repository": {
     "type": "git",
@@ -25,9 +27,13 @@
   "type": "module",
   "private": true,
   "dependencies": {
+    "@fontsource/barlow": "^5.3.0",
+    "@fontsource/barlow-semi-condensed": "^5.3.0",
     "three": "0.186.1"
   },
   "devDependencies": {
+    "playwright-core": "^1.56.1",
+    "pngjs": "^7.0.0",
     "vite": "8.3.4",
     "vitest": "5.0.5"
   },
