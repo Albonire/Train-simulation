@@ -92,6 +92,7 @@ export function createEmsFields(sceneApi) {
 
   return {
     arrows: arrowsApi.group,
+    forces: arrowsApi,
     lines,
     /** Intensidad relativa del campo (1 = nominal): I/I0 por g0/g. */
     fieldLevel(train) {
@@ -106,20 +107,23 @@ export function createEmsFields(sceneApi) {
         lastGv = gv;
       }
       const B = Math.min(2.2, (s.I / s.I0) * (s.gap0 / s.gap));
-      const show = view.layers.fields && view.magnetsVisible && !train.sections[0].fallen;
+      // sin corriente en el imán (parado sobre los patines o sin energía) no hay campo que dibujar
+      const show = view.layers.fields && view.magnetsVisible && !train.sections[0].fallen && train.sections[0].I > 0.5;
       lines.visible = show;
-      mat.opacity = Math.min(0.8, 0.25 + 0.4 * B) * (view.boost ? 1.2 : 1);
+      mat.opacity = Math.min(0.9, 0.25 + 0.4 * B) * (view.boost ? 1.2 : 1);
+      mat.linewidth = view.intro ? 3.2 : 1.4;
       mat.resolution.set(window.innerWidth, window.innerHeight);
 
       // particulas: en la vista Campo mas grandes y brillantes
-      const px = (h / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+      // los puntos se miden en pixeles del buffer, no en pixeles CSS
+      const px = ((h / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * Math.min(window.devicePixelRatio || 1, 1.5);
       const t = (performance.now() - t0) / 1000;
       train.sections.forEach((sec, i) => {
         const f = fluxes[i];
         f.object.visible = show;
         if (!show) return;
         const gap = sec.gap * view.exag;
-        f.update(t, gap, Math.min(0.7, 0.2 + 0.3 * B) * (view.boost ? 1 : 0.8), view.boost ? 0.075 : 0.05, px);
+        f.update(t, gap, Math.min(0.85, 0.2 + 0.3 * B) * (view.boost ? 1 : 0.8), view.intro ? 0.09 : view.boost ? 0.075 : 0.05, px, view.intro ? 20 : 10);
       });
 
       arrowsApi.update(s, train, train.resistance(train.v) / train.sections.length, view.layers.forces && ARROW_RIGS.includes(view.rig));

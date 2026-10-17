@@ -8,6 +8,9 @@ import { fieldTexture, rng } from "./textures.js";
 import { createMountains, createClouds } from "./terrain.js";
 import { createProps } from "./props.js";
 import { DETAIL, setVisualSpeed } from "./depth.js";
+import { cameraFootprint, toWorld } from "./clearance.js";
+import { trainSightPoints } from "./sightline.js";
+import { createForest } from "./forest.js";
 
 function groundTexture() {
   // hierba: base uniforme y briznas finas de bajo contraste (el mosaico no se nota)
@@ -141,9 +144,20 @@ export function createWorld(canvas) {
       .replace("#include <begin_vertex>", `#include <begin_vertex>\nvWorldXZ = (modelMatrix * vec4(position, 1.0)).xz;`);
     sh.fragmentShader = sh.fragmentShader
       .replace("#include <common>", "#include <common>\nvarying vec2 vWorldXZ;\nuniform sampler2D uMacro;\nuniform vec2 uMacroOff;")
-      .replace("#include <map_fragment>", `#include <map_fragment>\ndiffuseColor.rgb *= texture2D(uMacro, (vWorldXZ + uMacroOff) / ${MACRO.toFixed(1)}).rgb * 2.0;`);
+      .replace("#include <map_fragment>", `#include <map_fragment>
+vec3 mc = texture2D(uMacro, (vWorldXZ + uMacroOff) / ${MACRO.toFixed(1)}).rgb * 2.0;
+diffuseColor.rgb *= mc;
+// Franjas que dependen solo de la distancia a la via (z): no varian con el avance, asi que no
+// parpadean. Margen de tierra junto al corredor de grava y hierba mas seca hasta la cerca; la
+// banda sigue un poco al mapa de parcelas para que no parezca una raya pintada.
+float az = abs(vWorldXZ.y);
+float wob = clamp(0.75 + 0.7 * (mc.g - 1.0), 0.35, 1.0);
+float soilBand = smoothstep(3.6, 5.0, az) * (1.0 - smoothstep(5.4, 9.0, az));
+float dryBand = 1.0 - smoothstep(9.0, 17.0, az);
+diffuseColor.rgb *= mix(vec3(1.0), vec3(1.10, 1.04, 0.84), dryBand * 0.5 * wob);
+diffuseColor.rgb *= mix(vec3(1.0), vec3(0.80, 0.70, 0.56), soilBand * 0.8 * wob);`);
   };
-  groundMat.customProgramCacheKey = () => "ground-v2";
+  groundMat.customProgramCacheKey = () => "ground-v3";
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
@@ -207,109 +221,17 @@ export function createWorld(canvas) {
     scene.environment = envTarget.texture;
   }
 
-  // ---- arboles: bosquetes agrupados y arboles sueltos, instanciados ----
-  // Tres especies (conifera, frondoso, alamo) con tono variable. Los cercanos proyectan
-  // sombra; los lejanos no (el mapa de sombras solo cubre el entorno del tren).
-  const CAP = { near: 450, far: 1700 };
-  const mkSet = (cap, shadow) => {
-    const mk = (geo, color) => {
-      const m = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ color, roughness: 0.92, flatShading: true }), cap);
-      m.castShadow = shadow;
-      m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-      m.frustumCulled = false;
-      scene.add(m);
-      return m;
-    };
-    return { cones: mk(coneGeo, "#ffffff"), crowns: mk(crownGeo, "#ffffff"), poplars: mk(poplarGeo, "#ffffff"), trunks: mk(trunkGeo, "#5a4030") };
-  };
-  const coneGeo = new THREE.ConeGeometry(2.2, 7, 7);
-  coneGeo.translate(0, 3.5 + 1.6, 0);
-  const crownGeo = new THREE.IcosahedronGeometry(2.6, 1);
-  crownGeo.translate(0, 5.2, 0);
-  const poplarGeo = new THREE.CylinderGeometry(0.35, 1.25, 10.5, 7);
-  poplarGeo.translate(0, 5.25 + 1.4, 0);
-  const trunkGeo = new THREE.CylinderGeometry(0.28, 0.4, 3.2, 6);
-  trunkGeo.translate(0, 1.6, 0);
-  const sets = { near: mkSet(CAP.near, true), far: mkSet(CAP.far, false) };
-
-  const CELL = 60;
-  const CELLS = 44; // ventana de +-1300 m
-  const hash = (a, b) => {
-    let h = (a * 374761393 + b * 668265263) ^ 0x5bd1e995;
-    h = (h ^ (h >>> 13)) * 1274126177;
-    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
-  };
-  const tmp = new THREE.Object3D();
-  const col = new THREE.Color();
-  const CONIFER = ["#2b5f37", "#335f3a", "#24543a", "#2f6b44"];
-  const BROAD = ["#4f7a3a", "#5d8540", "#6f8c42", "#47703d", "#7b9140"];
-  const POPLAR = ["#6a8f3c", "#7aa03f", "#5d8238"];
-  const counts = { near: { c: 0, b: 0, p: 0, t: 0 }, far: { c: 0, b: 0, p: 0, t: 0 } };
-
-  function plant(x, z, r1, r2, r3, r4) {
-    // franja libre junto a la via y, del lado de la camara orbital, un hueco amplio
-    if (Math.abs(z) < 22) return;
-    if (z > 24 && z < 130 && Math.abs(x) < 85) return;
-    const set = Math.abs(x) < 120 && Math.abs(z) < 120 ? "near" : "far";
-    const S = sets[set];
-    const n = counts[set];
-    const sc2 = 0.75 + r3 * 0.9;
-    tmp.position.set(x, 0, z);
-    tmp.rotation.set(0, r1 * 6.28, 0);
-    tmp.scale.set(sc2, sc2 * (0.85 + r2 * 0.3), sc2);
-    tmp.updateMatrix();
-    const cap = set === "near" ? CAP.near : CAP.far;
-    const kind = r4 < 0.42 ? "c" : r4 < 0.88 ? "b" : "p";
-    if (n.t < cap && kind !== "p") S.trunks.setMatrixAt(n.t++, tmp.matrix);
-    if (kind === "c" && n.c < cap) {
-      S.cones.setMatrixAt(n.c, tmp.matrix);
-      S.cones.setColorAt(n.c++, col.set(CONIFER[Math.floor(r1 * 4) % 4]));
-    } else if (kind === "b" && n.b < cap) {
-      S.crowns.setMatrixAt(n.b, tmp.matrix);
-      S.crowns.setColorAt(n.b++, col.set(BROAD[Math.floor(r2 * 5) % 5]));
-    } else if (kind === "p" && n.p < cap) {
-      S.poplars.setMatrixAt(n.p, tmp.matrix);
-      S.poplars.setColorAt(n.p++, col.set(POPLAR[Math.floor(r1 * 3) % 3]));
+  // ---- arboles: mallas fusionadas por celda de pista (sin instancias de GPU, ver forest.js) ----
+  const forest = createForest(scene);
+  let sightPts = null;
+  let sightLen = 0;
+  // camara y puntos del tren: un arbol que tapa la vista del tren se oculta (ver sightline.js)
+  function setSight(cam, length) {
+    if (!sightPts || sightLen !== length) {
+      sightPts = trainSightPoints(length);
+      sightLen = length;
     }
-  }
-
-  function updateTrees(s) {
-    for (const k of ["near", "far"]) counts[k] = { c: 0, b: 0, p: 0, t: 0 };
-    const base = Math.floor(s / CELL);
-    for (let i = -CELLS / 2; i < CELLS / 2; i++) {
-      const cell = base + i;
-      for (const side of [-1, 1]) {
-        // bosquetes: de 0 a 2 por celda y lado; el numero de arboles sale de un tamano
-        const groves = hash(cell, side * 91) < 0.35 ? 0 : hash(cell, side * 17) < 0.55 ? 1 : 2;
-        for (let g = 0; g < groves; g++) {
-          const gx = cell * CELL + hash(cell, side * 31 + g) * CELL - s;
-          const gz = side * (36 + hash(cell, side * 53 + g) * 210);
-          const rad = 14 + hash(cell, side * 71 + g) * 30;
-          const nTrees = 12 + Math.floor(hash(cell, side * 13 + g) * 26);
-          for (let k = 0; k < nTrees; k++) {
-            const a = hash(cell, side * 1000 + g * 100 + k) * 6.283;
-            const d = Math.sqrt(hash(cell, side * 2000 + g * 100 + k)) * rad;
-            plant(gx + Math.cos(a) * d, gz + Math.sin(a) * d, hash(cell, k * 5 + 1 + g), hash(cell, k * 5 + 2 + g), hash(cell, k * 5 + 3 + g), hash(cell, k * 5 + 4 + g));
-          }
-        }
-        // arboles sueltos y alamos en los linderos
-        for (let k = 0; k < 3; k++) {
-          const r1 = hash(cell, side * 300 + k), r2 = hash(cell, side * 400 + k), r3 = hash(cell, side * 500 + k), r4 = hash(cell, side * 600 + k);
-          plant(cell * CELL + r1 * CELL - s, side * (24 + Math.pow(r2, 0.8) * 200), r1, r2, r3, r4 < 0.7 ? r4 * 1.25 : 0.9 + (r4 - 0.7) * 0.33);
-        }
-      }
-    }
-    for (const [key, S] of Object.entries(sets)) {
-      const n = counts[key];
-      S.cones.count = n.c;
-      S.crowns.count = n.b;
-      S.poplars.count = n.p;
-      S.trunks.count = n.t;
-      for (const m of Object.values(S)) {
-        m.instanceMatrix.needsUpdate = true;
-        if (m.instanceColor) m.instanceColor.needsUpdate = true;
-      }
-    }
+    forest.setSight(cam, sightPts);
   }
 
   // ---- pool de tramos de via ----
@@ -331,17 +253,33 @@ export function createWorld(canvas) {
   }
 
   let t0 = performance.now();
+  // Lo que el entorno tenga en estas huellas se oculta: las estaciones (coordenadas de pista) y,
+  // con la camara baja junto a la via, un hueco a su alrededor (un poste delante del objetivo).
+  let stationBoxes = [];
+  let camPos = null;
+  function setClear(boxes, cam) {
+    stationBoxes = boxes;
+    camPos = cam ?? null;
+  }
+  function applyClear(s) {
+    const boxes = stationBoxes.map((b) => toWorld(b, s));
+    const cb = cameraFootprint(camPos);
+    if (cb) boxes.push(cb);
+    props.setClear(boxes);
+  }
+
   function scroll(s) {
     gTex.offset.x = s / TILE;
     vTex.offset.x = s / VTILE;
     // el mapa de parcelas es de 1800 m y se desplaza con la via en el sentido x
     macroU.uMacroOff.value.set(s, 0);
-    updateTrees(s);
+    forest.update(s);
+    applyClear(s);
     props.update(s);
     // con window.__qaSpeed (QA visual) las nubes se quedan quietas: deriva en tiempo real no es parpadeo
     clouds.update(s, window.__qaSpeed !== undefined ? 0 : (performance.now() - t0) / 1000);
   }
 
   setTheme("light");
-  return { renderer, scene, sun, ground, gTex, GROUND_TILE: TILE, updateTrees, scroll, makePool, setTheme, setVisualSpeed };
+  return { renderer, scene, sun, ground, gTex, GROUND_TILE: TILE, forest, scroll, makePool, setTheme, setVisualSpeed, setSight, setClear };
 }

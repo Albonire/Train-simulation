@@ -133,7 +133,12 @@ vec3 concreteTone(vec3 p){
   float f = fract(p.y / 0.6);
   float seam = smoothstep(0.035, 0.0, min(f, 1.0 - f)) * uDetail * as;
   float tone = 0.80 + 0.30 * n - 0.10 * streak - 0.16 * seam;
-  return vec3(tone, tone * 0.995, tone * 0.985);
+  // suciedad segun la altura del mundo (no cambia con el avance): zocalo salpicado junto al suelo y
+  // un oscurecimiento suave hacia abajo en los pilares
+  float splash = 1.0 - smoothstep(0.0, 1.3, vWY);
+  tone *= (0.93 + 0.07 * smoothstep(0.0, 6.0, vWY)) * (1.0 - 0.30 * splash * (0.55 + 0.45 * n));
+  vec3 col = vec3(tone, tone * 0.995, tone * 0.985);
+  return mix(col, col * vec3(0.88, 0.92, 0.80), splash * 0.5);
 }
 `;
 
@@ -142,13 +147,13 @@ export function patchConcrete(material) {
   material.onBeforeCompile = (sh) => {
     sh.uniforms.uDetail = DETAIL.uDetail;
     sh.vertexShader = sh.vertexShader
-      .replace("#include <common>", "#include <common>\nvarying vec3 vOP;")
-      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvOP = position;");
+      .replace("#include <common>", "#include <common>\nvarying vec3 vOP;\nvarying float vWY;")
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvOP = position;\nvWY = (modelMatrix * vec4(position, 1.0)).y;");
     sh.fragmentShader = sh.fragmentShader
-      .replace("#include <common>", `#include <common>\nvarying vec3 vOP;\n${CONCRETE_GLSL}`)
+      .replace("#include <common>", `#include <common>\nvarying vec3 vOP;\nvarying float vWY;\n${CONCRETE_GLSL}`)
       .replace("#include <map_fragment>", "#include <map_fragment>\ndiffuseColor.rgb *= concreteTone(vOP);");
   };
-  material.customProgramCacheKey = () => "concrete-v3";
+  material.customProgramCacheKey = () => "concrete-v4";
   return material;
 }
 

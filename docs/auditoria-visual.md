@@ -63,3 +63,54 @@ liso (el de la niebla). No se reprodujo con Chromium por software (`npm run qa:p
 - El bucle de dibujo no se detiene por una excepcion; si la camara deja de ser finita o queda a mas de
   1000 m, se restablece la camara activa.
 - Con una pieza de la via seleccionada el decorado se detiene: a la velocidad del tren pasaria de largo.
+
+## Segunda revision: tren, entorno e interfaz
+
+- **Arboles delante del tren.** `plant()` solo dejaba libres 22 m a cada lado y un hueco del lado de la
+  camara orbital; con otra orientacion de camara una copa podia cubrir un coche entero. Ahora el
+  corredor libre es de 30 m y, ademas, cada arbol cuya silueta (tres esferas a lo largo de su eje) corta
+  la linea entre la camara y alguno de diez puntos del tren se oculta en ese fotograma
+  (`src/scene/sightline.js`, probado en `tests/sightline.test.js`). Vale para cualquier giro de camara.
+- **Utileria dentro de las estaciones.** Los postes de luz, la cerca (con su alambre, que ahora va por
+  tramos instanciados) y los arbustos atravesaban el anden y el edificio de acceso. Cada estacion
+  declara su huella (`src/scene/clearance.js`) y lo que cae dentro se oculta, sin reescribir matrices en
+  cada fotograma: solo al cambiar de celda de la cinta o de huella. Lo mismo ocurre alrededor de una
+  camara baja junto a la via (un poste a 3 m de la camara Campo tapaba el objetivo).
+- **Lineas laterales.** El estado activo de los botones se marcaba con una raya de 3 px a un lado
+  (`box-shadow: inset 3px 0 0`), y asi tambien la lista de la Guia, la de Laminas y las filas de
+  perturbaciones; las pestanas y la navegacion lo hacian con un subrayado. Se quitaron todas y los
+  separadores decorativos del carril, la barra superior y el cuadro de mando. El estado activo es ahora
+  un fondo con un tinte del acento (`--tint`) y, en las herramientas, el icono y el texto en el acento:
+  se distingue del hover sin ninguna raya.
+- **Cuadro de mando en ventanas medianas.** Entre 1181 y 1460 px de ancho los botones de escala de
+  tiempo quedaban cortados por el panel lateral. Se oculta el progreso del tramo (y, por debajo de 1180
+  px, tambien el indicador de campo) y la pista de primera visita ya no pisa a la lupa.
+
+## Tercera revision: el entorno no depende de instancias de GPU
+
+Reporte: un unico arbol enorme y oscuro sobre el coche central y ningun arbol a los lados. En la
+captura tampoco se veian arbustos, postes de luz, hitos ni postes de la cerca. Todo eso era
+`InstancedMesh`; lo unico dibujado era una pila de una copa, un chopo (22,6 m: el maximo, con su propia
+escala) y un tronco en el origen, es decir, cada instancia con su escala pero sin su traslacion.
+
+No se pudo reproducir (el Chromium de prueba va por software), asi que la causa no esta confirmada;
+se supone un fallo de GPU o de controlador con los atributos instanciados. La correccion quita la
+dependencia en lugar de parchearla:
+
+- Arboles: una malla fusionada por celda de pista y lado (`src/scene/forest.js`), con los buffers
+  rellenos desde JS al entrar la celda en la ventana. Mover el decorado es cambiar `position.x`.
+- Utileria: losetas fusionadas que siguen la via con la tecnica de la cinta (`src/scene/props.js`).
+- `src/scene/scatter.js` (puro) reparte los arboles; `tests/scatter.test.js` barre de 0 a 100 km y
+  comprueba que ninguno cae en el corredor, que todo es finito y que ningun archivo del entorno crea
+  un `InstancedMesh`.
+- La consola escribe al arrancar el renderizador de la GPU, para diagnosticar si vuelve a fallar algo.
+
+Otras correcciones de esta pasada:
+- La orbita se calcula (`fitDistance`): el tren llena el 88 % del area libre, centrado, con cualquier
+  ventana, panel o relacion de aspecto; antes era una distancia fija que lo dejaba pequeno y, en vertical,
+  cortado.
+- Texturas: arboles con degradado de color y copas abolladas con normales suaves; el terreno gana un
+  margen de tierra y hierba seca que solo dependen de la distancia a la via (no parpadean); el hormigon,
+  suciedad por altura del mundo (zocalo salpicado); la pintura del coche, menos metalica y con suciedad
+  en el faldon; las montanas, roca por pendiente y nieve solo en lo alto y plano; postes con zocalo.
+

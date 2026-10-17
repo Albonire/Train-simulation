@@ -146,6 +146,9 @@ export function outline() {
  * Una seccion del vehiculo. `role`: "front" | "mid" | "rear".
  * Devuelve { group, setGap(gapM, lateralM, exag), setCurrent(rel), bodyMats }.
  */
+// largo de la nariz aerodinamica de las secciones de cabeza y cola (m)
+const NOSE = 6.5;
+
 export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shared, baseX = 0, carNo = 1 }) {
   const group = new THREE.Group();
   const bodyMats = [];
@@ -153,8 +156,8 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
 
   const pts = outline();
   const stations = bodyStations(length - 0.6, {
-    noseFront: role === "front" ? 9 : 0,
-    noseRear: role === "rear" ? 9 : 0,
+    noseFront: role === "front" ? NOSE : 0,
+    noseRear: role === "rear" ? NOSE : 0,
   });
   const livery = liveryTextures({
     points: pts,
@@ -193,7 +196,7 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
     clipMats.push(m);
   }
   // faros con luz propia (solo la cabeza del tren; se encienden con luz baja)
-  const lamps = role === "front" ? headlamps({ len: length - 0.6, noseLen: 9, y: 0.7 }) : null;
+  const lamps = role === "front" ? headlamps({ len: length - 0.6, noseLen: NOSE, y: 0.7 }) : null;
   if (lamps) group.add(lamps.group);
 
   // fuelle hacia la seccion siguiente (la delantera no tiene)
@@ -244,7 +247,7 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
   });
   clipMats.push(levM, copperM, darkM, poleM);
 
-  const nMod = Math.floor((length - 1.5) / MOD);
+  const nMod = Math.floor((length - 2.5) / MOD);
   const modules = []; // x del inicio de cada modulo en el mundo (multiplo del par de polos)
   const levMeshes = [];
   const guideMeshes = [];
@@ -253,7 +256,7 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
   mag.add(levGroup, guideGroup);
   for (const s of [-1, 1]) {
     for (let i = 0; i < nMod; i++) {
-      const raw = (i - (nMod - 1) / 2) * (MOD + 0.12) + (role === "front" ? -2 : role === "rear" ? 2 : 0);
+      const raw = (i - (nMod - 1) / 2) * (MOD + 0.12) + (role === "front" ? -1.2 : role === "rear" ? 1.2 : 0);
       const start = Math.round((baseX + raw - MOD / 2) / PAIR) * PAIR; // alineado con la onda
       const x = start + MOD / 2 - baseX;
       if (s > 0) modules.push({ x0: start, xc: start + MOD / 2 });

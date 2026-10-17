@@ -11,6 +11,7 @@ import { renderGuia } from "./pages/guia.js";
 import { renderLaminas, clearLaminas } from "./pages/laminas.js";
 import { KEYS } from "./info.js";
 import { createPartCard } from "./partCard.js";
+import { createLoupe } from "./loupe.js";
 import { EDS, G } from "../physics/constants.js";
 import { EdsSection } from "../physics/eds.js";
 import { MODES } from "../physics/train.js";
@@ -118,7 +119,11 @@ export function createUI(h) {
     <button class="tool" data-tool="explode" aria-pressed="false" title="Separa las piezas para verlas por dentro">${ICONS.explode}<span>Separar</span><span class="k" aria-hidden="true">E</span></button>
   </nav>
 
+  <aside id="loupe" class="panel" aria-label="Entrehierro en vivo"></aside>
+
   <p id="hint" role="note"></p>
+
+  <div id="intro" hidden><p id="introCap" role="status"></p><button class="btn" id="introSkip" title="Salta la apertura (cualquier tecla o clic)">Omitir</button></div>
 
   <section id="hud" class="panel" aria-label="Cuadro de mando">
     <div class="h-speed"><output id="hSpeed">0</output><span>km/h</span></div>
@@ -192,6 +197,8 @@ export function createUI(h) {
         <button data-layer="forces" aria-pressed="true" title="Flechas de fuerza (escala de raíz cuadrada)">Fuerzas</button>
         <button data-layer="labels" aria-pressed="true" title="Nombres de las piezas en las vistas de detalle">Nombres</button>
       </div>
+      <h3>Apertura</h3>
+      <button class="btn" id="introBtn" title="Vuelve a ver el primer plano de la levitación (I)">Repetir la apertura</button>
       <h3>Colores</h3>
       <ul class="legend">${LEGEND.map(([c, l]) => `<li><i style="background:${c}"></i>${l}</li>`).join("")}</ul>
     </div>
@@ -208,6 +215,8 @@ export function createUI(h) {
   `;
   document.body.appendChild(root);
   const card = createPartCard(root, { onPrev: () => h.partStep(-1), onNext: () => h.partStep(1), onClose: () => h.partClose() });
+
+  const loupe = createLoupe($("#loupe"), { setRig: (n) => h.setRig(n), toast: (m) => toast(m) });
 
   const els = {
     rows: $("#rows"), hSpeed: $("#hSpeed"), hState: $("#hState"), hTarget: $("#hTarget"), hGap: $("#hGap"),
@@ -233,6 +242,7 @@ export function createUI(h) {
   function build(modeId) {
     mode = modeId;
     document.documentElement.dataset.mode = modeId;
+    loupe.reset();
     $("#modeName").textContent = modeId === "ems" ? "Transrapid" : "SCMaglev";
     const m = MODES[modeId];
     for (const b of root.querySelectorAll("[data-mode]")) b.setAttribute("aria-pressed", String(b.dataset.mode === modeId));
@@ -325,6 +335,7 @@ export function createUI(h) {
         return h.setHold(on);
       }
       case "resetBtn": return h.reset();
+      case "introBtn": return h.replayIntro?.();
       case "themeBtn": return toggleTheme();
       case "panelBtn": return setPanel(els.side.classList.contains("closed"));
     }
@@ -356,6 +367,8 @@ export function createUI(h) {
     if (n >= 1 && n <= RIGS.length) { h.setRig(RIGS[n - 1][0]); return; }
     if (e.key === " " && tag !== "BUTTON") { e.preventDefault(); setPaused($("#pauseBtn").getAttribute("aria-pressed") !== "true"); return; }
     if (e.key === "h" || e.key === "H") return setPanel(els.side.classList.contains("closed"));
+    if (e.key === "l" || e.key === "L") return loupe.toggle();
+    if (e.key === "i" || e.key === "I") return h.replayIntro?.();
     if (e.key === "p" || e.key === "P") return h.setParts(document.querySelector('[data-tool="parts"]').getAttribute("aria-pressed") !== "true");
     if (e.key === "e" || e.key === "E") return h.setExplode(document.querySelector('[data-tool="explode"]').getAttribute("aria-pressed") !== "true");
     if (document.body.dataset.parts === "on" && (e.key === "ArrowRight" || e.key === "ArrowLeft") && tag !== "BUTTON") {
@@ -465,35 +478,58 @@ export function createUI(h) {
   }
   let activeResp = null;
 
-  // ---- pista de primera visita ----
+  // ---- pistas de primera visita: tres, una tras otra; cualquier gesto las cierra ----
+  let startHint = () => {};
   (function hint() {
     const el = $("#hint");
     let seen = false;
-    try { seen = localStorage.getItem("maglev-hint") === "1"; } catch {}
+    try { seen = localStorage.getItem("maglev-hint") === "2"; } catch {}
     if (seen) return el.remove();
     const coarse = window.matchMedia?.("(pointer: coarse)").matches;
-    el.textContent = coarse
-      ? "Arrastra para girar, pellizca para acercar, doble toque para recentrar"
-      : "Arrastra para girar, rueda para acercar, doble clic para recentrar, 1 a 5 cambian de cámara";
+    const tips = coarse
+      ? ["Arrastra para girar, pellizca para acercar, doble toque para recentrar"]
+      : [
+          "Abajo a la izquierda, el corte en vivo de la levitación",
+          "Arrastra para girar, rueda para acercar, 1 a 6 cambian de cámara",
+          "P elige una pieza para leer qué hace; E las separa",
+        ];
+    let i = 0;
+    let timer = 0;
+    const show = () => {
+      el.textContent = tips[i];
+      el.classList.remove("gone");
+      timer = setTimeout(() => {
+        if (++i >= tips.length) return done();
+        el.classList.add("gone");
+        timer = setTimeout(show, 450);
+      }, 5200);
+    };
     const done = () => {
       clearTimeout(timer);
       el.classList.add("gone");
       setTimeout(() => el.remove(), 500);
-      try { localStorage.setItem("maglev-hint", "1"); } catch {}
+      try { localStorage.setItem("maglev-hint", "2"); } catch {}
       window.removeEventListener("pointerdown", done);
       window.removeEventListener("keydown", done);
       window.removeEventListener("wheel", done);
     };
-    const timer = setTimeout(done, 14000);
-    window.addEventListener("pointerdown", done);
-    window.addEventListener("keydown", done);
-    window.addEventListener("wheel", done, { passive: true });
+    // las pistas empiezan cuando termina la apertura (o ya, si no hay apertura)
+    let started = false;
+    startHint = () => {
+      if (started) return;
+      started = true;
+      show();
+      window.addEventListener("pointerdown", done);
+      window.addEventListener("keydown", done);
+      window.addEventListener("wheel", done, { passive: true });
+    };
   })();
 
   // ---- actualizacion por cuadro ----
   let lastText = 0;
   const edsRef = new EdsSection();
   function update(tel, train, simView) {
+    loupe.update(mode, tel, train, simView, false);
     lastTrain = train;
     const vals = { speed: tel.speedKmh };
     train.sections.forEach((s, i) => (vals["g" + i] = s.gapMm));
@@ -636,5 +672,5 @@ export function createUI(h) {
 
   document.body.dataset.view = "sim";
   router.start();
-  return { root, els, card, build, update, sample, toast, hist, setTimeScale, setPaused, setOutputs, router, view };
+  return { root, els, card, loupe, startHint: () => startHint(), build, update, sample, toast, hist, setTimeScale, setPaused, setOutputs, router, view };
 }
