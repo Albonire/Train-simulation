@@ -144,9 +144,20 @@ export function createWorld(canvas) {
       .replace("#include <begin_vertex>", `#include <begin_vertex>\nvWorldXZ = (modelMatrix * vec4(position, 1.0)).xz;`);
     sh.fragmentShader = sh.fragmentShader
       .replace("#include <common>", "#include <common>\nvarying vec2 vWorldXZ;\nuniform sampler2D uMacro;\nuniform vec2 uMacroOff;")
-      .replace("#include <map_fragment>", `#include <map_fragment>\ndiffuseColor.rgb *= texture2D(uMacro, (vWorldXZ + uMacroOff) / ${MACRO.toFixed(1)}).rgb * 2.0;`);
+      .replace("#include <map_fragment>", `#include <map_fragment>
+vec3 mc = texture2D(uMacro, (vWorldXZ + uMacroOff) / ${MACRO.toFixed(1)}).rgb * 2.0;
+diffuseColor.rgb *= mc;
+// Franjas que dependen solo de la distancia a la via (z): no varian con el avance, asi que no
+// parpadean. Margen de tierra junto al corredor de grava y hierba mas seca hasta la cerca; la
+// banda sigue un poco al mapa de parcelas para que no parezca una raya pintada.
+float az = abs(vWorldXZ.y);
+float wob = clamp(0.75 + 0.7 * (mc.g - 1.0), 0.35, 1.0);
+float soilBand = smoothstep(3.6, 5.0, az) * (1.0 - smoothstep(5.4, 9.0, az));
+float dryBand = 1.0 - smoothstep(9.0, 17.0, az);
+diffuseColor.rgb *= mix(vec3(1.0), vec3(1.10, 1.04, 0.84), dryBand * 0.5 * wob);
+diffuseColor.rgb *= mix(vec3(1.0), vec3(0.80, 0.70, 0.56), soilBand * 0.8 * wob);`);
   };
-  groundMat.customProgramCacheKey = () => "ground-v2";
+  groundMat.customProgramCacheKey = () => "ground-v3";
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;

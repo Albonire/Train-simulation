@@ -86,3 +86,31 @@ liso (el de la niebla). No se reprodujo con Chromium por software (`npm run qa:p
   tiempo quedaban cortados por el panel lateral. Se oculta el progreso del tramo (y, por debajo de 1180
   px, tambien el indicador de campo) y la pista de primera visita ya no pisa a la lupa.
 
+## Tercera revision: el entorno no depende de instancias de GPU
+
+Reporte: un unico arbol enorme y oscuro sobre el coche central y ningun arbol a los lados. En la
+captura tampoco se veian arbustos, postes de luz, hitos ni postes de la cerca. Todo eso era
+`InstancedMesh`; lo unico dibujado era una pila de una copa, un chopo (22,6 m: el maximo, con su propia
+escala) y un tronco en el origen, es decir, cada instancia con su escala pero sin su traslacion.
+
+No se pudo reproducir (el Chromium de prueba va por software), asi que la causa no esta confirmada;
+se supone un fallo de GPU o de controlador con los atributos instanciados. La correccion quita la
+dependencia en lugar de parchearla:
+
+- Arboles: una malla fusionada por celda de pista y lado (`src/scene/forest.js`), con los buffers
+  rellenos desde JS al entrar la celda en la ventana. Mover el decorado es cambiar `position.x`.
+- Utileria: losetas fusionadas que siguen la via con la tecnica de la cinta (`src/scene/props.js`).
+- `src/scene/scatter.js` (puro) reparte los arboles; `tests/scatter.test.js` barre de 0 a 100 km y
+  comprueba que ninguno cae en el corredor, que todo es finito y que ningun archivo del entorno crea
+  un `InstancedMesh`.
+- La consola escribe al arrancar el renderizador de la GPU, para diagnosticar si vuelve a fallar algo.
+
+Otras correcciones de esta pasada:
+- La orbita se calcula (`fitDistance`): el tren llena el 88 % del area libre, centrado, con cualquier
+  ventana, panel o relacion de aspecto; antes era una distancia fija que lo dejaba pequeno y, en vertical,
+  cortado.
+- Texturas: arboles con degradado de color y copas abolladas con normales suaves; el terreno gana un
+  margen de tierra y hierba seca que solo dependen de la distancia a la via (no parpadean); el hormigon,
+  suciedad por altura del mundo (zocalo salpicado); la pintura del coche, menos metalica y con suciedad
+  en el faldon; las montanas, roca por pendiente y nieve solo en lo alto y plano; postes con zocalo.
+

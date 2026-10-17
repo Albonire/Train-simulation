@@ -29,6 +29,14 @@ import "./ui/style.css";
 const canvas = document.getElementById("view");
 const world = createWorld(canvas);
 const { renderer, scene } = world;
+// una linea de diagnostico: si algo no se ve bien en una maquina, esto dice con que GPU se dibuja
+try {
+  const gl = renderer.getContext();
+  const info = gl.getExtension("WEBGL_debug_renderer_info");
+  console.info("[gpu]", info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : "sin datos", "|", gl.getParameter(gl.VERSION), "| atributos", gl.getParameter(gl.MAX_VERTEX_ATTRIBS));
+} catch {
+  /* sin diagnostico */
+}
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 4000);
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
