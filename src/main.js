@@ -277,6 +277,17 @@ function buildLabels() {
   labels.clear();
   const V = (x, y, z) => new THREE.Vector3(x, y, z);
   const midGroup = () => active.sections[Math.floor(active.sections.length / 2)].group.position;
+  // rotulos de las flechas de fuerza y del entrehierro real en las vistas generales
+  const OVERVIEW = ["orbit", "chase"];
+  const f = fields[mode].forces;
+  labels.add({ text: () => `${mode === "ems" ? "Atracción" : "Repulsión"} ${(train.sections[1].lift / 1e3).toFixed(0)} kN`, pos: () => f.tips.lift, rigs: OVERVIEW, when: () => view.layers.forces });
+  labels.add({ text: () => `Peso ${(((train.sections[1].mass + train.sections[1].extraMass) * G) / 1e3).toFixed(0)} kN`, pos: () => f.tips.weight, rigs: OVERVIEW, when: () => view.layers.forces });
+  labels.add({
+    text: () => (train.levitated ? `Levita a ${train.sections[1].gapMm.toFixed(mode === "ems" ? 1 : 0).replace(".", ",")} mm` : mode === "ems" ? "Sobre patines" : "Sobre ruedas"),
+    pos: () => V(midGroup().x, mode === "ems" ? DIM.statorBottom - 1.4 : EDIM.slabTop - 0.4, mode === "ems" ? 2.5 : 2.9),
+    rigs: OVERVIEW,
+    cls: "lev",
+  });
   if (mode === "ems") {
     const gv = () => train.sections[1].gap * effExag();
     labels.add({ text: () => `${(train.sections[1].gap * 1000).toFixed(1)} mm`, pos: () => V(0, DIM.statorBottom - gv() / 2, 1.15), rigs: DETAIL });
@@ -560,6 +571,8 @@ function step(now) {
   // velocidad visual del suelo: lo que el ojo ve pasar (m/s de pista por segundo real)
   // window.__qaSpeed lo fija el script de QA visual (scripts/visual-qa.mjs)
   world.setVisualSpeed(inspecting ? 0 : (window.__qaSpeed ?? (view.paused ? 0 : Math.abs(train.v) * view.timeScale)), wall);
+  world.setSight(camera.position, train.length);
+  world.setClear(stations.footprints(STATION_CFG[mode]), camera.position);
   world.scroll(sc);
   stations.update(sc, train.length, train.stationSpacing, STATION_CFG[mode]);
   const tel = train.telemetry();

@@ -83,6 +83,7 @@ export function createEdsFields(sceneApi) {
 
   return {
     arrows: arrowsApi.group,
+    forces: arrowsApi,
     lines,
     /** Intensidad relativa del campo: corriente inducida (0 a 1). */
     fieldLevel(train, tel) {

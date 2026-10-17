@@ -8,6 +8,8 @@ import { fieldTexture, rng } from "./textures.js";
 import { createMountains, createClouds } from "./terrain.js";
 import { createProps } from "./props.js";
 import { DETAIL, setVisualSpeed } from "./depth.js";
+import { cameraFootprint } from "./clearance.js";
+import { occludes, segmentPointDistance, treeSpheres, trainSightPoints } from "./sightline.js";
 
 function groundTexture() {
   // hierba: base uniforme y briznas finas de bajo contraste (el mosaico no se nota)
@@ -246,20 +248,42 @@ export function createWorld(canvas) {
   const POPLAR = ["#6a8f3c", "#7aa03f", "#5d8238"];
   const counts = { near: { c: 0, b: 0, p: 0, t: 0 }, far: { c: 0, b: 0, p: 0, t: 0 } };
 
+  // camara y puntos del tren: un arbol que tapa la vista del tren se oculta (ver sightline.js)
+  let sight = null;
+  function setSight(cam, length) {
+    if (!sight || sight.length !== length) sight = { length, cam: { x: 0, y: 0, z: 0 }, pts: trainSightPoints(length) };
+    sight.cam.x = cam.x;
+    sight.cam.y = cam.y;
+    sight.cam.z = cam.z;
+  }
+  // tamano de cada especie (altura, radio de la copa en la base de la escala)
+  const SIZE = { c: [8.6, 2.2], b: [7.9, 2.6], p: [11.9, 1.25] };
+  function blocked(x, z, kind, sxz, sy) {
+    if (!sight) return false;
+    const c = sight.cam;
+    // descarte barato: lejos de la recta camara-tren no puede taparlo
+    const d = segmentPointDistance({ x: c.x, y: 0, z: c.z }, { x: 0, y: 0, z: 0 }, { x, y: 0, z });
+    const [h, r] = SIZE[kind];
+    if (d > r * sxz + 32) return false;
+    return occludes(c, treeSpheres(x, z, h * sy, r * sxz + 0.6), sight.pts);
+  }
+
   function plant(x, z, r1, r2, r3, r4) {
-    // franja libre junto a la via y, del lado de la camara orbital, un hueco amplio
-    if (Math.abs(z) < 22) return;
-    if (z > 24 && z < 130 && Math.abs(x) < 85) return;
+    // franja libre junto a la via
+    if (Math.abs(z) < 30) return;
+    // del lado de la camara orbital, un hueco amplio: no hay arboles entre ella y el tren
+    if (z > 30 && z < 130 && Math.abs(x) < 85) return;
     const set = Math.abs(x) < 120 && Math.abs(z) < 120 ? "near" : "far";
     const S = sets[set];
     const n = counts[set];
     const sc2 = 0.75 + r3 * 0.9;
+    const kind = r4 < 0.42 ? "c" : r4 < 0.88 ? "b" : "p";
+    if (blocked(x, z, kind, sc2, sc2 * (0.85 + r2 * 0.3))) return;
     tmp.position.set(x, 0, z);
     tmp.rotation.set(0, r1 * 6.28, 0);
     tmp.scale.set(sc2, sc2 * (0.85 + r2 * 0.3), sc2);
     tmp.updateMatrix();
     const cap = set === "near" ? CAP.near : CAP.far;
-    const kind = r4 < 0.42 ? "c" : r4 < 0.88 ? "b" : "p";
     if (n.t < cap && kind !== "p") S.trunks.setMatrixAt(n.t++, tmp.matrix);
     if (kind === "c" && n.c < cap) {
       S.cones.setMatrixAt(n.c, tmp.matrix);
@@ -283,7 +307,7 @@ export function createWorld(canvas) {
         const groves = hash(cell, side * 91) < 0.35 ? 0 : hash(cell, side * 17) < 0.55 ? 1 : 2;
         for (let g = 0; g < groves; g++) {
           const gx = cell * CELL + hash(cell, side * 31 + g) * CELL - s;
-          const gz = side * (36 + hash(cell, side * 53 + g) * 210);
+          const gz = side * (40 + hash(cell, side * 53 + g) * 210);
           const rad = 14 + hash(cell, side * 71 + g) * 30;
           const nTrees = 12 + Math.floor(hash(cell, side * 13 + g) * 26);
           for (let k = 0; k < nTrees; k++) {
@@ -295,7 +319,7 @@ export function createWorld(canvas) {
         // arboles sueltos y alamos en los linderos
         for (let k = 0; k < 3; k++) {
           const r1 = hash(cell, side * 300 + k), r2 = hash(cell, side * 400 + k), r3 = hash(cell, side * 500 + k), r4 = hash(cell, side * 600 + k);
-          plant(cell * CELL + r1 * CELL - s, side * (24 + Math.pow(r2, 0.8) * 200), r1, r2, r3, r4 < 0.7 ? r4 * 1.25 : 0.9 + (r4 - 0.7) * 0.33);
+          plant(cell * CELL + r1 * CELL - s, side * (30 + Math.pow(r2, 0.8) * 200), r1, r2, r3, r4 < 0.7 ? r4 * 1.25 : 0.9 + (r4 - 0.7) * 0.33);
         }
       }
     }
@@ -331,17 +355,33 @@ export function createWorld(canvas) {
   }
 
   let t0 = performance.now();
+  // Lo que el entorno tenga en estas huellas se oculta: las estaciones (coordenadas de pista) y,
+  // con la camara baja junto a la via, un hueco a su alrededor (un poste delante del objetivo).
+  let stationBoxes = [];
+  let camPos = null;
+  function setClear(boxes, cam) {
+    stationBoxes = boxes;
+    camPos = cam ?? null;
+  }
+  function applyClear(s) {
+    const boxes = stationBoxes.slice();
+    const cb = cameraFootprint(camPos, s);
+    if (cb) boxes.push(cb);
+    props.setClear(boxes);
+  }
+
   function scroll(s) {
     gTex.offset.x = s / TILE;
     vTex.offset.x = s / VTILE;
     // el mapa de parcelas es de 1800 m y se desplaza con la via en el sentido x
     macroU.uMacroOff.value.set(s, 0);
     updateTrees(s);
+    applyClear(s);
     props.update(s);
     // con window.__qaSpeed (QA visual) las nubes se quedan quietas: deriva en tiempo real no es parpadeo
     clouds.update(s, window.__qaSpeed !== undefined ? 0 : (performance.now() - t0) / 1000);
   }
 
   setTheme("light");
-  return { renderer, scene, sun, ground, gTex, GROUND_TILE: TILE, updateTrees, scroll, makePool, setTheme, setVisualSpeed };
+  return { renderer, scene, sun, ground, gTex, GROUND_TILE: TILE, updateTrees, scroll, makePool, setTheme, setVisualSpeed, setSight, setClear };
 }

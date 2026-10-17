@@ -32,16 +32,26 @@ export function createForceArrows(parent, roofY) {
   );
   hub.renderOrder = 9;
   group.add(hub, ...Object.values(a));
+  // extremos de las flechas de sustentacion y peso, en el mundo: ahi se anclan sus rotulos
+  const tips = { lift: new THREE.Vector3(), weight: new THREE.Vector3() };
+  const origin = new THREE.Vector3();
   return {
     group,
+    tips,
     /** sec: seccion fisica central; train: tren; drag: resistencia total por seccion (N) */
     update(sec, train, drag, visible) {
       group.visible = visible;
       if (!visible) return;
       const n = train.sections.length;
       const ref = sec.mass * G;
-      a.lift.userData.set(Y, arrowLength(sec.lift, ref));
-      a.weight.userData.set(nY, arrowLength((sec.mass + sec.extraMass) * G, ref));
+      const Ll = arrowLength(sec.lift, ref);
+      const Lw = arrowLength((sec.mass + sec.extraMass) * G, ref);
+      a.lift.userData.set(Y, Ll);
+      a.weight.userData.set(nY, Lw);
+      group.getWorldPosition(origin);
+      // junto al eje de cada flecha, un poco a un lado, a media altura
+      tips.lift.set(origin.x + 2.6, origin.y + Math.max(Ll, 0.5) * 0.55 - 0.55, origin.z);
+      tips.weight.set(origin.x + 2.6, origin.y - Math.max(Lw, 0.5) * 0.55 - 0.55, origin.z);
       a.thrust.userData.set(X, arrowLength(Math.max(0, train.thrust) / n, ref));
       a.drag.userData.set(nX, arrowLength(drag + Math.max(0, -train.thrust) / n, ref));
       const Fy = sec.lateralForce;

@@ -6,6 +6,7 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { rng } from "./textures.js";
+import { inAnyBox } from "./clearance.js";
 
 const SPAN = 1600; // m a cada lado del tren
 
@@ -22,6 +23,10 @@ export function createProps(scene) {
   scene.add(root);
   const tmp = new THREE.Object3D();
   const items = []; // { group, spacing }
+
+  // Instancias que se pueden ocultar cuando cae una estacion encima (ver setClear).
+  const maskable = []; // { mesh, spacing, xs, zs, orig, key }
+  const track = (mesh, spacing, xs, zs) => maskable.push({ mesh, spacing, xs, zs, orig: mesh.instanceMatrix.array.slice(), key: "" });
 
   const mkGroup = (spacing) => {
     const g = new THREE.Group();
@@ -44,6 +49,8 @@ export function createProps(scene) {
   const poles = new THREE.InstancedMesh(poleGeo, poleMat, xs.length * 2);
   const heads = new THREE.InstancedMesh(headGeo, headMat, xs.length * 2);
   let k = 0;
+  let px = [];
+  let pz = [];
   for (const side of [-1, 1]) {
     for (const x of xs) {
       tmp.position.set(x, 0, side * 7.2);
@@ -51,9 +58,13 @@ export function createProps(scene) {
       tmp.updateMatrix();
       poles.setMatrixAt(k, tmp.matrix);
       heads.setMatrixAt(k, tmp.matrix);
+      px.push(x);
+      pz.push(side * 7.2);
       k++;
     }
   }
+  track(poles, LAMP, px, pz);
+  track(heads, LAMP, px, pz);
   poles.castShadow = true;
   lampG.add(poles, heads);
 
@@ -66,6 +77,8 @@ export function createProps(scene) {
   const hitos = new THREE.InstancedMesh(new THREE.BoxGeometry(0.28, 1.2, 0.18).translate(0, 0.6, 0), hitoMat, hx.length * 2);
   const bands = new THREE.InstancedMesh(new THREE.BoxGeometry(0.3, 0.22, 0.2).translate(0, 0.95, 0), bandMat, hx.length * 2);
   k = 0;
+  px = [];
+  pz = [];
   for (const side of [-1, 1]) {
     for (const x of hx) {
       tmp.position.set(x, 0, side * 5.6);
@@ -73,8 +86,12 @@ export function createProps(scene) {
       tmp.updateMatrix();
       hitos.setMatrixAt(k, tmp.matrix);
       bands.setMatrixAt(k++, tmp.matrix);
+      px.push(x);
+      pz.push(side * 5.6);
     }
   }
+  track(hitos, HITO, px, pz);
+  track(bands, HITO, px, pz);
   hitos.castShadow = true;
   hitoG.add(hitos, bands);
 
@@ -85,24 +102,36 @@ export function createProps(scene) {
   const fenceMat = new THREE.MeshStandardMaterial({ color: "#7d776b", roughness: 0.9 });
   const fenceG = mkGroup(FENCE);
   const fPosts = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.05, 0.06, 1.25, 6).translate(0, 0.62, 0), fenceMat, fx.length * 2);
+  // el alambre va en tramos de 6 m, uno por poste y altura, para poder ocultarlo junto a una estacion
+  const WIRES = [0.45, 0.85, 1.2];
+  const wireMat = new THREE.MeshStandardMaterial({ color: "#7f7a70", roughness: 1, metalness: 0 });
+  const wires = new THREE.InstancedMesh(new THREE.BoxGeometry(FENCE, 0.015, 0.015).translate(FENCE / 2, 0, 0), wireMat, fx.length * 2 * WIRES.length);
   k = 0;
+  let wk = 0;
+  px = [];
+  pz = [];
+  let wx = [];
+  let wz = [];
   for (const side of [-1, 1]) {
     for (const x of fx) {
       tmp.position.set(x, 0, side * 13);
       tmp.rotation.set(0, 0, 0);
       tmp.updateMatrix();
       fPosts.setMatrixAt(k++, tmp.matrix);
+      px.push(x);
+      pz.push(side * 13);
+      for (const y of WIRES) {
+        tmp.position.set(x, y, side * 13);
+        tmp.updateMatrix();
+        wires.setMatrixAt(wk++, tmp.matrix);
+        wx.push(x);
+        wz.push(side * 13);
+      }
     }
   }
-  fenceG.add(fPosts);
-  const wireMat = new THREE.MeshStandardMaterial({ color: "#7f7a70", roughness: 1, metalness: 0 });
-  for (const side of [-1, 1]) {
-    for (const y of [0.45, 0.85, 1.2]) {
-      const w = new THREE.Mesh(new THREE.BoxGeometry(FENCE_SPAN * 2, 0.015, 0.015), wireMat);
-      w.position.set(0, y, side * 13);
-      root.add(w);
-    }
-  }
+  track(fPosts, FENCE, px, pz);
+  track(wires, FENCE, wx, wz);
+  fenceG.add(fPosts, wires);
 
   // ---- arbustos junto a la cerca: reparto fijo que se repite cada 600 m ----
   const PERIOD = 600;
@@ -121,8 +150,12 @@ export function createProps(scene) {
   const BUSH = ["#4d7a3a", "#5f8742", "#3f6b36", "#7a8a3e"];
   const col = new THREE.Color();
   k = 0;
+  px = [];
+  pz = [];
   for (let p = -reps; p < reps; p++) {
     for (const b of layout) {
+      px.push(p * PERIOD + b.x);
+      pz.push(b.z);
       tmp.position.set(p * PERIOD + b.x, b.r * 0.45, b.z);
       tmp.rotation.set(0, b.x, 0);
       tmp.scale.set(b.r * 1.3, b.r * 0.9, b.r * 1.3);
@@ -132,12 +165,46 @@ export function createProps(scene) {
     }
   }
   bushes.count = k;
+  track(bushes, PERIOD, px, pz);
   bushes.castShadow = true;
   bushG.add(bushes);
 
+  // Huella de las estaciones en coordenadas de pista: { x0, x1, z0, z1 }. Lo que cae dentro se
+  // oculta (escala cero) y se recalcula solo al cambiar de celda o de huella, no en cada fotograma.
+  let clear = [];
+  let clearKey = "";
+  function setClear(boxes) {
+    const key = boxes.map((b) => `${Math.round(b.x0)},${Math.round(b.x1)},${Math.round(b.z0)},${Math.round(b.z1)}`).join(";");
+    if (key === clearKey) return;
+    clearKey = key;
+    clear = boxes;
+  }
+  function applyClear(s) {
+    for (const m of maskable) {
+      const cell = Math.floor(s / m.spacing);
+      const key = `${cell}|${clearKey}`;
+      if (m.key === key) continue;
+      m.key = key;
+      const arr = m.mesh.instanceMatrix.array;
+      arr.set(m.orig);
+      const off = cell * m.spacing;
+      for (let i = 0; i < m.xs.length; i++) {
+        const x = m.xs[i] + off;
+        const z = m.zs[i];
+        if (inAnyBox(x, z, clear)) {
+          const o = i * 16;
+          arr[o] = arr[o + 1] = arr[o + 2] = arr[o + 4] = arr[o + 5] = arr[o + 6] = arr[o + 8] = arr[o + 9] = arr[o + 10] = 0;
+        }
+      }
+      m.mesh.instanceMatrix.needsUpdate = true;
+    }
+  }
+
   return {
     /** s: coordenada de pista del centro del tren */
+    setClear,
     update(s) {
+      applyClear(s);
       for (const it of items) it.g.position.x = -(((s % it.spacing) + it.spacing) % it.spacing);
     },
     setNight(on) {

@@ -14,6 +14,7 @@ const MOTOR = `
 const COLORES = `
 <ul>
   <li><span class="sw n"></span><b>Rojo</b> es polo norte y <span class="sw s"></span><b>azul</b> polo sur. En el estator, las franjas muestran el polo opuesto al del imán que tienen enfrente, porque se atraen.</li>
+  <li><b>Lupa del entrehierro</b> (abajo a la izquierda, tecla <kbd>L</kbd>): un corte en vivo del sistema. En el EMS se ve el estator arriba, el imán del coche debajo y el hueco entre ambos, ampliado en el dibujo y con su cifra real al lado; las líneas de campo van del polo norte al sur y las flechas son la atracción (verde) y el peso (blanco). En el EDS se ve la pared con sus bobinas en 8, el imán superconductor del coche y el eje nulo de las bobinas: el coche se eleva cuando su imán queda por encima de ese eje. Avisa del despegue y del aterrizaje.</li>
   <li><b>Partículas y líneas de flujo</b>: recorren el circuito magnético con el sentido real del campo, del polo norte (rojo) al sur (azul). Se dibujan cuando los imanes están a la vista: cámaras Campo, Sección e Imanes, o carrocería en rayos X o corte. El indicador <b>Campo</b> del cuadro de mando muestra su intensidad y abre la cámara Campo.</li>
   <li>Flechas sobre el techo, en escala de raíz cuadrada para que se vean fuerzas de órdenes distintos: <span class="sw lift"></span>sustentación, <span class="sw weight"></span>peso, <span class="sw thrust"></span>empuje, <span class="sw drag"></span>resistencia y <span class="sw side"></span>fuerza lateral.</li>
 </ul>`;
@@ -69,7 +70,7 @@ const EMS = {
 <tr><td>Paso polar 258 mm; paso de diente 63 mm</td><td><span class="tag">fuente</span> ${L("https://www.mdpi.com/2076-0825/14/11/514", "MDPI Actuators 14(11):514")}, ${L("https://www.researchgate.net/publication/224055510_MAGLEV_projects_technology_aspects_and_choices", "MAGLEV projects: technology aspects and choices")}</td></tr>
 <tr><td>Dos secciones: 54 m, 120 t en vacío, empuje máx. 85 kN, 0 a 215 Hz, 4250 V, 400 km/h</td><td><span class="tag">fuente</span> ${L("https://artefacts-discovery.researcher.life/full_text/DA-2/68/680fe23b46a73ba28f0969fd014f70bc/full_text/623230215391790103f89577fdb0e5e6.pdf", "tabla de un documento sobre motores lineales")}. El motor (4250 V, 1200 A, 0 a 215 Hz) coincide con ${L("https://escholarship.org/content/qt6ds64496/qt6ds64496.pdf", "The Transrapid Magnetic Levitation System")}. Los 85 kN solo aparecen en una fuente.</td></tr>
 <tr><td>3 secciones de 60 t; 42,5 kN por sección</td><td><span class="tag">derivado</span> de lo anterior</td></tr>
-<tr><td>20 m por sección (la fuente da 27 m)</td><td><span class="tag">ilustrativo</span> se acorta para el encuadre</td></tr>
+<tr><td>14 m por sección (la fuente da 27 m)</td><td><span class="tag">ilustrativo</span> se acorta para el encuadre</td></tr>
 <tr><td>Corriente de equilibrio 50 A, retardo del convertidor 5 ms, ganancias del PID, patín a 20 mm, área frontal 10 m², Cd 0,3, potencia por sección</td><td><span class="tag">ilustrativo</span> elegidos para que el modelo sea coherente</td></tr>
 </tbody>
 </table>`,
@@ -116,7 +117,7 @@ const EDS = {
 <tr><td>603 km/h, récord de la serie L0 (2015)</td><td><span class="tag">fuente</span> ${L("https://en.wikipedia.org/wiki/L0_Series", "L0 Series")}</td></tr>
 <tr><td>700 kA, NbTi y helio líquido; bobinas en 8 conectadas entre paredes</td><td><span class="tag">fuente</span> KIT; ${L("https://en.wikipedia.org/wiki/SCMaglev", "SCMaglev")}</td></tr>
 <tr><td>Masa 25 t por sección, empuje y potencia, v<sub>c</sub> = 20 m/s, κ = 0,35, λ calibrado, elevación sobre ruedas 85 mm, Cd 0,25</td><td><span class="tag">ilustrativo</span></td></tr>
-<tr><td>20 m por sección</td><td><span class="tag">ilustrativo</span> se acorta para el encuadre</td></tr>
+<tr><td>14 m por sección</td><td><span class="tag">ilustrativo</span> se acorta para el encuadre</td></tr>
 </tbody>
 </table>`,
     },
@@ -135,6 +136,7 @@ export const KEYS = [
   [["1", "6"], "Cámaras"],
   [["P"], "Piezas"],
   [["E"], "Separar"],
+  [["L"], "Lupa del entrehierro"],
   [["Espacio"], "Pausa"],
   [["H"], "Panel lateral"],
   [["?"], "Esta lista"],

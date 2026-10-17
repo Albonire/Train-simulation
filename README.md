@@ -21,6 +21,7 @@ npm run dev      # servidor en http://127.0.0.1:5173 (genera antes las láminas)
 npm test         # tests del modelo físico (Vitest)
 npm run build    # compilación de producción en dist/
 npm run qa:parts  # QA del explorador de piezas en Chromium (con el servidor de desarrollo activo)
+node scripts/shot.mjs <url> <carpeta> ems:dark:orbit:1920x918  # capturas para revisar a ojo
 ```
 
 Requiere Node.js 22.12 o superior (lo exige Vitest 5; Vite 8 admite desde 20.19 y el kit de las láminas
@@ -37,9 +38,10 @@ Chromium.
 | Perturbaciones | Carga extra del 12 %, ráfaga lateral, golpe vertical, sin control, sin corriente. Cada fila dice su efecto y, tras pulsarla, el panel muestra el desvío máximo y el tiempo en volver, medidos en el modelo. |
 | Cámaras (teclas 1 a 6) | Órbita, seguir, sección, imanes, arriba y campo. Doble clic recentra la vista. La escena se centra en el área que dejan libre los paneles. La cámara nunca baja de 1,7 m sobre el suelo: se puede mirar la vía desde abajo, pero no atravesar el terreno. |
 | Piezas (P) y Separar (E) | Con Piezas activo, un clic en cada pieza acerca la cámara y abre una tarjeta con su función y cifras en vivo. Separar aleja las piezas entre sí con una animación suave. Hay 7 piezas en EMS y 7 en EDS. |
+| Lupa del entrehierro (L) | Corte en vivo abajo a la izquierda: en EMS el estator, el hueco ampliado con su cifra real, el imán con sus polos, las líneas de campo y las fuerzas de atracción y peso; en EDS la pared con bobinas en 8, el imán superconductor, el eje nulo y la corriente inducida. Avisa del despegue y del aterrizaje. Con poca altura de ventana arranca plegada. |
 | Campo | La cámara Campo (6) vuelve transparente la carrocería y muestra el flujo con partículas que siguen el sentido del campo. El indicador Campo del cuadro de mando muestra su intensidad. |
 | Carrocería | Sólida, rayos X o corte. |
-| Capas | Flujo (solo cuando los imanes están a la vista), onda del estator, fuerzas (diagrama sobre el techo), nombres (solo en las vistas de detalle). |
+| Capas | Flujo (solo cuando los imanes están a la vista), onda del estator, fuerzas (diagrama sobre el techo con sus cifras en las vistas Órbita y Seguir), nombres (solo en las vistas de detalle). |
 | Exagerar entrehierro | El entrehierro real (10 mm) es invisible a escala; se multiplica y la interfaz lo indica. |
 | Láminas (`#/laminas`) | Página con las tres figuras isométricas, explicativas e interactivas. |
 | Guía (`#/guia`) | Página de lectura con índice: cómo se sostiene y avanza el tren, los colores, los controles, el modelo, sus límites y la tabla de fuentes. |
@@ -110,7 +112,7 @@ elegido para que el modelo sea coherente, **no es un dato oficial**. Cada consta
 | Paso polar del estator: 258 mm; paso de diente 63 mm | fuente | [MDPI Actuators 14(11):514](https://www.mdpi.com/2076-0825/14/11/514), [MAGLEV projects: technology aspects and choices](https://www.researchgate.net/publication/224055510_MAGLEV_projects_technology_aspects_and_choices) |
 | Vehículo de ensayo de dos secciones: 54 m, 120 t en vacío, 85 kN, 0 a 215 Hz, 4250 V, 400 km/h, 450 kW a bordo | fuente | [tabla en un documento sobre motores lineales](https://artefacts-discovery.researcher.life/full_text/DA-2/68/680fe23b46a73ba28f0969fd014f70bc/full_text/623230215391790103f89577fdb0e5e6.pdf); el motor (4250 V, 1200 A, 0 a 215 Hz) coincide con [The Transrapid Magnetic Levitation System](https://escholarship.org/content/qt6ds64496/qt6ds64496.pdf). El empuje de 85 kN solo aparece en una fuente. |
 | 60 t por sección; 42,5 kN por sección; velocidad máxima EMS 399 km/h (= 2·τ·215 Hz) | derivado | de lo anterior |
-| 20 m por sección en EMS y EDS (la fuente da 27 m por sección en EMS) | ilustrativo | se acorta para que el tren entero quepa en pantalla |
+| 14 m por sección en EMS y EDS (la fuente da 27 m por sección en EMS) | ilustrativo | se acorta para que el tren entero quepa en pantalla |
 | Estator del Transrapid alimentado por tramos que se conmutan al paso del vehículo | fuente | [WO 1997/047493](https://patents.google.com/patent/WO1997047493A1/en) |
 | EDS: elevación de unos 100 mm | fuente | [JR Central](https://global.jr-central.co.jp/en/company/_pdf/superconducting_maglev.pdf), [KIT](https://publikationen.bibliothek.kit.edu/1000075557/4402937) |
 | EDS: ruedas hasta unos 150 km/h | fuente aprox. | [ficha educativa de JR Central](https://www.japansociety.org.uk/usercontent/572cf69871d517dad7964c455c746698/JR-Central-SCMAGLEV-Worksheet.pdf) (describe la línea de pruebas de Yamanashi) |
