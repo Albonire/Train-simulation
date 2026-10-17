@@ -14,7 +14,7 @@ export function makeArrow(color, { radius = 0.07, head = 0.32 } = {}) {
   const up = new THREE.Vector3(0, 1, 0);
   g.userData.set = (dir, length) => {
     const L = Math.max(0, length);
-    g.visible = L > 0.05;
+    g.visible = L > 0.45; // mas cortas que la cabeza no se leen: solo estorban
     if (!g.visible) return;
     const d = dir.clone().normalize();
     q.setFromUnitVectors(up, d);

@@ -30,6 +30,7 @@ export const ICONS = {
   keys: svg('<rect x="1.5" y="4" width="13" height="8" rx="1.6"/><path d="M4.2 7h.01M6.7 7h.01M9.2 7h.01M11.7 7h.01M5 9.6h6"/>'),
   cube: svg('<path d="M8 1.8l5.5 3.1v6.2L8 14.2 2.5 11.1V4.9z"/><path d="M2.5 4.9L8 8l5.5-3.1M8 8v6.2"/>'),
   train: svg('<rect x="3.2" y="2.2" width="9.6" height="8.8" rx="2.6"/><path d="M3.2 7.6h9.6"/><path d="M5.2 13.6h.01M10.8 13.6h.01"/>'),
+  chev: svg('<path d="M4 6.5l4 4 4-4"/>'),
   prev: svg('<path d="M9.5 3.5L5 8l4.5 4.5"/>'),
   next: svg('<path d="M6.5 3.5L11 8l-4.5 4.5"/>'),
   field: svg('<path d="M2 8c2-5 10-5 12 0M2 8c2 5 10 5 12 0"/><circle cx="8" cy="8" r="1.4" class="f"/>'),

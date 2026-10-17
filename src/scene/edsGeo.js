@@ -145,12 +145,15 @@ export function edsOutline() {
   return [...pts.slice(36), ...pts.slice(0, 36)];
 }
 
+// largo de la nariz aerodinamica de las secciones de cabeza y cola (m)
+const NOSE = 6.5;
+
 export function buildEdsSection({ length = EDS.sectionLength, role = "mid", baseX = 0, carNo = 1 }) {
   const group = new THREE.Group();
   const clipMats = [];
   const bodyMats = [];
   const pts = edsOutline();
-  const stations = bodyStations(length - 0.6, { noseFront: role === "front" ? 9 : 0, noseRear: role === "rear" ? 9 : 0, noseDrop: 0.4 });
+  const stations = bodyStations(length - 0.6, { noseFront: role === "front" ? NOSE : 0, noseRear: role === "rear" ? NOSE : 0, noseDrop: 0.4 });
   const livery = liveryTextures({
     points: pts,
     x0: stations[0].x,
@@ -185,7 +188,7 @@ export function buildEdsSection({ length = EDS.sectionLength, role = "mid", base
     bodyMats.push(mm);
     clipMats.push(mm);
   }
-  const lamps = role === "front" ? headlamps({ len: length - 0.6, noseLen: 9, y: 0.9 }) : null;
+  const lamps = role === "front" ? headlamps({ len: length - 0.6, noseLen: NOSE, y: 0.9 }) : null;
   if (lamps) group.add(lamps.group);
   if (role !== "front") {
     const bel = bellows(pts, length, 0.92, 0.95);

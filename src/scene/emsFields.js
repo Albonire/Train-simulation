@@ -92,6 +92,7 @@ export function createEmsFields(sceneApi) {
 
   return {
     arrows: arrowsApi.group,
+    forces: arrowsApi,
     lines,
     /** Intensidad relativa del campo (1 = nominal): I/I0 por g0/g. */
     fieldLevel(train) {
