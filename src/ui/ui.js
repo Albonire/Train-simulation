@@ -7,8 +7,9 @@ import { History, drawChart } from "./charts.js";
 import { ICONS } from "./icons.js";
 import { createRouter, routeHref } from "./router.js";
 import { ResponseTracker } from "./response.js";
-import { renderGuia } from "./pages/guia.js";
-import { renderLaminas, clearLaminas } from "./pages/laminas.js";
+// la Guia y las Laminas (y las figuras) pesan mas que la simulacion: se cargan al entrar en ellas
+const pagesGuia = () => import("./pages/guia.js");
+const pagesLaminas = () => import("./pages/laminas.js");
 import { KEYS, GLOSARIO } from "./info.js";
 import { createPartCard } from "./partCard.js";
 import { createTourCard } from "./tourCard.js";
@@ -198,6 +199,11 @@ export function createUI(h) {
         <button data-layer="wave" aria-pressed="true" title="Onda del estator: rojo N, azul S">Onda</button>
         <button data-layer="forces" aria-pressed="false" title="Flechas de fuerza (escala de raíz cuadrada)">Fuerzas</button>
         <button data-layer="labels" aria-pressed="true" title="Nombres de las piezas en las vistas de detalle">Nombres</button>
+      </div>
+      <h3>Compartir</h3>
+      <div class="actions">
+        <button class="btn" id="linkBtn" title="Copia un enlace que abre esta misma vista: modo, cámara, escala de tiempo y pestaña">Copiar enlace</button>
+        <button class="btn" id="shotBtn" title="Guarda la imagen de la escena (K)">Guardar imagen</button>
       </div>
       <h3>Apertura</h3>
       <button class="btn" id="introBtn" title="Vuelve a ver el primer plano de la levitación. Reinicia el viaje (I)">Repetir la apertura</button>
@@ -394,6 +400,8 @@ export function createUI(h) {
       case "resetBtn": return h.reset();
       case "introBtn": return h.replayIntro?.();
       case "tourBtn": return h.tourToggle?.();
+      case "linkBtn": return h.copyLink?.();
+      case "shotBtn": return h.screenshot?.();
       case "themeBtn": return toggleTheme();
       case "panelBtn": return setPanel(els.side.classList.contains("closed"));
     }
@@ -428,6 +436,7 @@ export function createUI(h) {
     if (e.key === "l" || e.key === "L") return loupe.toggle();
     if (e.key === "i" || e.key === "I") return h.replayIntro?.();
     if (e.key === "v" || e.key === "V") return h.tourToggle?.();
+    if (e.key === "k" || e.key === "K") return h.screenshot?.();
     if (document.body.dataset.tour === "on" && document.body.dataset.parts !== "on" && (e.key === "ArrowRight" || e.key === "ArrowLeft") && tag !== "BUTTON") {
       e.preventDefault();
       return h.tourStep(e.key === "ArrowRight" ? 1 : -1);
@@ -444,12 +453,19 @@ export function createUI(h) {
   const view = { page: "sim", arg: "" };
   const pageEl = $("#page");
   const isLight = () => document.documentElement.dataset.theme === "light";
-  function renderPage() {
-    if (view.page === "guia") {
+  let laminasMod = null; // el modulo, una vez cargado: hace falta para limpiarlo al salir
+  async function renderPage() {
+    const asked = view.page;
+    if (asked === "guia") {
+      const { renderGuia } = await pagesGuia();
+      if (view.page !== asked) return; // el usuario ya se fue a otra pagina
       renderGuia(pageEl, { mode, arg: view.arg, setMode: (m) => h.setMode(m) });
-    } else if (view.page === "laminas") {
-      renderLaminas(pageEl, { arg: view.arg, theme: isLight() ? "light" : "dark", mode });
+    } else if (asked === "laminas") {
+      laminasMod = await pagesLaminas();
+      if (view.page !== asked) return;
+      laminasMod.renderLaminas(pageEl, { arg: view.arg, theme: isLight() ? "light" : "dark", mode });
     }
+    if (asked === "guia") $("#guiaTitulo")?.focus({ preventScroll: true });
   }
   function refreshPage() {
     if (view.page !== "sim") renderPage();
@@ -459,15 +475,18 @@ export function createUI(h) {
     const same = prev === page;
     view.page = page;
     view.arg = arg;
+    document.title = { sim: "Maglev · Simulación", guia: "Maglev · Guía", laminas: "Maglev · Láminas" }[page] ?? "Maglev";
     document.body.dataset.view = page;
     keysPop.hidePopover?.();
-    if (page !== "sim") h.partClose();
+    // (con la tarjeta cerrada no hay nada que cerrar; y al abrir un enlace directo a la Guia la interfaz
+    // aun se esta construyendo: main.js todavia no tiene su `ui`)
+    if (page !== "sim" && card.open) h.partClose();
     for (const a of root.querySelectorAll("[data-page]")) {
       if (a.dataset.page === page) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
     }
     if (page === "sim") {
-      if (prev === "laminas") clearLaminas(pageEl);
+      if (prev === "laminas") laminasMod?.clearLaminas(pageEl);
       pageEl.hidden = true;
       pageEl.innerHTML = "";
       pageEl.onscroll = null;
@@ -481,9 +500,8 @@ export function createUI(h) {
       else pageEl.scrollTop = 0;
       return;
     }
-    if (prev === "laminas") clearLaminas(pageEl);
+    if (prev === "laminas") laminasMod?.clearLaminas(pageEl);
     renderPage();
-    if (page === "guia") $("#guiaTitulo")?.focus({ preventScroll: true });
   }
   const router = createRouter(showPage);
 
@@ -736,5 +754,5 @@ export function createUI(h) {
 
   document.body.dataset.view = "sim";
   router.start();
-  return { root, els, card, loupe, startHint: () => startHint(), build, update, sample, toast, hist, setTimeScale, setPaused, setOutputs, resetControls, setExagState, tour: tourCard, setTourActive, syncLayers, router, view };
+  return { root, els, card, loupe, startHint: () => startHint(), build, update, sample, toast, hist, setTimeScale, setPaused, setOutputs, resetControls, setExagState, tour: tourCard, setTourActive, syncLayers, selectTab, getTab: () => tab, router, view };
 }

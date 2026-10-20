@@ -420,8 +420,38 @@ async function tabs() {
   await page.close();
 }
 
+// ---- 11: estado en el enlace y memoria ----
+async function state() {
+  const S = "estado";
+  {
+    const { page, errors } = await open({ query: "#/?m=eds&c=top&t=20&tab=view", pause: false, advance: 0 });
+    await frames(page, 3);
+    const r = await page.evaluate(() => ({ mode: document.documentElement.dataset.mode, rig: window.__app.view.rig, ts: window.__app.view.timeScale, tab: window.__app.ui.getTab() }));
+    check(S, "un enlace con estado abre ese modo, camara, escala de tiempo y pestana", r.mode === "eds" && r.rig === "top" && r.ts === 20 && r.tab === "view", JSON.stringify(r));
+    check(S, "sin errores", errors.length === 0, errors.join(" | "));
+    await page.close();
+  }
+  {
+    const { page, errors } = await open({ pause: false, advance: 0 });
+    await page.evaluate(() => {
+      window.__app.setRig("gap", true);
+      window.__app.ui.setTimeScale(60);
+    });
+    await page.waitForFunction(() => location.hash.includes("c=gap") && location.hash.includes("t=60"), null, { timeout: 20000 });
+    check(S, "el hash sigue a la vista sin recargar", true);
+    await page.reload({ waitUntil: "load" });
+    await page.waitForFunction(() => window.__app, null, { timeout: 30000 });
+    await frames(page, 2);
+    const r = await page.evaluate(() => ({ rig: window.__app.view.rig, ts: window.__app.view.timeScale, title: document.title }));
+    check(S, "al recargar vuelve a la camara y a la escala de tiempo de antes", r.rig === "gap" && r.ts === 60, JSON.stringify(r));
+    check(S, "el titulo de la pagina dice donde estas", /Simulaci/.test(r.title), r.title);
+    check(S, "sin errores", errors.length === 0, errors.join(" | "));
+    await page.close();
+  }
+}
+
 const only = process.env.QA_ONLY?.split(",");
-const scenarios = { hints, ctrlOff, cutPower, reset, exaggeration, lamps, visibility, events, tour, tabs };
+const scenarios = { hints, ctrlOff, cutPower, reset, exaggeration, lamps, visibility, events, tour, tabs, state };
 for (const [name, fn] of Object.entries(scenarios)) {
   if (only && !only.includes(name)) continue;
   try {

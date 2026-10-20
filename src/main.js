@@ -14,6 +14,7 @@ import { adaptiveNear } from "./scene/depth.js";
 import { framePart, cameraIsSane, fitDistance } from "./scene/frame.js";
 import { INTRO, introPose, introExag, introTimeScale, introXray, introCaption } from "./scene/intro.js";
 import { stepsOf } from "./ui/tourData.js";
+import { parseState, stateHash } from "./ui/shareState.js";
 import { setExplode as applyExplode, pick, setHighlight, setHighlightColor, setHighlightOpacity, focusBox } from "./scene/parts.js";
 import { partById, partIds, stepPart } from "./scene/partsData.js";
 import { DIM } from "./scene/ems.js";
@@ -28,6 +29,12 @@ import "@fontsource/barlow-semi-condensed/latin-600.css";
 import "./ui/style.css";
 
 const canvas = document.getElementById("view");
+// sin WebGL no hay escena: se dice claro en vez de dejar la pagina en blanco
+if (!document.createElement("canvas").getContext("webgl2") && !document.createElement("canvas").getContext("webgl")) {
+  document.body.innerHTML =
+    '<main style="font:16px/1.5 system-ui,sans-serif;max-width:34em;margin:12vh auto;padding:0 20px;color:#14202b"><h1 style="font-size:22px">Este navegador no puede dibujar la escena 3D</h1><p>El simulador necesita WebGL. Prueba con un navegador actualizado, activa la aceleración por hardware o abre el enlace en otro dispositivo.</p></main>';
+  throw new Error("sin WebGL");
+}
 const world = createWorld(canvas);
 const { renderer, scene } = world;
 // una linea de diagnostico: si algo no se ve bien en una maquina, esto dice con que GPU se dibuja
@@ -395,6 +402,8 @@ const ui = createUI({
   tourStep: (dir) => tourStep(dir),
   tourEnd: () => tourEnd(),
   tourEsc: () => tourEsc(),
+  copyLink: () => copyLink(),
+  screenshot: () => screenshot(),
   setParts: (on) => setParts(on),
   setExplode: (on) => setExplodeView(on),
   partStep: (dir) => partStep(dir),
@@ -840,6 +849,7 @@ function step(now) {
   last = now;
   if (intro.active) introTick(wall);
   if (ev.active && now >= ev.end) endEvent();
+  saveState(now);
   if (!view.paused) {
     // trozos de a lo sumo 20 ms: mantiene el historial y la precision con escalas altas
     let left = dt * view.timeScale;
@@ -928,8 +938,68 @@ function step(now) {
   labels.update(camera, intro.active && intro.xray ? "gap" : view.rig, view.layers.labels, window.innerWidth, window.innerHeight);
   ui.update(tel, train, v2);
 }
+// ---- estado: enlaces y memoria ----
+// El estado va en el hash (para compartirlo) y en localStorage (para recordarlo). Quien vuelve, o llega por
+// un enlace con estado, entra directo a esa vista; la apertura es para la primera visita.
+const STATE_KEY = "maglev-state";
+const currentState = () => ({ m: mode, c: view.rig, t: view.timeScale, tab: ui.getTab() });
+function loadSaved() {
+  try {
+    return parseState("#/?" + new URLSearchParams(JSON.parse(localStorage.getItem(STATE_KEY) ?? "{}")).toString());
+  } catch {
+    return null;
+  }
+}
+const fromLink = parseState(location.hash);
+const restored = fromLink ?? loadSaved();
+if (restored) {
+  if (restored.m && restored.m !== mode) setMode(restored.m);
+  if (restored.c) setRig(restored.c, true);
+  if (restored.t) ui.setTimeScale(restored.t);
+  if (restored.tab) ui.selectTab(restored.tab);
+}
+let lastSaved = "";
+function saveState(now) {
+  if (now - saveState.at < 1000) return;
+  saveState.at = now;
+  // durante la apertura, la visita o un evento la camara y la escala de tiempo son prestadas: no se guardan
+  if (intro.active || tour.active || ev.active || document.body.dataset.view !== "sim") return;
+  const cur = JSON.stringify(currentState());
+  if (cur === lastSaved) return;
+  lastSaved = cur;
+  try {
+    localStorage.setItem(STATE_KEY, cur);
+    history.replaceState(null, "", stateHash(currentState()));
+  } catch {
+    /* sin almacenamiento o en una vista previa: no pasa nada */
+  }
+}
+saveState.at = 0;
+async function copyLink() {
+  const url = location.origin + location.pathname + stateHash(currentState());
+  try {
+    await navigator.clipboard.writeText(url);
+    ui.toast("Enlace copiado");
+  } catch {
+    ui.toast("No se pudo copiar: " + url);
+  }
+}
+function screenshot() {
+  // se dibuja y se lee en el mismo turno: asi no hace falta conservar el buffer entre fotogramas
+  renderer.render(scene, camera);
+  canvas.toBlob((blob) => {
+    if (!blob) return ui.toast("No se pudo guardar la imagen");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `maglev-${mode}-${view.rig}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    ui.toast("Imagen guardada");
+  }, "image/png");
+}
+
 requestAnimationFrame(frame);
-if (introAllowed()) startIntro();
+if (introAllowed() && (!restored || qs.has("intro"))) startIntro();
 else ui.startHint();
 
 window.__THREE = THREE;
