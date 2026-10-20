@@ -154,19 +154,19 @@ export function createUI(h) {
 
   <aside id="side" class="panel" aria-label="Panel">
     <div class="tabs" role="tablist">
-      <button role="tab" data-tab="data" aria-selected="true">${ICONS.data}<span>Datos</span></button>
-      <button role="tab" data-tab="ctrl" aria-selected="false">${ICONS.sliders}<span>Control</span></button>
-      <button role="tab" data-tab="view" aria-selected="false">${ICONS.view}<span>Vista</span></button>
+      <button role="tab" id="tab-data" aria-controls="pane-data" tabindex="0" data-tab="data" aria-selected="true">${ICONS.data}<span>Datos</span></button>
+      <button role="tab" id="tab-ctrl" aria-controls="pane-ctrl" tabindex="-1" data-tab="ctrl" aria-selected="false">${ICONS.sliders}<span>Control</span></button>
+      <button role="tab" id="tab-view" aria-controls="pane-view" tabindex="-1" data-tab="view" aria-selected="false">${ICONS.view}<span>Vista</span></button>
     </div>
 
-    <div class="tab" data-pane="data">
+    <div class="tab" id="pane-data" role="tabpanel" aria-labelledby="tab-data" data-pane="data">
       <dl class="rows" id="rows"></dl>
       <figure class="chart"><figcaption><span id="capA"></span><span id="valA"></span></figcaption><canvas id="chartA"></canvas></figure>
       <figure class="chart"><figcaption><span id="capB"></span><span id="valB"></span></figcaption><canvas id="chartB"></canvas></figure>
       <figure class="chart"><figcaption><span id="capC"></span><span id="valC"></span></figcaption><canvas id="chartC"></canvas></figure>
     </div>
 
-    <div class="tab" data-pane="ctrl" hidden>
+    <div class="tab" id="pane-ctrl" role="tabpanel" aria-labelledby="tab-ctrl" data-pane="ctrl" hidden>
       <label class="field"><span>Velocidad objetivo <output id="targetOut"></output></span>
         <input id="target" type="range" min="0" max="400" step="1" value="400"></label>
       <div class="actions">
@@ -181,7 +181,7 @@ export function createUI(h) {
       <p class="resp" id="resp" role="status" aria-live="polite"></p>
     </div>
 
-    <div class="tab" data-pane="view" hidden>
+    <div class="tab" id="pane-view" role="tabpanel" aria-labelledby="tab-view" data-pane="view" hidden>
       <h3>Carrocería</h3>
       <div class="seg wide" id="bodyBtns" role="group" aria-label="Carrocería">
         <button data-body="auto" aria-pressed="true" title="Según la cámara">Auto</button>
@@ -321,7 +321,10 @@ export function createUI(h) {
 
   function selectTab(name) {
     tab = name;
-    for (const b of root.querySelectorAll("[data-tab]")) b.setAttribute("aria-selected", String(b.dataset.tab === name));
+    for (const b of root.querySelectorAll("[data-tab]")) {
+      b.setAttribute("aria-selected", String(b.dataset.tab === name));
+      b.tabIndex = b.dataset.tab === name ? 0 : -1;
+    }
     for (const p of root.querySelectorAll("[data-pane]")) p.hidden = p.dataset.pane !== name;
   }
 
@@ -347,6 +350,17 @@ export function createUI(h) {
     for (const x of root.querySelectorAll("[data-ts]")) press(x, Number(x.dataset.ts) === ts);
     h.setTimeScale(ts);
   }
+
+  // pestanas con teclado: flechas, Inicio y Fin pasan de una a otra (patron WAI-ARIA)
+  $(".tabs").addEventListener("keydown", (e) => {
+    const tabs = [...root.querySelectorAll("[data-tab]")];
+    const i = tabs.findIndex((b) => b.dataset.tab === tab);
+    const next = { ArrowRight: (i + 1) % tabs.length, ArrowLeft: (i + tabs.length - 1) % tabs.length, Home: 0, End: tabs.length - 1 }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    selectTab(tabs[next].dataset.tab);
+    tabs[next].focus();
+  });
 
   // ---- eventos ----
   root.addEventListener("click", (e) => {
@@ -715,7 +729,7 @@ export function createUI(h) {
     const saved = localStorage.getItem("maglev-theme");
     applyTheme(saved ?? (window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark"));
     const panel = localStorage.getItem("maglev-panel");
-    setPanel(panel === null ? window.innerWidth > 900 : panel === "1");
+    setPanel(panel === null ? window.innerWidth > 1500 : panel === "1"); // cerrado en ventanas medianas: el tren gana sitio
   } catch {
     applyTheme("dark");
   }

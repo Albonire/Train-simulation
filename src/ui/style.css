@@ -25,6 +25,7 @@
   --surface-2: #232b35;
   --line: #313b46;
   --line-strong: #4a5663;
+  --edge: #7a8794; /* borde de los controles: 3:1 sobre la superficie */
   --text: #eaeef2;
   --muted: #aab4bf;
   --faint: #8c98a5;
@@ -43,7 +44,7 @@
 /* fondo de lo activo: un tinte del acento sobre la superficie, en vez de una raya lateral */
 :root { --tint: color-mix(in oklab, var(--accent) 20%, var(--surface)); }
 :root[data-mode="eds"] {
-  --accent: #5ea6ec;
+  --accent: #6cb0f0;
   --accent-ink: #091a2b;
 }
 :root[data-theme="light"] {
@@ -52,10 +53,11 @@
   --surface-2: #eef1f4;
   --line: #d5dbe1;
   --line-strong: #b4bec8;
+  --edge: #7d8a98;
   --text: #14202b;
   --muted: #475665;
-  --faint: #667587;
-  --accent: #0e7a6b;
+  --faint: #566677;
+  --accent: #0b6b5e;
   --accent-ink: #ffffff;
   --ok: #1f7a46;
   --warn: #9a6200;
@@ -105,7 +107,7 @@ a { color: var(--accent); text-underline-offset: 2px; }
 .ib { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; min-width: 40px; padding: 0 10px; border-radius: var(--r-s); color: var(--muted); font-weight: 500; transition: background-color 0.15s, color 0.15s; }
 .ib:hover { background: var(--surface-2); color: var(--text); }
 .ib[aria-pressed="true"] { color: var(--accent); }
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 12px; border-radius: var(--r-s); border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); font-weight: 500; transition: background-color 0.15s, border-color 0.15s; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 12px; border-radius: var(--r-s); border: 1px solid var(--edge); background: var(--surface); color: var(--text); font-weight: 500; transition: background-color 0.15s, border-color 0.15s; }
 .btn:hover { background: var(--surface-2); }
 .btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
 .btn:active { transform: translateY(1px); }
@@ -420,4 +422,12 @@ body[data-intro="on"] #hint { opacity: 0; }
 body[data-intro="on"] #loupe { opacity: 0.0; pointer-events: none; }
 @media (max-width: 760px) {
   #intro { bottom: 190px; width: calc(100% - 16px); }
+}
+
+/* pantallas tactiles: objetivos de al menos 40 px */
+@media (pointer: coarse) {
+  .seg button, .seg.sm button { min-height: 40px; }
+  .chips button, .tour-btn, .lp-go, #introSkip { min-height: 40px; }
+  #partCard .pc-nav .btn, #tourCard .tc-nav .btn { min-height: 44px; }
+  .ib { min-width: 40px; min-height: 40px; }
 }
