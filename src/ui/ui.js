@@ -9,7 +9,7 @@ import { createRouter, routeHref } from "./router.js";
 import { ResponseTracker } from "./response.js";
 import { renderGuia } from "./pages/guia.js";
 import { renderLaminas, clearLaminas } from "./pages/laminas.js";
-import { KEYS } from "./info.js";
+import { KEYS, GLOSARIO } from "./info.js";
 import { createPartCard } from "./partCard.js";
 import { createTourCard } from "./tourCard.js";
 import { createLoupe } from "./loupe.js";
@@ -31,11 +31,11 @@ const STATE = {
 };
 
 export const RIGS = [
-  ["orbit", "Órbita", "Vista general. Arrastra para girar, rueda para acercar."],
+  ["orbit", "Exterior", "Vista general del tren desde fuera. Arrastra para girar, rueda para acercar."],
   ["chase", "Seguir", "Cámara que acompaña al tren desde atrás."],
-  ["section", "Sección", "Corte transversal: viga, estator, imanes y entrehierro."],
+  ["section", "Corte", "Corte transversal: viga, estator, imanes y entrehierro."],
   ["gap", "Imanes", "Primer plano del entrehierro entre imán y estator."],
-  ["top", "Arriba", "Vista cenital."],
+  ["top", "Cenital", "Vista desde arriba."],
   ["field", "Campo", "Carrocería transparente y campo magnético realzado."],
 ];
 
@@ -45,7 +45,7 @@ const ROWS = {
     ["cur", "Corriente del imán", "A", (t) => fmt(t.current, 1)],
     ["freq", "Frecuencia", "Hz", (t) => fmt(t.frequency, 1)],
     ["thr", "Empuje", "kN", (t) => fmt(t.thrust / 1e3, 0)],
-    ["ang", "Ángulo de carga", "°", (t) => fmt(t.loadAngleDeg, 0)],
+    ["ang", "Desfase del motor", "°", (t) => fmt(t.loadAngleDeg, 0)],
     ["lift", "Sustentación / peso", "kN", (t) => `${fmt(t.liftTotal / 1e3, 0)} / ${fmt(t.weight / 1e3, 0)}`],
     ["aero", "Arrastre aerodinámico", "kN", (t) => fmt(t.dragAero / 1e3, 1)],
     ["pow", "Potencia en red", "MW", (t) => fmt(t.gridPowerMW, 2)],
@@ -249,13 +249,14 @@ export function createUI(h) {
     $("#modeName").textContent = modeId === "ems" ? "Transrapid" : "SCMaglev";
     const m = MODES[modeId];
     for (const b of root.querySelectorAll("[data-mode]")) b.setAttribute("aria-pressed", String(b.dataset.mode === modeId));
-    els.rows.innerHTML = ROWS[modeId].map(([id, label, unit]) => `<dt>${label}</dt><dd><span data-r="${id}">–</span><small>${unit}</small></dd>`).join("");
+    els.rows.innerHTML = ROWS[modeId].map(([id, label, unit]) => `<dt tabindex="0" title="${GLOSARIO[modeId][id] ?? ""}">${label}</dt><dd><span data-r="${id}">–</span><small>${unit}</small></dd>`).join("");
     rowEls = {};
     for (const [id] of ROWS[modeId]) rowEls[id] = $(`[data-r="${id}"]`, els.rows);
     els.hGapLbl.textContent = modeId === "ems" ? "Entrehierro" : "Elevación";
     $("#hGapBox").title = modeId === "ems"
-      ? "Entrehierro de la sección central: el hueco entre el imán y la vía. Los tres puntos de la barra son las tres secciones; la zona verde es la nominal."
-      : "Elevación de la sección central sobre la losa. Los tres puntos de la barra son las tres secciones; la zona verde es la nominal.";
+      ? `${GLOSARIO.ems.gap} Muestra la sección central; los tres puntos de la barra son las tres secciones y la zona verde es la nominal.`
+      : `${GLOSARIO.eds.gap} Muestra la sección central; los tres puntos de la barra son las tres secciones y la zona verde es la nominal.`;
+    $("#hField").title = GLOSARIO[modeId].field;
     const vmax = Math.round(m.vMax * 3.6);
     els.target.max = String(vmax);
     els.target.value = String(vmax);
@@ -603,7 +604,8 @@ export function createUI(h) {
       els.hSpeed.textContent = fmt(tel.speedKmh, 0);
       let [label, kind] = STATE[tel.state] ?? [tel.state, "idle"];
       if (tel.state === "levitando" && mode === "eds") label = "Preparado";
-      if (train.sections.some((s) => s.fallen)) [label, kind] = ["Sobre patines", "bad"];
+      // sobre patines es lo normal en una estacion (neutro); en marcha es una falla (rojo)
+      if (train.sections.some((s) => s.fallen)) [label, kind] = ["Sobre patines", tel.speedKmh > 20 ? "bad" : "idle"];
       if (train.sections.some((s) => s.contact)) [label, kind] = ["Pegado al riel", "bad"];
       els.hState.textContent = label;
       els.hState.dataset.k = kind;

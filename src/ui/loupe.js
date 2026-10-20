@@ -23,7 +23,7 @@ const COPPER = "#c8742a";
 /** Estado en palabras para la insignia. Devuelve [texto, tipo de insignia]. */
 export function loupeState(mode, tel, train) {
   if (mode === "ems") {
-    if (train.sections.some((s) => s.fallen)) return ["Sobre patines", "bad"];
+    if (train.sections.some((s) => s.fallen)) return ["Sobre patines", tel.speedKmh > 20 ? "bad" : "idle"];
     if (train.sections.some((s) => s.contact)) return ["Pegado al riel", "bad"];
     if (!tel.levitated) return [tel.state === "reposo" ? "Sobre patines" : "Despegando", tel.state === "reposo" ? "idle" : "warn"];
     return ["Levitando", "ok"];

@@ -23,7 +23,7 @@ const COLORES = `
 const CONTROLES = `
 <p>La cámara no baja de 1,7 m sobre el suelo: se puede mirar la vía desde abajo, pero no atravesar el terreno. Doble clic sobre la escena recupera la vista de la cámara activa.</p>
 <dl class="keys">
-  <dt><kbd>1</kbd> a <kbd>6</kbd></dt><dd>Cámaras: órbita, seguir, sección, imanes, arriba y campo</dd>
+  <dt><kbd>1</kbd> a <kbd>6</kbd></dt><dd>Cámaras: exterior, seguir, corte, imanes, cenital y campo</dd>
   <dt><kbd>P</kbd></dt><dd>Explorador de piezas: clic en una pieza para acercarte y leer qué hace; las flechas pasan a la siguiente</dd>
   <dt><kbd>E</kbd></dt><dd>Separar las piezas para verlas por dentro</dd>
   <dt><kbd>Espacio</kbd></dt><dd>Pausa y reanuda</dd>
@@ -132,6 +132,36 @@ export const FIGURES = [
   { id: "lsm-sincrono", title: "Motor lineal síncrono", line: "La onda del estator y el ángulo de carga." },
   { id: "eds-sustentacion", title: "Levitación EDS", line: "Imanes superconductores y bobinas de la pared." },
 ];
+
+// Glosario en lenguaje llano: lo que cada cifra del panel de datos quiere decir. Se muestra al pasar el
+// puntero (o enfocar la fila) y lo lee el lector de pantalla. Las claves son los ids de ROWS (ui.js) y
+// los dos indicadores del cuadro de mando.
+export const GLOSARIO = {
+  ems: {
+    cur: "Corriente que circula por el electroimán que sostiene al coche. El control la sube y la baja para mantener el hueco.",
+    freq: "Frecuencia de la corriente que alimenta la vía. Más frecuencia, más velocidad: el tren sigue a la onda.",
+    thr: "Fuerza con la que el motor de la vía empuja al tren hacia delante.",
+    ang: "Cuánto se retrasa el tren respecto de la onda de la vía (ángulo de carga). Con más desfase empuja más; pasado cierto punto pierde el sincronismo.",
+    lift: "Fuerza hacia arriba de los imanes frente al peso del tren. Van iguales mientras el tren levita.",
+    aero: "Fuerza con la que el aire frena al tren. Crece con el cuadrado de la velocidad.",
+    pow: "Potencia que toma de la red eléctrica. Negativa si el tren frena y devuelve energía.",
+    en: "Energía que el tren ha tomado de la red y la que ha devuelto al frenar.",
+    gap: "Entrehierro: el hueco de aire entre el imán del coche y el riel de hierro de la vía. Es de 10 mm y nada se toca.",
+    field: "Intensidad del campo magnético en el hueco, respecto de la nominal. Pulsa para verlo.",
+  },
+  eds: {
+    ind: "Corriente que el imán del coche genera en las bobinas de la pared al pasar. Sin movimiento no hay corriente.",
+    freq: "Frecuencia de la corriente que alimenta las bobinas de propulsión. Más frecuencia, más velocidad.",
+    thr: "Fuerza con la que las bobinas de la pared empujan al tren hacia delante.",
+    lift: "Fuerza hacia arriba que nace de las corrientes inducidas frente al peso del tren. Iguales cuando flota.",
+    drag: "Arrastre magnético: freno que causan las corrientes inducidas, y arrastre del aire. El primero es máximo a baja velocidad.",
+    whl: "Hasta unos 150 km/h el tren rueda sobre neumáticos; después se retraen y flota.",
+    pow: "Potencia que toma de la red eléctrica. Negativa si el tren frena y devuelve energía.",
+    en: "Energía que el tren ha tomado de la red y la que ha devuelto al frenar.",
+    gap: "Elevación: la altura a la que flota el coche sobre la losa de la vía, unos 100 mm.",
+    field: "Intensidad de las corrientes inducidas, respecto de las máximas. Pulsa para ver el campo.",
+  },
+};
 
 export const KEYS = [
   [["1", "6"], "Cámaras"],
