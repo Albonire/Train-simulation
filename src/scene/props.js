@@ -4,11 +4,13 @@
 // via con la tecnica de la cinta. Una loseta cubre un tramo fijo de pista y es identica a las
 // demas (o se repite cada pocas), de modo que al salir por un extremo se recoloca en el otro sin
 // cambiar su contenido. Cada loseta es un objeto aparte: asi se puede ocultar entera cuando cae
-// una estacion encima o una camara baja a su lado (ver setClear).
+// una estacion encima o una camara baja a su lado (ver setClear). La prueba mira solo los tramos de
+// la loseta que tienen geometria (spans en x, zs en z), no la loseta entera.
 
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { bushLayout } from "./scatter.js";
+import { tileBlocked } from "./clearance.js";
 
 const flat = (g) => (g.index ? g.toNonIndexed() : g);
 
@@ -26,14 +28,17 @@ function merge(list) {
 export function createProps(scene) {
   const root = new THREE.Group();
   scene.add(root);
-  const rings = []; // { tile, count, z0, z1, tiles: [{ meshes }] }
+  const rings = []; // { tile, count, zs, tiles: [{ meshes, spans }] }
 
   /**
    * Anillo de losetas. parts: [{ geos: [geometria por variante], mat }]; M variantes que se repiten
-   * (count debe ser multiplo de M). zRange: [z0, z1] de lo que contiene, para ocultarlo.
+   * (count debe ser multiplo de M). spans: tramos de x (relativos a la loseta) con geometria, o una
+   * funcion j -> tramos si cada variante es distinta; zs: tramos de z con geometria. Con ellos se
+   * decide si una caja libre alcanza a la loseta (ver tileBlocked).
    */
-  function ring({ tile, count, parts, zRange }) {
+  function ring({ tile, count, parts, spans, zs }) {
     const M = parts[0].geos.length;
+    const spansOf = typeof spans === "function" ? spans : () => spans;
     const tiles = [];
     for (let j = 0; j < count; j++) {
       const meshes = parts.map(({ geos, mat }) => {
@@ -42,35 +47,35 @@ export function createProps(scene) {
         root.add(m);
         return m;
       });
-      tiles.push({ meshes });
+      tiles.push({ meshes, spans: spansOf(j) });
     }
-    rings.push({ tile, count, z0: zRange[0], z1: zRange[1], tiles });
+    rings.push({ tile, count, zs, tiles });
   }
 
-  // ---- postes de luz cada 48 m, a ambos lados del corredor ----
+  // ---- postes de luz cada 48 m, uno a cada lado de la via, con el brazo sobre ella ----
+  // (cada loseta lleva solo un par: asi una camara baja oculta unos pocos metros y no cien)
   const LAMP = 48;
   const lampPole = [];
   const lampHead = [];
   for (const side of [-1, 1]) {
-    for (const x of [0, LAMP]) {
-      const rotY = side > 0 ? 0 : Math.PI; // el brazo apunta a la via
-      const at = [x, 0, side * 7.2];
-      lampPole.push({ geo: new THREE.CylinderGeometry(0.07, 0.1, 7.2, 8).translate(0, 3.6, 0), at, rotY });
-      lampPole.push({ geo: new THREE.BoxGeometry(1.5, 0.07, 0.07).translate(-0.7, 7.15, 0), at, rotY });
-      lampHead.push({ geo: new THREE.BoxGeometry(0.55, 0.1, 0.26).translate(-1.35, 7.08, 0), at, rotY });
-      lampPole.push({ geo: new THREE.BoxGeometry(0.34, 0.5, 0.34).translate(0, 0.25, 0), at, rotY }); // zocalo
-    }
+    const rotY = (-side * Math.PI) / 2; // el brazo (hacia -x local) apunta a la via, no a lo largo de ella
+    const at = [0, 0, side * 7.2];
+    lampPole.push({ geo: new THREE.CylinderGeometry(0.07, 0.1, 7.2, 8).translate(0, 3.6, 0), at, rotY });
+    lampPole.push({ geo: new THREE.BoxGeometry(1.5, 0.07, 0.07).translate(-0.7, 7.15, 0), at, rotY });
+    lampHead.push({ geo: new THREE.BoxGeometry(0.55, 0.1, 0.26).translate(-1.35, 7.08, 0), at, rotY });
+    lampPole.push({ geo: new THREE.BoxGeometry(0.34, 0.5, 0.34).translate(0, 0.25, 0), at, rotY }); // zocalo
   }
   const poleMat = new THREE.MeshStandardMaterial({ color: "#5b636c", roughness: 0.6, metalness: 0.6 });
   const headMat = new THREE.MeshStandardMaterial({ color: "#e8e6dc", roughness: 0.4, emissive: new THREE.Color("#ffe6b0"), emissiveIntensity: 0 });
   ring({
-    tile: LAMP * 2,
-    count: 34,
+    tile: LAMP,
+    count: 68,
     parts: [
       { geos: [merge(lampPole)], mat: poleMat },
       { geos: [merge(lampHead)], mat: headMat },
     ],
-    zRange: [-8.6, 8.6],
+    spans: [[-0.4, 0.4]],
+    zs: [[-7.6, -5.4], [5.4, 7.6]],
   });
 
   // ---- hitos cada 250 m ----
@@ -89,12 +94,13 @@ export function createProps(scene) {
       { geos: [merge(hitoList)], mat: hitoMat },
       { geos: [merge(bandList)], mat: bandMat },
     ],
-    zRange: [-6, 6],
+    spans: [[-0.3, 0.3]],
+    zs: [[-5.9, -5.3], [5.3, 5.9]],
   });
 
-  // ---- cerca de servicio: postes cada 6 m y tres alambres por tramo de 48 m ----
+  // ---- cerca de servicio: postes cada 6 m y tres alambres por tramo de 24 m ----
   const FENCE = 6;
-  const FENCE_TILE = 48;
+  const FENCE_TILE = 24;
   const fenceMat = new THREE.MeshStandardMaterial({ color: "#a9a69c", roughness: 0.92 });
   const wireMat = new THREE.MeshStandardMaterial({ color: "#7f7a70", roughness: 1, metalness: 0 });
   const postList = [];
@@ -105,12 +111,13 @@ export function createProps(scene) {
   }
   ring({
     tile: FENCE_TILE,
-    count: 22,
+    count: 44,
     parts: [
       { geos: [merge(postList)], mat: fenceMat },
       { geos: [merge(wireList)], mat: wireMat },
     ],
-    zRange: [-13.2, 13.2],
+    spans: [[-0.1, FENCE_TILE + 0.1]],
+    zs: [[-13.2, -12.8], [12.8, 13.2]],
   });
 
   // ---- arbustos junto a la cerca: reparto fijo que se repite cada 600 m, en losetas de 60 m ----
@@ -122,10 +129,14 @@ export function createProps(scene) {
   });
   const layout = bushLayout(PERIOD);
   const bushMat = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 1, vertexColors: true, flatShading: true });
+  const bushSpans = []; // por variante: los tramos de x que ocupan sus arbustos
   const variants = Array.from({ length: PERIOD / BUSH_TILE }, (_, v) => {
     const list = [];
+    bushSpans[v] = [];
     for (const b of layout) {
       if (Math.floor(b.x / BUSH_TILE) !== v) continue;
+      const xc = b.x - v * BUSH_TILE;
+      bushSpans[v].push([xc - b.r * 1.3 - 0.1, xc + b.r * 1.3 + 0.1]);
       const g = new THREE.IcosahedronGeometry(1, 1);
       const n = g.getAttribute("position").count;
       const col = new Float32Array(n * 3);
@@ -136,11 +147,16 @@ export function createProps(scene) {
     }
     return list.length ? merge(list) : new THREE.BufferGeometry();
   });
-  ring({ tile: BUSH_TILE, count: 60, parts: [{ geos: variants, mat: bushMat }], zRange: [-24, 24] });
+  ring({
+    tile: BUSH_TILE,
+    count: 60,
+    parts: [{ geos: variants, mat: bushMat }],
+    spans: (j) => bushSpans[j % variants.length],
+    zs: [[-24.4, -9.8], [9.8, 24.4]],
+  });
 
   // huellas ocultas (mundo): { x0, x1, z0, z1 }
   let clear = [];
-  const hits = (x0, x1, z0, z1) => clear.some((b) => x1 >= b.x0 && x0 <= b.x1 && z1 >= b.z0 && z0 <= b.z1);
 
   return {
     /** Cajas del mundo que deben quedar libres (estaciones y camara baja). */
@@ -154,7 +170,7 @@ export function createProps(scene) {
         for (let j = 0; j < r.count; j++) {
           const t = r.tiles[j];
           const x = ((((j * r.tile - s) % span) + span) % span) - span / 2;
-          const hide = clear.length > 0 && hits(x, x + r.tile, r.z0, r.z1);
+          const hide = clear.length > 0 && tileBlocked(x, t.spans, r.zs, clear);
           for (const m of t.meshes) {
             m.position.x = x;
             m.visible = !hide;

@@ -68,8 +68,8 @@ const PERTURB = {
     ["load", "load", "Carga +12 %", "Más masa en la sección central. El control sube la corriente.", true],
     ["gust", "gust", "Ráfaga", "Empuje lateral del 10 % del peso durante 0,6 s."],
     ["kick", "kick", "Golpe", "Abre el entrehierro 2 mm de golpe."],
-    ["ctrlOff", "ctrl", "Sin control", "Corriente fija: el imán se pega o cae en menos de 0,25 s.", true],
-    ["cutPower", "power", "Sin corriente", "Corta la alimentación: cae a los patines y vuelve a levitar."],
+    ["ctrlOff", "ctrl", "Sin control", "Corriente fija: sin lazo cerrado cae a los patines en menos de 0,25 s. Púlsalo otra vez para devolverlo.", true],
+    ["cutPower", "power", "Sin corriente", "Corta la alimentación 3,5 s: cae a los patines y después vuelve a levitar."],
   ],
   eds: [
     ["load", "load", "Carga +12 %", "Más masa en la sección central. Baja un poco y se estabiliza.", true],
@@ -128,7 +128,7 @@ export function createUI(h) {
   <section id="hud" class="panel" aria-label="Cuadro de mando">
     <div class="h-speed"><output id="hSpeed">0</output><span>km/h</span></div>
     <div class="h-state"><span class="pill" id="hState" data-k="idle" role="status">En reposo</span><span class="h-sub" id="hTarget"></span></div>
-    <div class="h-gap" title="Entrehierro de cada sección. La zona verde es la nominal.">
+    <div class="h-gap" id="hGapBox">
       <span class="h-lbl" id="hGapLbl">Entrehierro</span>
       <output id="hGap">–</output>
       <div class="bar" id="hGapBar" aria-hidden="true"><i></i><b></b><b></b><b></b></div>
@@ -198,7 +198,7 @@ export function createUI(h) {
         <button data-layer="labels" aria-pressed="true" title="Nombres de las piezas en las vistas de detalle">Nombres</button>
       </div>
       <h3>Apertura</h3>
-      <button class="btn" id="introBtn" title="Vuelve a ver el primer plano de la levitación (I)">Repetir la apertura</button>
+      <button class="btn" id="introBtn" title="Vuelve a ver el primer plano de la levitación. Reinicia el viaje (I)">Repetir la apertura</button>
       <h3>Colores</h3>
       <ul class="legend">${LEGEND.map(([c, l]) => `<li><i style="background:${c}"></i>${l}</li>`).join("")}</ul>
     </div>
@@ -250,6 +250,9 @@ export function createUI(h) {
     rowEls = {};
     for (const [id] of ROWS[modeId]) rowEls[id] = $(`[data-r="${id}"]`, els.rows);
     els.hGapLbl.textContent = modeId === "ems" ? "Entrehierro" : "Elevación";
+    $("#hGapBox").title = modeId === "ems"
+      ? "Entrehierro de la sección central: el hueco entre el imán y la vía. Los tres puntos de la barra son las tres secciones; la zona verde es la nominal."
+      : "Elevación de la sección central sobre la losa. Los tres puntos de la barra son las tres secciones; la zona verde es la nominal.";
     const vmax = Math.round(m.vMax * 3.6);
     els.target.max = String(vmax);
     els.target.value = String(vmax);
@@ -275,10 +278,41 @@ export function createUI(h) {
     setOutputs();
   }
 
+  // La camara de detalle y la apertura fijan su propia exageracion: el deslizador lo dice y se desactiva,
+  // en vez de mostrar un valor que no es el que se esta dibujando.
+  let exagForced = null; // null, o la exageracion que se dibuja mientras la fija la vista
   function setOutputs() {
-    els.exagOut.textContent = "×" + els.exag.value;
+    els.exagOut.textContent = exagForced ? `×${exagForced} · la fija la cámara` : "×" + els.exag.value;
+    els.exag.disabled = !!exagForced;
     els.targetOut.textContent = els.target.value + " km/h";
     els.spacingOut.textContent = els.spacing.value + " km";
+  }
+  /** value: la exageracion que se dibuja; forced: true si no es la del usuario. */
+  function setExagState(value, forced) {
+    const next = forced ? value : null;
+    if (next === exagForced) return;
+    exagForced = next;
+    setOutputs();
+  }
+
+  /**
+   * "Reiniciar": el viaje vuelve al principio y los controles que lo gobiernan tambien (velocidad
+   * objetivo, distancia entre estaciones, perturbaciones y la respuesta que se estaba midiendo).
+   * La vista (camara, capas, escala de tiempo, exageracion) es del usuario y no se toca.
+   */
+  function resetControls() {
+    const m = MODES[mode];
+    els.target.value = String(Math.round(m.vMax * 3.6));
+    els.spacing.value = String(Math.round(m.stationSpacing / 1000));
+    for (const b of els.perturb.querySelectorAll("[aria-pressed]")) b.setAttribute("aria-pressed", "false");
+    $("#stopBtn").setAttribute("aria-pressed", "false");
+    els.resp.textContent = "";
+    tracker.cancel();
+    hist.clear();
+    legTrace = { xs: [], ys: [] };
+    lastLeg = -1;
+    loupe.reset();
+    setOutputs();
   }
 
   function selectTab(name) {
@@ -672,5 +706,5 @@ export function createUI(h) {
 
   document.body.dataset.view = "sim";
   router.start();
-  return { root, els, card, loupe, startHint: () => startHint(), build, update, sample, toast, hist, setTimeScale, setPaused, setOutputs, router, view };
+  return { root, els, card, loupe, startHint: () => startHint(), build, update, sample, toast, hist, setTimeScale, setPaused, setOutputs, resetControls, setExagState, router, view };
 }

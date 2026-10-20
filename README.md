@@ -50,9 +50,13 @@ Chromium.
 | Tema | Claro (día) u oscuro (atardecer, con luces en el tren, los faros y la estación). Espacio pausa, H oculta el panel. |
 
 **Qué probar en el EMS.** En *Control*, pulsa *Sin control*: con la corriente fija en su valor de equilibrio,
-una perturbación de 0,5 mm basta para que el vehículo se pegue al riel o caiga en menos de un cuarto de
-segundo. Con el control activo, un golpe de 2 mm o una carga del 12 % se absorben (la carga se
-compensa con un término integral). **En el EDS** el equilibrio es estable por sí mismo.
+una perturbación de 0,5 mm basta para que el sistema se desequilibre (la simulación empuja hacia abajo, así
+que el vehículo cae a los patines en menos de un cuarto de segundo; empujado hacia arriba se pegaría al riel).
+*Sin control* y *Sin corriente* los lleva la `Train` y no los deshace la máquina de estados: el primero deja la
+sección central así hasta que se vuelve a pulsar; el segundo corta la alimentación 3,5 s de tiempo simulado y
+después los imanes vuelven a subir el vehículo. Con el control activo, un golpe de 2 mm o una carga del 12 %
+se absorben (la carga se compensa con un término integral). **En el EDS** el equilibrio es estable por sí mismo
+y esos dos botones no existen. Los patines no tienen rozamiento en el modelo: un tren caído sigue su marcha.
 
 ## Física implementada
 

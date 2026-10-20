@@ -92,11 +92,12 @@ function makeTemplates() {
   const c = assemble([trunk(), cone(2.3, 3.6, 1.6, false), cone(1.8, 3.4, 3.2, true), cone(1.3, 3.4, 5.2, true)], 1.6, 8.6);
   // frondoso: una copa grande y dos lobulos, sobre el tronco
   const b = assemble([trunk(), blob(2.3, 1, 1, [0, 5.4, 0]), blob(1.6, 0, 2, [1.3, 4.5, 0.6]), blob(1.5, 0, 3, [-1.1, 4.8, -0.9])], 1.6, 7.8);
-  // alamo: perfil de revolucion alargado, sin tronco a la vista
+  // alamo: perfil de revolucion alargado sobre un tronco corto (sin el, la copa flota a 1,4 m del suelo)
   const prof = [[0.02, 1.4], [0.55, 2.2], [1.05, 4.4], [1.2, 6.6], [0.95, 9.0], [0.45, 11.0], [0.02, 11.9]].map(([r, y]) => new THREE.Vector2(r, y));
   const lathe = new THREE.LatheGeometry(prof, 8);
   lathe.deleteAttribute("uv");
-  const p = assemble([{ geo: lathe }], 1.4, 11.9);
+  const stem = { geo: new THREE.CylinderGeometry(0.2, 0.3, 2.2, 6).translate(0, 1.1, 0), trunk: true };
+  const p = assemble([stem, { geo: lathe }], 1.4, 11.9);
   return { c, b, p };
 }
 

@@ -347,7 +347,7 @@ export function createLoupe(root, { setRig, toast }) {
       if (els.state.dataset.k !== kind) els.state.dataset.k = kind;
       set(els.title, mode === "ems" ? "Entrehierro" : "Elevación");
       set(els.val, mode === "ems" ? `${fmt(s.gap * 1000, 1)} mm` : `${fmt(tel.gapMm, 0)} mm`);
-      set(els.note, mode === "ems" ? "Corte transversal, hueco ampliado" : "Vista frontal, elevación ampliada");
+      set(els.note, mode === "ems" ? "Esquema fuera de escala: el hueco real mide 10 mm" : "Esquema fuera de escala: elevación ampliada");
       // avisos de despegue y aterrizaje: el estado debe mantenerse medio segundo, para que una
       // perturbacion breve no dispare avisos
       const levitating = kind === "ok";
