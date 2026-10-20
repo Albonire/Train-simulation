@@ -83,6 +83,7 @@ export function createEdsFields(sceneApi) {
 
   return {
     arrows: arrowsApi.group,
+    forces: arrowsApi,
     lines,
     /** Intensidad relativa del campo: corriente inducida (0 a 1). */
     fieldLevel(train, tel) {
@@ -96,17 +97,19 @@ export function createEdsFields(sceneApi) {
         rebuild(reach);
         lastReach = reach;
       }
-      const show = view.layers.fields && view.magnetsVisible;
+      // sin corriente inducida (parado o a pocos km/h) no hay campo que dibujar
+      const show = view.layers.fields && view.magnetsVisible && tel.induced > 0.02;
       lines.visible = show;
       mat.opacity = (0.3 + 0.4 * Math.min(1, tel.induced + 0.15)) * (view.boost ? 1.2 : 1);
+      mat.linewidth = view.intro ? 3.2 : 1.4;
       mat.resolution.set(window.innerWidth, window.innerHeight);
 
-      const px = (h / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+      const px = ((h / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * Math.min(window.devicePixelRatio || 1, 1.5);
       const t = (performance.now() - t0) / 1000;
       const alpha = Math.min(0.8, 0.25 + 0.5 * Math.min(1, tel.induced + 0.1)) * (view.boost ? 1 : 0.8);
       fluxes.forEach((f) => {
         f.object.visible = show;
-        if (show) f.update(t, reach, alpha, view.boost ? 0.08 : 0.055, px);
+        if (show) f.update(t, reach, alpha, view.intro ? 0.07 : view.boost ? 0.08 : 0.055, px, view.intro ? 18 : 10);
       });
 
       const n = train.sections.length;

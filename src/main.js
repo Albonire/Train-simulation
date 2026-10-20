@@ -11,7 +11,8 @@ import { setLineResolution } from "./scene/lines.js";
 import { createLabels } from "./scene/labels.js";
 import { createStations } from "./scene/stations.js";
 import { adaptiveNear } from "./scene/depth.js";
-import { framePart, cameraIsSane } from "./scene/frame.js";
+import { framePart, cameraIsSane, fitDistance } from "./scene/frame.js";
+import { INTRO, introPose, introExag, introTimeScale, introXray, introCaption } from "./scene/intro.js";
 import { setExplode as applyExplode, pick, setHighlight, setHighlightColor, setHighlightOpacity, focusBox } from "./scene/parts.js";
 import { partById, partIds, stepPart } from "./scene/partsData.js";
 import { DIM } from "./scene/ems.js";
@@ -28,6 +29,14 @@ import "./ui/style.css";
 const canvas = document.getElementById("view");
 const world = createWorld(canvas);
 const { renderer, scene } = world;
+// una linea de diagnostico: si algo no se ve bien en una maquina, esto dice con que GPU se dibuja
+try {
+  const gl = renderer.getContext();
+  const info = gl.getExtension("WEBGL_debug_renderer_info");
+  console.info("[gpu]", info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : "sin datos", "|", gl.getParameter(gl.VERSION), "| atributos", gl.getParameter(gl.MAX_VERTEX_ATTRIBS));
+} catch {
+  /* sin diagnostico */
+}
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 4000);
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
@@ -56,8 +65,10 @@ const view = {
   boost: false, // la camara Campo realza las capas de campo
   layers: { fields: true, wave: true, forces: true, labels: true },
 };
+// estado de la apertura (ver mas abajo): se declara aqui porque effExag y effBody lo leen
+const intro = { active: false, t: 0, cfg: null, saved: null, exag: 0, xray: false };
 const rigMinExag = () => active.rigs[view.rig].minExag ?? 0;
-const effExag = () => Math.max(view.exag[mode], rigMinExag());
+const effExag = () => Math.max(view.exag[mode], rigMinExag(), intro.active ? intro.exag : 0);
 
 // ---- carroceria: solida, rayos X o corte ----
 const planes = {
@@ -66,16 +77,19 @@ const planes = {
 };
 // Carroceria efectiva: el explorador de piezas y la vista separada necesitan ver dentro.
 function effBody() {
+  // la apertura se ve por dentro: rayos X, o la carroceria de otra camara (el corte del EDS)
+  if (intro.active && intro.xray) return introRig() ? active.rigs[introRig()].body : "xray";
   const rig = active.rigs[view.rig];
   let bodyMode = view.body === "auto" ? rig.body : view.body;
   if ((view.parts || view.explode) && bodyMode !== "cut") bodyMode = "xray";
   if (view.explode && bodyMode === "cut") bodyMode = "xray"; // el corte no se lleva con piezas separadas
   return bodyMode;
 }
+const introRig = () => (intro.active && intro.xray ? intro.cfg.bodyRig : null);
 function applyBody() {
-  const rig = active.rigs[view.rig];
+  const rig = active.rigs[introRig() ?? view.rig];
   const bodyMode = effBody();
-  view.boost = !!rig.boost;
+  view.boost = !!rig.boost || (intro.active && intro.xray);
   let plane = null;
   if (bodyMode === "cut") {
     const cut = rig.cut ?? { axis: "z", c: 0 };
@@ -109,12 +123,19 @@ function magnetsVisible() {
 
 // ---- camaras con transicion ----
 const tween = { active: false, pos: new THREE.Vector3(), target: new THREE.Vector3(), fov: 50 };
-controls.addEventListener("start", () => (tween.active = false));
+controls.addEventListener("start", () => {
+  tween.active = false;
+  userMoved = true;
+});
 // Pantallas verticales: el campo horizontal es estrecho y el tren es largo. La orbita
 // pasa a un 3/4 desde la proa (el tren se aleja en profundidad en vez de cruzar la
 // pantalla) y la vista cenital gira para que la via quede vertical.
-function rigPosition(name, r) {
-  const off = new THREE.Vector3(...r.pos).sub(new THREE.Vector3(...r.target));
+// La orbita se encuadra por calculo: el tren llena el 88 % del area libre de la pantalla,
+// centrado en ella, sea cual sea el tamano de la ventana y los paneles abiertos.
+const NOSE_LEN = 6.5; // largo de la nariz de las secciones de cabeza y cola (ems.js, edsGeo.js)
+function rigPose(name, r) {
+  const target = new THREE.Vector3(...r.target);
+  const off = new THREE.Vector3(...r.pos).sub(target);
   if (camera.aspect < 0.9 && name === "orbit") {
     const d = Math.hypot(off.x, off.z) * 2.0;
     const a = THREE.MathUtils.degToRad(42);
@@ -122,13 +143,34 @@ function rigPosition(name, r) {
   } else if (camera.aspect < 0.9 && name === "top") {
     off.set(0.05, off.y * 1.2, 0);
   }
-  return off.add(new THREE.Vector3(...r.target));
+  if (name === "orbit" && r.fit) {
+    const half = train.length / 2 + NOSE_LEN;
+    const dir = off.clone().normalize();
+    const free = safeFreeArea();
+    const fit = fitDistance({
+      target: target.toArray(),
+      dir: dir.toArray(),
+      fov: r.fov,
+      aspect: camera.aspect,
+      free: { fx: free.fx, fy: free.fy },
+      box: { min: [-half, r.fit.y[0], -2.4], max: [half, r.fit.y[1], 2.4] },
+      fill: r.fit.fill,
+    });
+    if (fit) {
+      target.add(new THREE.Vector3(...fit.shift));
+      return { pos: target.clone().addScaledVector(dir, fit.distance), target };
+    }
+  }
+  return { pos: off.add(target), target };
 }
+let userMoved = false;
 function setRig(name, instant = false) {
   view.rig = name;
   const r = active.rigs[name];
-  tween.target.set(...r.target);
-  tween.pos.copy(rigPosition(name, r));
+  const pose = rigPose(name, r);
+  userMoved = false;
+  tween.target.copy(pose.target);
+  tween.pos.copy(pose.pos);
   tween.fov = r.fov;
   tween.active = !instant;
   if (instant) {
@@ -277,9 +319,21 @@ function buildLabels() {
   labels.clear();
   const V = (x, y, z) => new THREE.Vector3(x, y, z);
   const midGroup = () => active.sections[Math.floor(active.sections.length / 2)].group.position;
+  // rotulos de las flechas de fuerza y del entrehierro real en las vistas generales
+  const OVERVIEW = ["orbit", "chase"];
+  const f = fields[mode].forces;
+  labels.add({ text: () => `${mode === "ems" ? "Atracción" : "Repulsión"} ${(train.sections[1].lift / 1e3).toFixed(0)} kN`, pos: () => f.tips.lift, rigs: OVERVIEW, when: () => view.layers.forces && !view.parts });
+  labels.add({ text: () => `Peso ${(((train.sections[1].mass + train.sections[1].extraMass) * G) / 1e3).toFixed(0)} kN`, pos: () => f.tips.weight, rigs: OVERVIEW, when: () => view.layers.forces && !view.parts });
+  labels.add({
+    text: () => (train.levitated ? `Levita a ${train.sections[1].gapMm.toFixed(mode === "ems" ? 1 : 0).replace(".", ",")} mm` : mode === "ems" ? "Sobre patines" : "Sobre ruedas"),
+    pos: () => V(midGroup().x, mode === "ems" ? DIM.statorBottom - 1.4 : EDIM.slabTop - 0.4, mode === "ems" ? 2.5 : 2.9),
+    rigs: OVERVIEW,
+    when: () => !view.parts,
+    cls: "lev",
+  });
   if (mode === "ems") {
     const gv = () => train.sections[1].gap * effExag();
-    labels.add({ text: () => `${(train.sections[1].gap * 1000).toFixed(1)} mm`, pos: () => V(0, DIM.statorBottom - gv() / 2, 1.15), rigs: DETAIL });
+    labels.add({ text: () => `${(train.sections[1].gap * 1000).toFixed(1).replace(".", ",")} mm`, pos: () => V(0, DIM.statorBottom - gv() / 2, 1.15), rigs: DETAIL });
     labels.add({ text: () => "Estator", pos: () => V(2.0, DIM.statorBottom + 0.3, 1.15), rigs: DETAIL, cls: "s" });
     labels.add({ text: () => "Imán de sustentación", pos: () => V(-1.6, DIM.statorBottom - gv() - 0.55, 1.15), rigs: DETAIL, cls: "n" });
     labels.add({ text: () => "Riel de guiado", pos: () => V(0, DIM.railY1 + 0.15, 1.58), rigs: ["section"] });
@@ -316,6 +370,7 @@ const ui = createUI({
     ui.toast("Reiniciado");
   },
   perturb,
+  replayIntro: () => startIntro({ replay: true }),
   setParts: (on) => setParts(on),
   setExplode: (on) => setExplodeView(on),
   partStep: (dir) => partStep(dir),
@@ -425,6 +480,8 @@ function resize() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   applyFraming(true);
+  // con la orbita sin tocar, se vuelve a encuadrar el tren al cambiar la ventana
+  if (view.rig === "orbit" && !userMoved && !selected && !tween.active) setRig("orbit", true);
 }
 
 // ---- encuadre: la escena se centra en el area que dejan libre los paneles ----
@@ -445,11 +502,11 @@ function freeArea() {
     const r = open ? w - side.offsetLeft + 8 : 0;
     const t = topbar.offsetTop + topbar.offsetHeight;
     const b = h - hud.offsetTop;
-    return { x: (l - r) / 2, y: (t - b) / 2 };
+    return { x: (l - r) / 2, y: (t - b) / 2, fx: (w - l - r) / w, fy: (h - t - b) / h };
   }
   const t = cams.offsetTop + cams.offsetHeight + 4;
   const b = h - (card ? card.offsetTop : open ? side.offsetTop : hud.offsetTop);
-  return { x: 0, y: (t - b) / 2 };
+  return { x: 0, y: (t - b) / 2, fx: 1, fy: (h - t - b) / h };
 }
 // el area libre solo se usa si es un numero razonable; si no, sin desplazamiento
 function safeFreeArea() {
@@ -460,7 +517,8 @@ function safeFreeArea() {
     f = null;
   }
   const lim = Math.max(window.innerWidth, window.innerHeight);
-  return f && Number.isFinite(f.x) && Number.isFinite(f.y) && Math.abs(f.x) < lim && Math.abs(f.y) < lim ? f : { x: 0, y: 0 };
+  const good = f && [f.x, f.y, f.fx, f.fy].every(Number.isFinite) && Math.abs(f.x) < lim && Math.abs(f.y) < lim && f.fx > 0.2 && f.fx <= 1 && f.fy > 0.2 && f.fy <= 1;
+  return good ? f : { x: 0, y: 0, fx: 0.7, fy: 0.75 };
 }
 let framed = "";
 function applyFraming(instant = false) {
@@ -500,6 +558,107 @@ function keepAboveGround() {
   controls.maxPolarAngle = Math.acos(Math.min(1, Math.max(-1, c)));
   if (camera.position.y < EYE) camera.position.y = EYE;
 }
+
+// ---- apertura: primer plano de la levitacion y despues la vista general ----
+// Se avanza con el tiempo real de pared desde step(). Cualquier gesto la corta; al terminar o al
+// omitirla se devuelve todo lo que cambio (escala de tiempo, tren retenido, carroceria, exageracion).
+const introEls = { box: document.getElementById("intro"), cap: document.getElementById("introCap"), skip: document.getElementById("introSkip") };
+const qs = new URLSearchParams(location.search);
+function introAllowed() {
+  if (qs.has("nointro")) return false;
+  if (navigator.webdriver && !qs.has("intro")) return false; // los scripts de QA miden la escena sin ella
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return false;
+  return document.body.dataset.view === "sim";
+}
+const orbitPoseNow = () => {
+  const p = rigPose("orbit", active.rigs.orbit);
+  return { pos: p.pos.toArray(), tgt: p.target.toArray(), fov: active.rigs.orbit.fov };
+};
+function startIntro({ replay = false } = {}) {
+  if (intro.active) return;
+  if (selected) closePart();
+  if (view.parts) setParts(false);
+  if (view.explode) setExplodeView(false);
+  const cfg = INTRO[mode];
+  intro.cfg = cfg;
+  intro.t = 0;
+  intro.saved = { timeScale: view.timeScale };
+  if (replay || cfg.preAdvance) {
+    train.reset();
+    ui.hist.clear();
+  }
+  if (cfg.preAdvance) train.advance(cfg.preAdvance);
+  train.hold = cfg.hold > 0;
+  if (view.paused) ui.setPaused(false);
+  ui.setTimeScale(cfg.tsClose);
+  intro.active = true;
+  intro.xray = true;
+  intro.exag = introExag(cfg, 0, view.exag[mode]);
+  tween.active = false;
+  document.body.dataset.intro = "on";
+  introEls.box.hidden = false;
+  applyBody();
+}
+function endIntro({ toOrbit = false, snap = false } = {}) {
+  if (!intro.active) return;
+  intro.active = false;
+  intro.xray = false;
+  intro.exag = 0;
+  document.body.dataset.intro = "off";
+  introEls.box.hidden = true;
+  train.hold = false;
+  document.getElementById("stopBtn")?.setAttribute("aria-pressed", "false");
+  ui.setTimeScale(intro.saved?.timeScale ?? 5);
+  ui.startHint();
+  if (toOrbit) setRig("orbit", snap);
+  else applyBody();
+}
+function introTick(wall) {
+  const cfg = intro.cfg;
+  intro.t += wall;
+  if (train.hold && intro.t >= cfg.hold) train.hold = false;
+  const ts = introTimeScale(cfg, intro.t, intro.saved.timeScale);
+  if (view.timeScale !== ts) ui.setTimeScale(ts);
+  intro.exag = introExag(cfg, intro.t, view.exag[mode]);
+  const xr = introXray(cfg, intro.t);
+  if (xr !== intro.xray) {
+    intro.xray = xr;
+    applyBody();
+  }
+  if (intro.t >= cfg.duration) return endIntro({ toOrbit: true, snap: true });
+  const txt = introCaption(mode, intro.t, cfg, train.telemetry());
+  if (introEls.cap.textContent !== txt) introEls.cap.textContent = txt;
+  introEls.box.style.visibility = txt ? "visible" : "hidden";
+}
+function introCamera() {
+  const p = introPose(intro.cfg, intro.t, orbitPoseNow());
+  camera.position.set(...p.pos);
+  controls.target.set(...p.tgt);
+  camera.fov = p.fov;
+  camera.updateProjectionMatrix();
+}
+// Prueba y capturas: deja la apertura en el instante t (s), avanzando el tren como habria ido
+function seekIntro(t) {
+  if (intro.active) endIntro();
+  startIntro({ replay: true });
+  const cfg = intro.cfg;
+  for (let tt = 0; tt < t; tt += 0.05) {
+    const step = Math.min(0.05, t - tt);
+    if (train.hold && tt >= cfg.hold) train.hold = false;
+    train.advance(step * introTimeScale(cfg, tt, intro.saved.timeScale));
+  }
+  intro.t = t;
+  train.hold = train.hold && t < cfg.hold;
+  intro.xray = introXray(cfg, t);
+  intro.exag = introExag(cfg, t, view.exag[mode]);
+  ui.setTimeScale(introTimeScale(cfg, t, intro.saved.timeScale));
+  applyBody();
+  introCamera();
+}
+// cualquier gesto la corta: se va a la orbita con una transicion suave
+const skipIntro = () => endIntro({ toOrbit: true });
+for (const ev of ["pointerdown", "keydown", "wheel"]) window.addEventListener(ev, skipIntro, { capture: true, passive: true });
+introEls.skip.addEventListener("click", skipIntro);
 
 // ---- bucle ----
 let last = performance.now();
@@ -541,6 +700,7 @@ function step(now) {
   const wall = Math.min(0.25, (now - last) / 1000);
   const dt = Math.min(0.05, wall);
   last = now;
+  if (intro.active) introTick(wall);
   if (!view.paused) {
     // trozos de a lo sumo 20 ms: mantiene el historial y la precision con escalas altas
     let left = dt * view.timeScale;
@@ -560,6 +720,8 @@ function step(now) {
   // velocidad visual del suelo: lo que el ojo ve pasar (m/s de pista por segundo real)
   // window.__qaSpeed lo fija el script de QA visual (scripts/visual-qa.mjs)
   world.setVisualSpeed(inspecting ? 0 : (window.__qaSpeed ?? (view.paused ? 0 : Math.abs(train.v) * view.timeScale)), wall);
+  world.setSight(camera.position, train.length);
+  world.setClear(stations.footprints(STATION_CFG[mode]), camera.position);
   world.scroll(sc);
   stations.update(sc, train.length, train.stationSpacing, STATION_CFG[mode]);
   const tel = train.telemetry();
@@ -570,7 +732,7 @@ function step(now) {
     applyExplode(explode.k);
   }
   const level = mode === "ems" ? fields.ems.fieldLevel(train) : fields.eds.fieldLevel(train, tel);
-  const v2 = { ...view, exag: effExag(), magnetsVisible: magnetsVisible(), fieldLevel: level };
+  const v2 = { ...view, exag: effExag(), magnetsVisible: magnetsVisible(), fieldLevel: level, intro: intro.active && intro.xray };
   active.update(tel, train, v2, dt);
   if (mode === "ems") {
     fields.ems.update(tel, train, v2, camera, window.innerHeight);
@@ -598,6 +760,7 @@ function step(now) {
       tween.active = false;
     }
   }
+  if (intro.active) introCamera();
   const kf = reduced ? 1 : 1 - Math.exp(-wall * 8);
   framing.x += (framing.tx - framing.x) * kf;
   framing.y += (framing.ty - framing.y) * kf;
@@ -615,10 +778,12 @@ function step(now) {
     camera.updateProjectionMatrix();
   }
   renderer.render(scene, camera);
-  labels.update(camera, view.rig, view.layers.labels, window.innerWidth, window.innerHeight);
+  labels.update(camera, intro.active && intro.xray ? "gap" : view.rig, view.layers.labels, window.innerWidth, window.innerHeight);
   ui.update(tel, train, v2);
 }
 requestAnimationFrame(frame);
+if (introAllowed()) startIntro();
+else ui.startHint();
 
 window.__THREE = THREE;
-window.__app = { world, renderer, partIds: () => partIds(mode), partStep, selectPart, setParts, setExplodeView, train, view, setRig, setMode, applyBody, camera, controls, scene, scenes, ui, perturb, depart };
+window.__app = { intro: { start: startIntro, end: endIntro, state: intro, seek: seekIntro }, world, renderer, partIds: () => partIds(mode), partStep, selectPart, setParts, setExplodeView, train, view, setRig, setMode, applyBody, camera, controls, scene, scenes, ui, perturb, depart };

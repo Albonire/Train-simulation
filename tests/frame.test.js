@@ -99,3 +99,68 @@ describe("cameraIsSane", () => {
     expect(cameraIsSane({ x: 5000, y: 5, z: 0 }, T)).toBe(false);
   });
 });
+
+import { fitDistance } from "../src/scene/frame.js";
+
+describe("fitDistance: el tren llena el area libre", () => {
+  const dirOf = (pos, tgt) => {
+    const d = pos.map((v, i) => v - tgt[i]);
+    const l = Math.hypot(...d);
+    return d.map((v) => v / l);
+  };
+  const base = {
+    target: [0, 6.4, 0],
+    dir: dirOf([-24, 11.5, 59], [0, 6.4, 0]),
+    fov: 40,
+    box: { min: [-27.5, 4.5, -2.4], max: [27.5, 11.4, 2.4] },
+  };
+  // proyecta las esquinas con la camara colocada por el resultado y devuelve la semianchura y el semialto
+  const project = ({ distance, shift }, { aspect }) => {
+    const f = base.dir.map((v) => -v);
+    const R = (() => { const r = [-f[2], 0, f[0]]; const l = Math.hypot(...r); return r.map((v) => v / l); })();
+    const U = [R[1] * f[2] - R[2] * f[1], R[2] * f[0] - R[0] * f[2], R[0] * f[1] - R[1] * f[0]];
+    const th = Math.tan((base.fov * Math.PI) / 360);
+    const tgt = base.target.map((v, i) => v + shift[i]);
+    const xs = [], ys = [];
+    for (const x of [base.box.min[0], base.box.max[0]]) for (const y of [base.box.min[1], base.box.max[1]]) for (const z of [base.box.min[2], base.box.max[2]]) {
+      const c = [x - tgt[0], y - tgt[1], z - tgt[2]];
+      const depth = distance + c[0] * f[0] + c[1] * f[1] + c[2] * f[2];
+      xs.push((c[0] * R[0] + c[1] * R[1] + c[2] * R[2]) / (depth * th * aspect));
+      ys.push((c[0] * U[0] + c[1] * U[1] + c[2] * U[2]) / (depth * th));
+    }
+    return { hx: (Math.max(...xs) - Math.min(...xs)) / 2, hy: (Math.max(...ys) - Math.min(...ys)) / 2, cx: (Math.max(...xs) + Math.min(...xs)) / 2 };
+  };
+  for (const [name, aspect, free] of [
+    ["escritorio con panel", 2.09, { fx: 0.73, fy: 0.78 }],
+    ["escritorio sin panel", 2.09, { fx: 0.9, fy: 0.78 }],
+    ["portatil", 1.78, { fx: 0.64, fy: 0.8 }],
+    ["movil vertical", 0.46, { fx: 1, fy: 0.62 }],
+  ]) {
+    it(`${name}: cabe, queda centrado y llena el 88 %`, () => {
+      const r = fitDistance({ ...base, aspect, free });
+      expect(Number.isFinite(r.distance)).toBe(true);
+      expect(r.shift.every(Number.isFinite)).toBe(true);
+      const { hx, hy, cx } = project(r, { aspect });
+      expect(hx).toBeLessThanOrEqual(0.88 * free.fx + 1e-3);
+      expect(hy).toBeLessThanOrEqual(0.88 * free.fy + 1e-3);
+      expect(Math.abs(cx)).toBeLessThan(0.02); // centrado
+      const tight = Math.max(hx / (0.88 * free.fx), hy / (0.88 * free.fy));
+      expect(tight).toBeGreaterThan(0.99);
+    });
+  }
+  it("un area libre menor aleja la camara", () => {
+    const a = fitDistance({ ...base, aspect: 2.09, free: { fx: 0.9, fy: 0.8 } });
+    const b = fitDistance({ ...base, aspect: 2.09, free: { fx: 0.6, fy: 0.8 } });
+    expect(b.distance).toBeGreaterThan(a.distance);
+  });
+  it("con el panel abierto en 1920x918 queda mas cerca que los 64 m de antes", () => {
+    const r = fitDistance({ ...base, aspect: 2.09, free: { fx: 0.73, fy: 0.78 } });
+    expect(r.distance).toBeLessThan(56);
+    expect(r.distance).toBeGreaterThan(40);
+  });
+  it("datos no validos dan null", () => {
+    expect(fitDistance({ ...base, aspect: NaN, free: { fx: 1, fy: 1 } })).toBe(null);
+    expect(fitDistance({ ...base, aspect: 2, free: { fx: 0, fy: 1 } })).toBe(null);
+    expect(fitDistance({ ...base, dir: [0, 0, 0], aspect: 2, free: { fx: 1, fy: 1 } })).toBe(null);
+  });
+});

@@ -10,7 +10,7 @@
 import * as THREE from "three";
 
 const COMMON = /* glsl */ `
-  uniform float uTime, uAlpha, uSize, uPx;
+  uniform float uTime, uAlpha, uSize, uPx, uMax;
   attribute vec4 aLoop; // EMS: xa, z, fase, 0   EDS: xa, y, lado, fase
   varying vec3 vCol;
   varying float vA;
@@ -49,7 +49,7 @@ const VERT_EMS = /* glsl */ `
     vCol = c; vA = a * uAlpha;
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     gl_Position = projectionMatrix * mv;
-    gl_PointSize = clamp(uSize * uPx / -mv.z, 1.5, 10.0);
+    gl_PointSize = clamp(uSize * uPx / -mv.z, 1.5, uMax);
   }
 `;
 
@@ -66,7 +66,7 @@ const VERT_EDS = /* glsl */ `
     vCol = c; vA = uAlpha * (0.55 + 0.45 * sin(f));
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     gl_Position = projectionMatrix * mv;
-    gl_PointSize = clamp(uSize * uPx / -mv.z, 1.5, 10.0);
+    gl_PointSize = clamp(uSize * uPx / -mv.z, 1.5, uMax);
   }
 `;
 
@@ -84,7 +84,7 @@ const FRAG = /* glsl */ `
 
 function material(vert, extra) {
   return new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uAlpha: { value: 1 }, uSize: { value: 0.08 }, uPx: { value: 600 }, ...extra },
+    uniforms: { uTime: { value: 0 }, uAlpha: { value: 1 }, uSize: { value: 0.08 }, uPx: { value: 600 }, uMax: { value: 10 }, ...extra },
     vertexShader: vert,
     fragmentShader: FRAG,
     transparent: true,
@@ -116,7 +116,7 @@ function points(loops, perLoop, mat, packer) {
 
 /**
  * Flujo del EMS. loops: [{ xa, z }] en el marco de la seccion (y = 0 cara polar).
- * tau: paso polar (m). Devuelve { object, update(time, gap, alpha, size, pxPerUnit) }.
+ * tau: paso polar (m). Devuelve { object, update(time, gap, alpha, size, pxPerUnit, maxPx) }.
  */
 export function createEmsFlux(loops, tau, perLoop = 7) {
   const mat = material(VERT_EMS, { uGap: { value: 0.1 }, uR: { value: tau / 2 } });
@@ -125,12 +125,13 @@ export function createEmsFlux(loops, tau, perLoop = 7) {
   });
   return {
     object: pts,
-    update(time, gap, alpha, size, px) {
+    update(time, gap, alpha, size, px, maxPx = 10) {
       mat.uniforms.uTime.value = time;
       mat.uniforms.uGap.value = gap;
       mat.uniforms.uAlpha.value = alpha;
       mat.uniforms.uSize.value = size;
       mat.uniforms.uPx.value = px;
+      mat.uniforms.uMax.value = maxPx;
     },
   };
 }
@@ -146,12 +147,13 @@ export function createEdsFlux(arcs, pitch, zFace, perLoop = 6) {
   });
   return {
     object: pts,
-    update(time, reach, alpha, size, px) {
+    update(time, reach, alpha, size, px, maxPx = 10) {
       mat.uniforms.uTime.value = time;
       mat.uniforms.uReach.value = reach;
       mat.uniforms.uAlpha.value = alpha;
       mat.uniforms.uSize.value = size;
       mat.uniforms.uPx.value = px;
+      mat.uniforms.uMax.value = maxPx;
     },
   };
 }

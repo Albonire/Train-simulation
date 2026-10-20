@@ -5,9 +5,10 @@
 
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { stationFootprint, PLATFORM_WIDTH } from "./clearance.js";
 
 const LEN = 110; // longitud del anden, m
-const WIDTH = 6; // ancho del anden, m
+const WIDTH = PLATFORM_WIDTH; // ancho del anden, m
 const COLS = 15; // columnas por fila
 
 function signTexture(text, sub) {
@@ -164,6 +165,18 @@ export function createStations() {
       M.window.emissive.set(on ? "#ffd9a0" : "#000000");
       M.window.emissiveIntensity = on ? 0.6 : 0;
     },
+    /**
+     * Huella de las estaciones visibles en coordenadas de pista ({ x0, x1, z0, z1 }): el anden, la
+     * escalera y el edificio de acceso. Lo que el entorno ponga ahi (postes, cerca, arbustos) se oculta.
+     */
+    footprints(cfg) {
+      const out = [];
+      for (const it of items) {
+        if (it.xTrack === undefined || !it.obj.visible) continue;
+        out.push(stationFootprint(it.xTrack, cfg.zIn));
+      }
+      return out;
+    },
     /** sCenter: coordenada de pista del centro del tren; lenTrain: largo del tren */
     update(sCenter, lenTrain, spacing, cfg) {
       const k0 = Math.round((sCenter + lenTrain / 2) / spacing);
@@ -171,6 +184,7 @@ export function createStations() {
         const k = k0 + j - 1;
         const xTrack = k * spacing - lenTrain / 2; // centro del tren detenido en la estacion k
         const x = xTrack - sCenter;
+        it.xTrack = xTrack;
         it.obj.visible = k >= 0 && Math.abs(x) < 1200;
         it.obj.position.x = x;
         if (it.cfgKey !== `${cfg.floorY}|${cfg.zIn}`) {
