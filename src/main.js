@@ -423,6 +423,9 @@ const ui = createUI({
   },
 });
 labels = createLabels(ui.els.labels);
+// el deslizador de Vista arranca con la exageracion que se dibuja (el marcado trae otro valor por defecto)
+ui.els.exag.value = String(view.exag[mode]);
+ui.setOutputs();
 
 function setMode(next) {
   if (next === mode) return;
