@@ -7,10 +7,12 @@ import { History, drawChart } from "./charts.js";
 import { ICONS } from "./icons.js";
 import { createRouter, routeHref } from "./router.js";
 import { ResponseTracker } from "./response.js";
-import { renderGuia } from "./pages/guia.js";
-import { renderLaminas, clearLaminas } from "./pages/laminas.js";
-import { KEYS } from "./info.js";
+// la Guia y las Laminas (y las figuras) pesan mas que la simulacion: se cargan al entrar en ellas
+const pagesGuia = () => import("./pages/guia.js");
+const pagesLaminas = () => import("./pages/laminas.js");
+import { KEYS, GLOSARIO } from "./info.js";
 import { createPartCard } from "./partCard.js";
+import { createTourCard } from "./tourCard.js";
 import { createLoupe } from "./loupe.js";
 import { EDS, G } from "../physics/constants.js";
 import { EdsSection } from "../physics/eds.js";
@@ -30,11 +32,11 @@ const STATE = {
 };
 
 export const RIGS = [
-  ["orbit", "Órbita", "Vista general. Arrastra para girar, rueda para acercar."],
+  ["orbit", "Exterior", "Vista general del tren desde fuera. Arrastra para girar, rueda para acercar."],
   ["chase", "Seguir", "Cámara que acompaña al tren desde atrás."],
-  ["section", "Sección", "Corte transversal: viga, estator, imanes y entrehierro."],
+  ["section", "Corte", "Corte transversal: viga, estator, imanes y entrehierro."],
   ["gap", "Imanes", "Primer plano del entrehierro entre imán y estator."],
-  ["top", "Arriba", "Vista cenital."],
+  ["top", "Cenital", "Vista desde arriba."],
   ["field", "Campo", "Carrocería transparente y campo magnético realzado."],
 ];
 
@@ -44,7 +46,7 @@ const ROWS = {
     ["cur", "Corriente del imán", "A", (t) => fmt(t.current, 1)],
     ["freq", "Frecuencia", "Hz", (t) => fmt(t.frequency, 1)],
     ["thr", "Empuje", "kN", (t) => fmt(t.thrust / 1e3, 0)],
-    ["ang", "Ángulo de carga", "°", (t) => fmt(t.loadAngleDeg, 0)],
+    ["ang", "Desfase del motor", "°", (t) => fmt(t.loadAngleDeg, 0)],
     ["lift", "Sustentación / peso", "kN", (t) => `${fmt(t.liftTotal / 1e3, 0)} / ${fmt(t.weight / 1e3, 0)}`],
     ["aero", "Arrastre aerodinámico", "kN", (t) => fmt(t.dragAero / 1e3, 1)],
     ["pow", "Potencia en red", "MW", (t) => fmt(t.gridPowerMW, 2)],
@@ -68,8 +70,8 @@ const PERTURB = {
     ["load", "load", "Carga +12 %", "Más masa en la sección central. El control sube la corriente.", true],
     ["gust", "gust", "Ráfaga", "Empuje lateral del 10 % del peso durante 0,6 s."],
     ["kick", "kick", "Golpe", "Abre el entrehierro 2 mm de golpe."],
-    ["ctrlOff", "ctrl", "Sin control", "Corriente fija: el imán se pega o cae en menos de 0,25 s.", true],
-    ["cutPower", "power", "Sin corriente", "Corta la alimentación: cae a los patines y vuelve a levitar."],
+    ["ctrlOff", "ctrl", "Sin control", "Corriente fija: sin lazo cerrado cae a los patines en menos de 0,25 s. Púlsalo otra vez para devolverlo.", true],
+    ["cutPower", "power", "Sin corriente", "Corta la alimentación 3,5 s: cae a los patines y después vuelve a levitar."],
   ],
   eds: [
     ["load", "load", "Carga +12 %", "Más masa en la sección central. Baja un poco y se estabiliza.", true],
@@ -100,6 +102,7 @@ export function createUI(h) {
       <button data-mode="eds" aria-pressed="false" title="Suspensión electrodinámica: repulsión por corrientes inducidas">EDS</button>
     </div>
     <span class="mode-name" id="modeName"></span>
+    <button class="btn tour-btn" id="tourBtn" aria-pressed="false" title="Visita guiada: unos pasos cortos que explican qué pasa. Reinicia el viaje (V)">${ICONS.tour}<span>Visita</span></button>
     <nav class="nav" aria-label="Secciones">
       <a href="${routeHref("sim")}" data-page="sim">${ICONS.train}<span>Simulación</span></a>
       <a href="${routeHref("guia")}" data-page="guia" aria-label="Guía">${ICONS.book}<span>Guía</span></a>
@@ -128,7 +131,7 @@ export function createUI(h) {
   <section id="hud" class="panel" aria-label="Cuadro de mando">
     <div class="h-speed"><output id="hSpeed">0</output><span>km/h</span></div>
     <div class="h-state"><span class="pill" id="hState" data-k="idle" role="status">En reposo</span><span class="h-sub" id="hTarget"></span></div>
-    <div class="h-gap" title="Entrehierro de cada sección. La zona verde es la nominal.">
+    <div class="h-gap" id="hGapBox">
       <span class="h-lbl" id="hGapLbl">Entrehierro</span>
       <output id="hGap">–</output>
       <div class="bar" id="hGapBar" aria-hidden="true"><i></i><b></b><b></b><b></b></div>
@@ -152,19 +155,19 @@ export function createUI(h) {
 
   <aside id="side" class="panel" aria-label="Panel">
     <div class="tabs" role="tablist">
-      <button role="tab" data-tab="data" aria-selected="true">${ICONS.data}<span>Datos</span></button>
-      <button role="tab" data-tab="ctrl" aria-selected="false">${ICONS.sliders}<span>Control</span></button>
-      <button role="tab" data-tab="view" aria-selected="false">${ICONS.view}<span>Vista</span></button>
+      <button role="tab" id="tab-data" aria-controls="pane-data" tabindex="0" data-tab="data" aria-selected="true">${ICONS.data}<span>Datos</span></button>
+      <button role="tab" id="tab-ctrl" aria-controls="pane-ctrl" tabindex="-1" data-tab="ctrl" aria-selected="false">${ICONS.sliders}<span>Control</span></button>
+      <button role="tab" id="tab-view" aria-controls="pane-view" tabindex="-1" data-tab="view" aria-selected="false">${ICONS.view}<span>Vista</span></button>
     </div>
 
-    <div class="tab" data-pane="data">
+    <div class="tab" id="pane-data" role="tabpanel" aria-labelledby="tab-data" data-pane="data">
       <dl class="rows" id="rows"></dl>
       <figure class="chart"><figcaption><span id="capA"></span><span id="valA"></span></figcaption><canvas id="chartA"></canvas></figure>
       <figure class="chart"><figcaption><span id="capB"></span><span id="valB"></span></figcaption><canvas id="chartB"></canvas></figure>
       <figure class="chart"><figcaption><span id="capC"></span><span id="valC"></span></figcaption><canvas id="chartC"></canvas></figure>
     </div>
 
-    <div class="tab" data-pane="ctrl" hidden>
+    <div class="tab" id="pane-ctrl" role="tabpanel" aria-labelledby="tab-ctrl" data-pane="ctrl" hidden>
       <label class="field"><span>Velocidad objetivo <output id="targetOut"></output></span>
         <input id="target" type="range" min="0" max="400" step="1" value="400"></label>
       <div class="actions">
@@ -179,7 +182,7 @@ export function createUI(h) {
       <p class="resp" id="resp" role="status" aria-live="polite"></p>
     </div>
 
-    <div class="tab" data-pane="view" hidden>
+    <div class="tab" id="pane-view" role="tabpanel" aria-labelledby="tab-view" data-pane="view" hidden>
       <h3>Carrocería</h3>
       <div class="seg wide" id="bodyBtns" role="group" aria-label="Carrocería">
         <button data-body="auto" aria-pressed="true" title="Según la cámara">Auto</button>
@@ -194,11 +197,16 @@ export function createUI(h) {
       <div class="chips" id="layers">
         <button data-layer="fields" aria-pressed="true" title="Líneas de flujo magnético">Flujo</button>
         <button data-layer="wave" aria-pressed="true" title="Onda del estator: rojo N, azul S">Onda</button>
-        <button data-layer="forces" aria-pressed="true" title="Flechas de fuerza (escala de raíz cuadrada)">Fuerzas</button>
+        <button data-layer="forces" aria-pressed="false" title="Flechas de fuerza (escala de raíz cuadrada)">Fuerzas</button>
         <button data-layer="labels" aria-pressed="true" title="Nombres de las piezas en las vistas de detalle">Nombres</button>
       </div>
+      <h3>Compartir</h3>
+      <div class="actions">
+        <button class="btn" id="linkBtn" title="Copia un enlace que abre esta misma vista: modo, cámara, escala de tiempo y pestaña">Copiar enlace</button>
+        <button class="btn" id="shotBtn" title="Guarda la imagen de la escena (K)">Guardar imagen</button>
+      </div>
       <h3>Apertura</h3>
-      <button class="btn" id="introBtn" title="Vuelve a ver el primer plano de la levitación (I)">Repetir la apertura</button>
+      <button class="btn" id="introBtn" title="Vuelve a ver el primer plano de la levitación. Reinicia el viaje (I)">Repetir la apertura</button>
       <h3>Colores</h3>
       <ul class="legend">${LEGEND.map(([c, l]) => `<li><i style="background:${c}"></i>${l}</li>`).join("")}</ul>
     </div>
@@ -215,8 +223,14 @@ export function createUI(h) {
   `;
   document.body.appendChild(root);
   const card = createPartCard(root, { onPrev: () => h.partStep(-1), onNext: () => h.partStep(1), onClose: () => h.partClose() });
+  const tourCard = createTourCard(root, { onPrev: () => h.tourStep(-1), onNext: () => h.tourStep(1), onClose: () => h.tourEnd() });
 
-  const loupe = createLoupe($("#loupe"), { setRig: (n) => h.setRig(n), toast: (m) => toast(m) });
+  const loupe = createLoupe($("#loupe"), { setRig: (n) => h.setRig(n), toast: (m) => toast(m), onFail: (k) => firePerturb(k) });
+  // la lupa provoca lo mismo que los botones de Control (con su respuesta medida)
+  function firePerturb(kind) {
+    const b = els.perturb.querySelector(`[data-p="${kind}"]`);
+    if (b) perturbClick(b);
+  }
 
   const els = {
     rows: $("#rows"), hSpeed: $("#hSpeed"), hState: $("#hState"), hTarget: $("#hTarget"), hGap: $("#hGap"),
@@ -246,10 +260,14 @@ export function createUI(h) {
     $("#modeName").textContent = modeId === "ems" ? "Transrapid" : "SCMaglev";
     const m = MODES[modeId];
     for (const b of root.querySelectorAll("[data-mode]")) b.setAttribute("aria-pressed", String(b.dataset.mode === modeId));
-    els.rows.innerHTML = ROWS[modeId].map(([id, label, unit]) => `<dt>${label}</dt><dd><span data-r="${id}">–</span><small>${unit}</small></dd>`).join("");
+    els.rows.innerHTML = ROWS[modeId].map(([id, label, unit]) => `<dt tabindex="0" title="${GLOSARIO[modeId][id] ?? ""}">${label}</dt><dd><span data-r="${id}">–</span><small>${unit}</small></dd>`).join("");
     rowEls = {};
     for (const [id] of ROWS[modeId]) rowEls[id] = $(`[data-r="${id}"]`, els.rows);
     els.hGapLbl.textContent = modeId === "ems" ? "Entrehierro" : "Elevación";
+    $("#hGapBox").title = modeId === "ems"
+      ? `${GLOSARIO.ems.gap} Muestra la sección central; los tres puntos de la barra son las tres secciones y la zona verde es la nominal.`
+      : `${GLOSARIO.eds.gap} Muestra la sección central; los tres puntos de la barra son las tres secciones y la zona verde es la nominal.`;
+    $("#hField").title = GLOSARIO[modeId].field;
     const vmax = Math.round(m.vMax * 3.6);
     els.target.max = String(vmax);
     els.target.value = String(vmax);
@@ -275,15 +293,49 @@ export function createUI(h) {
     setOutputs();
   }
 
+  // La camara de detalle y la apertura fijan su propia exageracion: el deslizador lo dice y se desactiva,
+  // en vez de mostrar un valor que no es el que se esta dibujando.
+  let exagForced = null; // null, o la exageracion que se dibuja mientras la fija la vista
   function setOutputs() {
-    els.exagOut.textContent = "×" + els.exag.value;
+    els.exagOut.textContent = exagForced ? `×${exagForced} · la fija la cámara` : "×" + els.exag.value;
+    els.exag.disabled = !!exagForced;
     els.targetOut.textContent = els.target.value + " km/h";
     els.spacingOut.textContent = els.spacing.value + " km";
+  }
+  /** value: la exageracion que se dibuja; forced: true si no es la del usuario. */
+  function setExagState(value, forced) {
+    const next = forced ? value : null;
+    if (next === exagForced) return;
+    exagForced = next;
+    setOutputs();
+  }
+
+  /**
+   * "Reiniciar": el viaje vuelve al principio y los controles que lo gobiernan tambien (velocidad
+   * objetivo, distancia entre estaciones, perturbaciones y la respuesta que se estaba midiendo).
+   * La vista (camara, capas, escala de tiempo, exageracion) es del usuario y no se toca.
+   */
+  function resetControls() {
+    const m = MODES[mode];
+    els.target.value = String(Math.round(m.vMax * 3.6));
+    els.spacing.value = String(Math.round(m.stationSpacing / 1000));
+    for (const b of els.perturb.querySelectorAll("[aria-pressed]")) b.setAttribute("aria-pressed", "false");
+    $("#stopBtn").setAttribute("aria-pressed", "false");
+    els.resp.textContent = "";
+    tracker.cancel();
+    hist.clear();
+    legTrace = { xs: [], ys: [] };
+    lastLeg = -1;
+    loupe.reset();
+    setOutputs();
   }
 
   function selectTab(name) {
     tab = name;
-    for (const b of root.querySelectorAll("[data-tab]")) b.setAttribute("aria-selected", String(b.dataset.tab === name));
+    for (const b of root.querySelectorAll("[data-tab]")) {
+      b.setAttribute("aria-selected", String(b.dataset.tab === name));
+      b.tabIndex = b.dataset.tab === name ? 0 : -1;
+    }
     for (const p of root.querySelectorAll("[data-pane]")) p.hidden = p.dataset.pane !== name;
   }
 
@@ -292,6 +344,11 @@ export function createUI(h) {
     els.side.classList.toggle("closed", !open);
     press($("#panelBtn"), open);
     try { localStorage.setItem("maglev-panel", open ? "1" : "0"); } catch {}
+  }
+  const setTourActive = (on) => press($("#tourBtn"), on);
+  /** Las capas las cambia la visita sin pasar por las fichas: se dejan al dia. */
+  function syncLayers(layers) {
+    for (const b of root.querySelectorAll("[data-layer]")) press(b, !!layers[b.dataset.layer]);
   }
   function setPaused(on) {
     const b = $("#pauseBtn");
@@ -304,6 +361,17 @@ export function createUI(h) {
     for (const x of root.querySelectorAll("[data-ts]")) press(x, Number(x.dataset.ts) === ts);
     h.setTimeScale(ts);
   }
+
+  // pestanas con teclado: flechas, Inicio y Fin pasan de una a otra (patron WAI-ARIA)
+  $(".tabs").addEventListener("keydown", (e) => {
+    const tabs = [...root.querySelectorAll("[data-tab]")];
+    const i = tabs.findIndex((b) => b.dataset.tab === tab);
+    const next = { ArrowRight: (i + 1) % tabs.length, ArrowLeft: (i + tabs.length - 1) % tabs.length, Home: 0, End: tabs.length - 1 }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    selectTab(tabs[next].dataset.tab);
+    tabs[next].focus();
+  });
 
   // ---- eventos ----
   root.addEventListener("click", (e) => {
@@ -336,6 +404,9 @@ export function createUI(h) {
       }
       case "resetBtn": return h.reset();
       case "introBtn": return h.replayIntro?.();
+      case "tourBtn": return h.tourToggle?.();
+      case "linkBtn": return h.copyLink?.();
+      case "shotBtn": return h.screenshot?.();
       case "themeBtn": return toggleTheme();
       case "panelBtn": return setPanel(els.side.classList.contains("closed"));
     }
@@ -354,7 +425,7 @@ export function createUI(h) {
     if (e.key === "Escape") {
       // un popover abierto se cierra solo; despues la tarjeta de pieza; si no, se vuelve a la simulacion
       if (keysPop.matches?.(":popover-open")) return;
-      if (view.page === "sim" && h.partEsc()) return;
+      if (view.page === "sim" && (h.tourEsc?.() || h.partEsc())) return;
       if (view.page !== "sim") router.go("sim");
       return;
     }
@@ -369,6 +440,12 @@ export function createUI(h) {
     if (e.key === "h" || e.key === "H") return setPanel(els.side.classList.contains("closed"));
     if (e.key === "l" || e.key === "L") return loupe.toggle();
     if (e.key === "i" || e.key === "I") return h.replayIntro?.();
+    if (e.key === "v" || e.key === "V") return h.tourToggle?.();
+    if (e.key === "k" || e.key === "K") return h.screenshot?.();
+    if (document.body.dataset.tour === "on" && document.body.dataset.parts !== "on" && (e.key === "ArrowRight" || e.key === "ArrowLeft") && tag !== "BUTTON") {
+      e.preventDefault();
+      return h.tourStep(e.key === "ArrowRight" ? 1 : -1);
+    }
     if (e.key === "p" || e.key === "P") return h.setParts(document.querySelector('[data-tool="parts"]').getAttribute("aria-pressed") !== "true");
     if (e.key === "e" || e.key === "E") return h.setExplode(document.querySelector('[data-tool="explode"]').getAttribute("aria-pressed") !== "true");
     if (document.body.dataset.parts === "on" && (e.key === "ArrowRight" || e.key === "ArrowLeft") && tag !== "BUTTON") {
@@ -381,12 +458,19 @@ export function createUI(h) {
   const view = { page: "sim", arg: "" };
   const pageEl = $("#page");
   const isLight = () => document.documentElement.dataset.theme === "light";
-  function renderPage() {
-    if (view.page === "guia") {
+  let laminasMod = null; // el modulo, una vez cargado: hace falta para limpiarlo al salir
+  async function renderPage() {
+    const asked = view.page;
+    if (asked === "guia") {
+      const { renderGuia } = await pagesGuia();
+      if (view.page !== asked) return; // el usuario ya se fue a otra pagina
       renderGuia(pageEl, { mode, arg: view.arg, setMode: (m) => h.setMode(m) });
-    } else if (view.page === "laminas") {
-      renderLaminas(pageEl, { arg: view.arg, theme: isLight() ? "light" : "dark", mode });
+    } else if (asked === "laminas") {
+      laminasMod = await pagesLaminas();
+      if (view.page !== asked) return;
+      laminasMod.renderLaminas(pageEl, { arg: view.arg, theme: isLight() ? "light" : "dark", mode });
     }
+    if (asked === "guia") $("#guiaTitulo")?.focus({ preventScroll: true });
   }
   function refreshPage() {
     if (view.page !== "sim") renderPage();
@@ -396,15 +480,18 @@ export function createUI(h) {
     const same = prev === page;
     view.page = page;
     view.arg = arg;
+    document.title = { sim: "Maglev · Simulación", guia: "Maglev · Guía", laminas: "Maglev · Láminas" }[page] ?? "Maglev";
     document.body.dataset.view = page;
     keysPop.hidePopover?.();
-    if (page !== "sim") h.partClose();
+    // (con la tarjeta cerrada no hay nada que cerrar; y al abrir un enlace directo a la Guia la interfaz
+    // aun se esta construyendo: main.js todavia no tiene su `ui`)
+    if (page !== "sim" && card.open) h.partClose();
     for (const a of root.querySelectorAll("[data-page]")) {
       if (a.dataset.page === page) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
     }
     if (page === "sim") {
-      if (prev === "laminas") clearLaminas(pageEl);
+      if (prev === "laminas") laminasMod?.clearLaminas(pageEl);
       pageEl.hidden = true;
       pageEl.innerHTML = "";
       pageEl.onscroll = null;
@@ -418,9 +505,8 @@ export function createUI(h) {
       else pageEl.scrollTop = 0;
       return;
     }
-    if (prev === "laminas") clearLaminas(pageEl);
+    if (prev === "laminas") laminasMod?.clearLaminas(pageEl);
     renderPage();
-    if (page === "guia") $("#guiaTitulo")?.focus({ preventScroll: true });
   }
   const router = createRouter(showPage);
 
@@ -555,7 +641,8 @@ export function createUI(h) {
       els.hSpeed.textContent = fmt(tel.speedKmh, 0);
       let [label, kind] = STATE[tel.state] ?? [tel.state, "idle"];
       if (tel.state === "levitando" && mode === "eds") label = "Preparado";
-      if (train.sections.some((s) => s.fallen)) [label, kind] = ["Sobre patines", "bad"];
+      // sobre patines es lo normal en una estacion (neutro); en marcha es una falla (rojo)
+      if (train.sections.some((s) => s.fallen)) [label, kind] = ["Sobre patines", tel.speedKmh > 20 ? "bad" : "idle"];
       if (train.sections.some((s) => s.contact)) [label, kind] = ["Pegado al riel", "bad"];
       els.hState.textContent = label;
       els.hState.dataset.k = kind;
@@ -665,12 +752,12 @@ export function createUI(h) {
     const saved = localStorage.getItem("maglev-theme");
     applyTheme(saved ?? (window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark"));
     const panel = localStorage.getItem("maglev-panel");
-    setPanel(panel === null ? window.innerWidth > 900 : panel === "1");
+    setPanel(panel === null ? window.innerWidth > 1500 : panel === "1"); // cerrado en ventanas medianas: el tren gana sitio
   } catch {
     applyTheme("dark");
   }
 
   document.body.dataset.view = "sim";
   router.start();
-  return { root, els, card, loupe, startHint: () => startHint(), build, update, sample, toast, hist, setTimeScale, setPaused, setOutputs, router, view };
+  return { root, els, card, loupe, startHint: () => startHint(), build, update, sample, toast, hist, setTimeScale, setPaused, setOutputs, resetControls, setExagState, tour: tourCard, setTourActive, syncLayers, selectTab, getTab: () => tab, router, view };
 }

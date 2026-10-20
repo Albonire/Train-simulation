@@ -13,10 +13,29 @@ export function stationFootprint(xTrack, zIn) {
   return { x0: xTrack - STATION_REACH.back, x1: xTrack + STATION_REACH.front, z0: -(zIn + PLATFORM_WIDTH + 24), z1: 0.5 };
 }
 
-/** Caja alrededor de una camara baja y cercana a la via, en coordenadas del mundo; null si no estorba. */
-export function cameraFootprint(cam, { height = 14, side = 28, half = 9 } = {}) {
+/**
+ * Caja alrededor de una camara baja y pegada a la via, en coordenadas del mundo; null si no estorba.
+ * Solo cuenta lo que pasaria a un lado del objetivo: las camaras altas (Seguir, Orbita) ven los postes
+ * pasar sin taparles nada, y ocultarlos a trozos los haria parpadear a la velocidad del decorado.
+ */
+export function cameraFootprint(cam, { height = 8, side = 16, half = 6 } = {}) {
   if (!cam || cam.y >= height || Math.abs(cam.z) >= side) return null;
   return { x0: cam.x - half, x1: cam.x + half, z0: cam.z - half, z1: cam.z + half };
+}
+
+/**
+ * Una loseta de utileria con su origen en x (mundo) se oculta solo si algo de lo que contiene cae en
+ * una caja: `spans` son los tramos de x (relativos a la loseta) que tienen geometria y `zs` los de z.
+ * Asi un poste de 0,6 m de ancho no oculta los 96 m de loseta que lo rodean.
+ */
+export function tileBlocked(x, spans, zs, boxes) {
+  for (const b of boxes) {
+    let inZ = false;
+    for (const [z0, z1] of zs) if (z1 >= b.z0 && z0 <= b.z1) inZ = true;
+    if (!inZ) continue;
+    for (const [a0, a1] of spans) if (x + a1 >= b.x0 && x + a0 <= b.x1) return true;
+  }
+  return false;
 }
 
 /** Pasa una caja de coordenadas de pista a coordenadas del mundo (el tren esta en la pista `s`). */

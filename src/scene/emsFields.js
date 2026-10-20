@@ -16,6 +16,10 @@ const TAU = EMS.polePitch;
 const N_COL = new THREE.Color("#ff4d3d");
 const S_COL = new THREE.Color("#2f8cff");
 const IRON = new THREE.Color("#ffe3a8");
+// banda de aire: cian en el hueco nominal, ambar fuera de el, rojo si el vehiculo cayo o se pego en marcha
+const AIR = { ok: new THREE.Color("#35d0ff"), off: new THREE.Color("#ffb02e"), bad: new THREE.Color("#ff4d3d") };
+
+const REDUCED = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
 export function createEmsFields(sceneApi) {
   const mid = sceneApi.sections[Math.floor(sceneApi.sections.length / 2)];
@@ -89,6 +93,7 @@ export function createEmsFields(sceneApi) {
 
   const arrowsApi = createForceArrows(mid.group, DIM.roof);
   const t0 = performance.now();
+  const airState = sceneApi.sections.map(() => "");
 
   return {
     arrows: arrowsApi.group,
@@ -117,13 +122,28 @@ export function createEmsFields(sceneApi) {
       // particulas: en la vista Campo mas grandes y brillantes
       // los puntos se miden en pixeles del buffer, no en pixeles CSS
       const px = ((h / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * Math.min(window.devicePixelRatio || 1, 1.5);
-      const t = (performance.now() - t0) / 1000;
+      const t = REDUCED ? 0 : (performance.now() - t0) / 1000; // con movimiento reducido las particulas se quedan quietas
       train.sections.forEach((sec, i) => {
         const f = fluxes[i];
         f.object.visible = show;
         if (!show) return;
         const gap = sec.gap * view.exag;
         f.update(t, gap, Math.min(0.85, 0.2 + 0.3 * B) * (view.boost ? 1 : 0.8), view.intro ? 0.09 : view.boost ? 0.075 : 0.05, px, view.intro ? 20 : 10);
+      });
+
+      // la banda de aire se ve cuando se ven los imanes, salvo con las piezas separadas o elegidas
+      const airOn = view.magnetsVisible && !view.explode && !view.parts;
+      train.sections.forEach((sec, i) => {
+        const o = sceneApi.sections[i];
+        o.air.visible = airOn;
+        if (!airOn) return;
+        const down = sec.fallen || sec.contact;
+        const st = down && train.v > 2 ? "bad" : down || Math.abs(sec.gap - sec.gap0) > 1e-3 ? "off" : "ok";
+        if (airState[i] !== st) {
+          airState[i] = st;
+          o.airM.color.copy(AIR[st]);
+          o.airM.opacity = st === "ok" ? 0.34 : 0.5;
+        }
       });
 
       arrowsApi.update(s, train, train.resistance(train.v) / train.sections.length, view.layers.forces && ARROW_RIGS.includes(view.rig));

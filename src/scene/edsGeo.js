@@ -90,11 +90,15 @@ export function createEdsShared() {
   const alu = { color: "#9fb4c8", roughness: 0.4, metalness: 0.85 };
   const mats = {
     concrete: m.concrete(),
+    wallPos: m.concrete(), // paredes de los dos lados: la mas cercana a la camara se vuelve translucida
+    wallNeg: m.concrete(),
     dark: m.dark(),
     levUp: glowMaterial(copper, sets.induced, { sign: 1, gain: 1.1 }),
     levDown: glowMaterial(copper, sets.induced, { sign: -1, gain: 1.1 }),
     prop: glowMaterial(alu, sets.propulsion, { sign: 1, gain: 1.3 }),
   };
+  mats.wallPos.userData = { skirt: true, side: 1 };
+  mats.wallNeg.userData = { skirt: true, side: -1 };
   const wallH = D.wallTop - D.slabTop;
   const geos = {
     pillar: taperedBox(1.4, 2.1, 1.9, 3.0, D.pillarH),
@@ -128,7 +132,7 @@ export function buildEdsSegment(sh) {
   tagPart("eds", "pier", add(sh.g.jointSlab, sh.m.dark, 0.02, D.slabTop + 0.01, 0, false));
   tagPart("eds", "pier", add(sh.g.slab, sh.m.concrete, SEG / 2, D.slabTop - 0.3, 0));
   for (const s of [-1, 1]) {
-    tagPart("eds", "wall", add(sh.g.wall, sh.m.concrete, SEG / 2, (D.wallTop + D.slabTop) / 2, s * (D.wallInner + D.wallOuter) / 2), s);
+    tagPart("eds", "wall", add(sh.g.wall, s > 0 ? sh.m.wallPos : sh.m.wallNeg, SEG / 2, (D.wallTop + D.slabTop) / 2, s * (D.wallInner + D.wallOuter) / 2), s);
     tagPart("eds", "wall", add(sh.g.jointWall, sh.m.dark, 0.02, (D.wallTop + D.slabTop) / 2, s * (D.wallInner + D.wallOuter) / 2, false), s);
     tagPart("eds", "lev8", add(sh.g["levUp" + s], sh.m.levUp, 0, 0, 0, false), s);
     tagPart("eds", "lev8", add(sh.g["levDown" + s], sh.m.levDown, 0, 0, 0, false), s);

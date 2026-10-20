@@ -79,7 +79,38 @@ export class Train {
     this.gridPower = 0;
     this.lastSnap = 0;
     this.hold = false; // el usuario pide quedarse en reposo
+    this.powerCut = 0; // s simulados que le quedan al corte de alimentacion (solo EMS)
     for (const s of this.sections) s.reset(this.mode.id === "ems");
+  }
+
+  /**
+   * Apaga (o devuelve) el control de una seccion EMS: queda la corriente fija en I0 y el equilibrio
+   * es inestable, asi que el vehiculo cae a los patines en menos de 0,25 s. El tren no lo vuelve a
+   * encender mientras el usuario no lo pida. Devuelve false si no es un tren EMS.
+   */
+  setControlOff(index, off = true) {
+    const s = this.sections[index];
+    if (this.mode.id !== "ems" || !s) return false;
+    s.forcedOff = off;
+    s.openLoop = off;
+    if (off) {
+      s.release();
+      s.kick(0.0005); // un empujon de 0,5 mm decide hacia donde se va el desequilibrio
+    } else {
+      s.engage();
+    }
+    return true;
+  }
+
+  /** Corta la alimentacion de todos los imanes durante `seconds` de tiempo simulado; despues vuelven a subir. */
+  cutPower(seconds = 3.5) {
+    if (this.mode.id !== "ems") return false;
+    this.powerCut = seconds;
+    for (const s of this.sections) {
+      s.powered = false;
+      s.release();
+    }
+    return true;
   }
 
   get cfg() {
@@ -148,8 +179,13 @@ export class Train {
     if (this.mode.id === "ems") {
       const wantLevitate = this.state !== STATES.REPOSO || !this.hold;
       const landed = this.state === STATES.ESTACION && this.stateTime > 2 && this.stateTime < this.dwell - 8;
+      // el corte de alimentacion y el control apagado por el usuario mandan sobre la maquina de estados
+      if (this.powerCut > 0) {
+        this.powerCut = Math.max(0, this.powerCut - dt);
+        if (this.powerCut === 0) for (const s of this.sections) s.powered = true;
+      }
       for (const s of this.sections) {
-        if (landed || !wantLevitate) s.release();
+        if (this.powerCut > 0 || s.forcedOff || landed || !wantLevitate) s.release();
         else s.engage();
       }
       canMove = this.levitated;
@@ -240,6 +276,7 @@ export class Train {
   /** Foto de las magnitudes que muestra la interfaz. */
   telemetry() {
     const gaps = this.sections.map((s) => s.gapMm);
+    const mid = Math.floor(gaps.length / 2);
     const ems = this.mode.id === "ems";
     const sec0 = this.sections[0];
     const amplitude = Math.abs(this.thrust) / Math.max(1, this.fMaxAt(0)); // 0..1, relativo
@@ -251,7 +288,11 @@ export class Train {
       speedKmh: toKmh(this.v),
       accel: this.a,
       gapsMm: gaps,
-      gapMm: gaps.reduce((a, b) => a + b, 0) / gaps.length,
+      // una sola definicion en toda la interfaz: la de la seccion central (la que miran la lupa y los
+      // rotulos); el minimo y el maximo de las tres van aparte
+      gapMm: gaps[mid],
+      gapMinMm: Math.min(...gaps),
+      gapMaxMm: Math.max(...gaps),
       current: ems ? sec0.I : this.cfg.magnetMmf ?? EDS.magnetMmf,
       induced: ems ? 0 : sec0.inducedRel,
       frequency: this.frequency,

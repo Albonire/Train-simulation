@@ -22,6 +22,10 @@ function noise3(x, y, z) {
     sz,
   );
 }
+const smoothUnit = (x) => {
+  const k = Math.min(1, Math.max(0, x));
+  return k * k * (3 - 2 * k);
+};
 const fbm = (x, y, z) => 0.5 * noise3(x, y, z) + 0.28 * noise3(x * 2.1, y * 2.1, z * 2.1) + 0.14 * noise3(x * 4.3, y * 4.3, z * 4.3) + 0.08 * noise3(x * 8.7, y * 8.7, z * 8.7);
 
 /** Anillo de montanas: estribaciones suaves cerca y crestas altas (con nieve) lejos. */
@@ -44,7 +48,10 @@ export function createMountains() {
       const big = fbm(ca * 3.2 + 11, sa * 3.2 + 5, t * 2.4);
       const fine = fbm(ca * 14 + 3, sa * 14 + 9, t * 7);
       const ridge = Math.pow(Math.min(1, Math.max(0, big * 1.5 - 0.25)), 1.4);
-      const h = Math.max(0, (18 + 70 * t * t) * (0.5 + fine) + 330 * ridge * Math.pow(t, 1.15));
+      // la fila interior baja hasta el suelo (y la tapa el plano del terreno): si no, queda una rendija
+      // por debajo de la cordillera por la que se ve el horizonte lejano, una franja clara
+      const foot = smoothUnit(t / 0.16);
+      const h = Math.max(0, (18 + 70 * t * t) * (0.5 + fine) + 330 * ridge * Math.pow(t, 1.15)) * foot;
       pos.push(ca * r, h - 3, sa * r);
       if (h > 250) c.set("#eef1f4");
       else if (h > 150) c.set("#8a847a").lerp(new THREE.Color("#eef1f4"), (h - 150) / 100);
