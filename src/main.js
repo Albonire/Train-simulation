@@ -958,9 +958,11 @@ function loadSaved() {
 }
 const fromLink = parseState(location.hash);
 const restored = fromLink ?? loadSaved();
+// La apertura se ve en cada carga normal; solo un enlace con estado (alguien comparte una vista concreta) la omite.
+const playIntro = introAllowed() && (!fromLink || qs.has("intro"));
 if (restored) {
   if (restored.m && restored.m !== mode) setMode(restored.m);
-  if (restored.c) setRig(restored.c, true);
+  if (restored.c && !playIntro) setRig(restored.c, true); // la apertura termina en la orbita
   if (restored.t) ui.setTimeScale(restored.t);
   if (restored.tab) ui.selectTab(restored.tab);
 }
@@ -974,8 +976,9 @@ function saveState(now) {
   if (cur === lastSaved) return;
   lastSaved = cur;
   try {
+    // solo se recuerda; el enlace se arma al pulsar Copiar enlace (si la barra de direcciones siguiera la vista,
+    // recargar contaria como abrir un enlace con estado y se saltaria la apertura)
     localStorage.setItem(STATE_KEY, cur);
-    history.replaceState(null, "", stateHash(currentState()));
   } catch {
     /* sin almacenamiento o en una vista previa: no pasa nada */
   }
@@ -1005,7 +1008,7 @@ function screenshot() {
 }
 
 requestAnimationFrame(frame);
-if (introAllowed() && (!restored || qs.has("intro"))) startIntro();
+if (playIntro) startIntro();
 else ui.startHint();
 
 window.__THREE = THREE;
