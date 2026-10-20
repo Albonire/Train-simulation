@@ -169,6 +169,7 @@ export const KEYS = [
   [["E"], "Separar"],
   [["L"], "Lupa del entrehierro"],
   [["V"], "Visita guiada (reinicia el viaje)"],
+  [["K"], "Guardar imagen de la escena"],
   [["I"], "Repetir la apertura (reinicia el viaje)"],
   [["Espacio"], "Pausa"],
   [["H"], "Panel lateral"],
