@@ -315,6 +315,8 @@ canvas.addEventListener("pointerleave", () => {
 // ---- etiquetas: solo en las vistas de detalle y con nombres cortos ----
 let labels;
 const DETAIL = ["gap", "section"];
+// la cifra de un rotulo es la real; si el dibujo esta ampliado, se dice cuanto
+const drawnTag = () => (effExag() > 1 ? ` · dibujo ×${effExag()}` : "");
 function buildLabels() {
   labels.clear();
   const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -333,14 +335,14 @@ function buildLabels() {
   });
   if (mode === "ems") {
     const gv = () => train.sections[1].gap * effExag();
-    labels.add({ text: () => `${(train.sections[1].gap * 1000).toFixed(1).replace(".", ",")} mm`, pos: () => V(0, DIM.statorBottom - gv() / 2, 1.15), rigs: DETAIL });
+    labels.add({ text: () => `${(train.sections[1].gap * 1000).toFixed(1).replace(".", ",")} mm${drawnTag()}`, pos: () => V(0, DIM.statorBottom - gv() / 2, 1.15), rigs: DETAIL });
     labels.add({ text: () => "Estator", pos: () => V(2.0, DIM.statorBottom + 0.3, 1.15), rigs: DETAIL, cls: "s" });
     labels.add({ text: () => "Imán de sustentación", pos: () => V(-1.6, DIM.statorBottom - gv() - 0.55, 1.15), rigs: DETAIL, cls: "n" });
     labels.add({ text: () => "Riel de guiado", pos: () => V(0, DIM.railY1 + 0.15, 1.58), rigs: ["section"] });
     labels.add({ text: () => "Imán de guiado", pos: () => V(2.2, (DIM.railY0 + DIM.railY1) / 2 - (DIM.plateTop + DIM.floorClear) + midGroup().y - 0.4, 1.8), rigs: ["section"], cls: "n" });
   } else {
     const gap = () => train.sections[1].gap;
-    labels.add({ text: () => `${(gap() * 1000).toFixed(0)} mm`, pos: () => V(0, EDIM.slabTop + 0.1, 0), rigs: DETAIL });
+    labels.add({ text: () => `${(gap() * 1000).toFixed(0)} mm${drawnTag()}`, pos: () => V(0, EDIM.slabTop + 0.1, 0), rigs: DETAIL });
     labels.add({ text: () => "Propulsión", pos: () => V(1.4, EDIM.propY + 0.5, 1.93), rigs: DETAIL, cls: "s" });
     labels.add({ text: () => "Bobinas en 8", pos: () => V(-1.6, EDIM.levY - 0.9, 1.93), rigs: DETAIL, cls: "n" });
     labels.add({ text: () => "Imán superconductor", pos: () => V(0.0, EDIM.slabTop + gap() + 1.0, 1.2), rigs: DETAIL, cls: "n" });
@@ -365,8 +367,7 @@ const ui = createUI({
   depart,
   reset: () => {
     train.reset();
-    ui.hist.clear();
-    document.getElementById("stopBtn")?.setAttribute("aria-pressed", "false");
+    ui.resetControls();
     ui.toast("Reiniciado");
   },
   perturb,
@@ -447,26 +448,15 @@ function perturb(kind, btn) {
     ui.toast(ems ? "Golpe de 2 mm. Mira el entrehierro." : "Golpe de 15 mm. Mira la elevación.");
     return d;
   }
+  // el estado del control lo lleva la Train (en tiempo simulado): asi la maquina de estados no lo deshace
   if (kind === "ctrlOff" && ems) {
     const on = btn.getAttribute("aria-pressed") !== "true";
     btn.setAttribute("aria-pressed", String(on));
-    if (on) {
-      s.control = false;
-      s.openLoop = true;
-      s.kick(0.0005);
-      ui.toast("Control apagado. Sin lazo cerrado el equilibrio no se sostiene.");
-    } else {
-      s.openLoop = false;
-      s.engage();
-      ui.toast("Control activo");
-    }
+    train.setControlOff(midIdx(), on);
+    ui.toast(on ? "Control apagado. Sin lazo cerrado el equilibrio no se sostiene." : "Control activo");
   } else if (kind === "cutPower" && ems) {
-    train.sections.forEach((q) => q.release());
+    train.cutPower(3.5);
     ui.toast("Sin corriente: cae a los patines");
-    // solo si seguimos en EMS: al cambiar de modo las secciones son otras y no tienen engage()
-    setTimeout(() => {
-      if (mode === "ems") train.sections.forEach((q) => q.engage?.());
-    }, 3500);
   }
   return null;
 }
@@ -585,7 +575,7 @@ function startIntro({ replay = false } = {}) {
   intro.saved = { timeScale: view.timeScale };
   if (replay || cfg.preAdvance) {
     train.reset();
-    ui.hist.clear();
+    ui.resetControls();
   }
   if (cfg.preAdvance) train.advance(cfg.preAdvance);
   train.hold = cfg.hold > 0;
@@ -609,7 +599,8 @@ function endIntro({ toOrbit = false, snap = false } = {}) {
   train.hold = false;
   document.getElementById("stopBtn")?.setAttribute("aria-pressed", "false");
   ui.setTimeScale(intro.saved?.timeScale ?? 5);
-  ui.startHint();
+  // despues del gesto que la corto: el mismo evento, ya en fase de burbuja, cerraria la pista recien puesta
+  setTimeout(() => ui.startHint(), 0);
   if (toOrbit) setRig("orbit", snap);
   else applyBody();
 }
@@ -732,7 +723,9 @@ function step(now) {
     applyExplode(explode.k);
   }
   const level = mode === "ems" ? fields.ems.fieldLevel(train) : fields.eds.fieldLevel(train, tel);
-  const v2 = { ...view, exag: effExag(), magnetsVisible: magnetsVisible(), fieldLevel: level, intro: intro.active && intro.xray };
+  const exag = effExag();
+  ui.setExagState(exag, exag > view.exag[mode]);
+  const v2 = { ...view, exag, magnetsVisible: magnetsVisible(), fieldLevel: level, intro: intro.active && intro.xray };
   active.update(tel, train, v2, dt);
   if (mode === "ems") {
     fields.ems.update(tel, train, v2, camera, window.innerHeight);

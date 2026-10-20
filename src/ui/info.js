@@ -44,7 +44,7 @@ const EMS = {
       html: `
 <p>Los <b>electroimanes de sustentación</b> están debajo del estator y lo atraen. Otros imanes miran a los rieles laterales de la viga y guían el vehículo.</p>
 <p>La atracción de un electroimán de dos polos es <code>F = μ₀ N² I² A / (4 g²)</code>. Crece al cerrarse el entrehierro <code>g</code>, así que el equilibrio es <b>inestable</b>: si el vehículo sube un poco, la atracción aumenta y lo pega al riel; si baja, cae. Con los valores del modelo, el error se duplica en unos 16 ms (polo en <code>√(2g/g₀) ≈ 44 rad/s</code>).</p>
-<p>Un lazo cerrado lo evita: un sensor mide el entrehierro, un controlador PID calcula la corriente y un convertidor la aplica, cientos de veces por segundo, para mantener 10 mm. Pruébalo en <b>Control</b> con <b>Sin control</b>: el vehículo se pega o cae en una fracción de segundo.</p>`,
+<p>Un lazo cerrado lo evita: un sensor mide el entrehierro, un controlador PID calcula la corriente y un convertidor la aplica, cientos de veces por segundo, para mantener 10 mm. Pruébalo en <b>Control</b> con <b>Sin control</b>: el vehículo cae a los patines en una fracción de segundo.</p>`,
     },
     {
       id: "avanza",
@@ -138,7 +138,7 @@ export const KEYS = [
   [["P"], "Piezas"],
   [["E"], "Separar"],
   [["L"], "Lupa del entrehierro"],
-  [["I"], "Repetir la apertura"],
+  [["I"], "Repetir la apertura (reinicia el viaje)"],
   [["Espacio"], "Pausa"],
   [["H"], "Panel lateral"],
   [["?"], "Esta lista"],

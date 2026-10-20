@@ -188,6 +188,7 @@ body:has(#side.closed) #hint { right: 12px; }
 .field > span { display: flex; justify-content: space-between; color: var(--muted); }
 .field output { color: var(--text); font-size: var(--t-m); font-weight: 500; }
 input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; height: 24px; }
+input[type="range"]:disabled { opacity: 0.45; cursor: not-allowed; }
 .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 18px; }
 
 /* perturbaciones: filas con el efecto a la vista */
@@ -384,6 +385,30 @@ body:not([data-view="sim"]) #loupe { display: none; }
 }
 @media (max-width: 760px) {
   #loupe { left: 8px; right: 8px; width: auto; bottom: 8px; display: none; }
+}
+
+/* ---- visita guiada: boton de la barra y tarjeta ---- */
+.tour-btn { min-height: 32px; padding: 4px 12px; gap: 7px; }
+.tour-btn[aria-pressed="true"] { background: var(--tint); color: var(--accent); }
+#tourCard {
+  position: fixed; inset: auto; margin: 0; left: 50%; bottom: 96px; transform: translateX(-50%); width: min(430px, calc(100vw - 24px));
+  padding: 12px 16px 14px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--surface); color: var(--text);
+}
+#tourCard .tc-head { display: flex; align-items: center; justify-content: space-between; margin: -2px -8px 0 0; }
+#tourCard #tcCount { color: var(--muted); font-size: var(--t-s); font-family: var(--num); }
+#tourCard h2 { margin: 2px 0 0; font-size: var(--t-l); line-height: 1.25; font-weight: 650; }
+#tourCard h2:focus { outline: none; }
+#tourCard p { margin: 6px 0 14px; color: var(--muted); font-size: var(--t-b); line-height: 1.5; }
+#tourCard .tc-nav { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; }
+#tourCard .tc-nav .btn { min-height: 36px; padding: 4px 10px; }
+#tourCard .tc-dots { display: flex; justify-content: center; gap: 6px; }
+#tourCard .tc-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line-strong); }
+#tourCard .tc-dots i.on { background: var(--accent); }
+body[data-tour="on"] #hint { opacity: 0; }
+@media (max-width: 760px) {
+  .tour-btn span { display: none; }
+  .tour-btn { padding: 4px 8px; }
+  #tourCard { left: 8px; right: 8px; bottom: 190px; width: auto; transform: none; }
 }
 
 /* ---- apertura: pie de texto y boton para saltarla ---- */
