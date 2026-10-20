@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { Train } from "./physics/train.js";
-import { G } from "./physics/constants.js";
+import { G, EDS } from "./physics/constants.js";
 import { createWorld } from "./scene/world.js";
 import { createEmsScene } from "./scene/emsScene.js";
 import { createEdsScene } from "./scene/edsScene.js";
@@ -13,6 +13,7 @@ import { createStations } from "./scene/stations.js";
 import { adaptiveNear } from "./scene/depth.js";
 import { framePart, cameraIsSane, fitDistance } from "./scene/frame.js";
 import { INTRO, introPose, introExag, introTimeScale, introXray, introCaption } from "./scene/intro.js";
+import { stepsOf } from "./ui/tourData.js";
 import { setExplode as applyExplode, pick, setHighlight, setHighlightColor, setHighlightOpacity, focusBox } from "./scene/parts.js";
 import { partById, partIds, stepPart } from "./scene/partsData.js";
 import { DIM } from "./scene/ems.js";
@@ -55,7 +56,7 @@ let mode = "ems";
 let active = scenes.ems;
 
 const view = {
-  exag: { ems: 8, eds: 3 },
+  exag: { ems: 24, eds: 8 }, // con 24 el hueco de 10 mm mide unos 8 px en la orbita; el rotulo dice el factor
   timeScale: 5,
   rig: "orbit",
   body: "auto",
@@ -63,14 +64,16 @@ const view = {
   parts: false, // explorador de piezas
   explode: false, // vista separada
   boost: false, // la camara Campo realza las capas de campo
-  layers: { fields: true, wave: true, forces: true, labels: true },
+  // las fuerzas se piden (capa Fuerzas): el diagrama sobre el techo y sus cifras fijas sobraban en la vista por defecto
+  layers: { fields: true, wave: true, forces: false, labels: true },
 };
 // estado de la apertura (ver mas abajo): se declara aqui porque effExag y effBody lo leen
 const intro = { active: false, t: 0, cfg: null, saved: null, exag: 0, xray: false };
 const rigMinExag = () => active.rigs[view.rig].minExag ?? 0;
 const effExag = () => Math.max(view.exag[mode], rigMinExag(), intro.active ? intro.exag : 0);
 
-// ---- carroceria: solida, rayos X o corte ----
+// ---- carroceria: solida, rayos X, corte, o "faldon": solida con la parte baja translucida ----
+const SKIRT_ALPHA = 0.2;
 const planes = {
   x: new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0),
   z: new THREE.Plane(new THREE.Vector3(0, 0, -1), 0),
@@ -96,6 +99,7 @@ function applyBody() {
     plane = planes[cut.axis];
     plane.constant = cut.c;
   }
+  const camSide = camera.position.z >= 0 ? 1 : -1;
   for (const sc of Object.values(scenes)) {
     const on = sc === active;
     sc.capGroup.visible = on && plane === planes.x;
@@ -107,9 +111,13 @@ function applyBody() {
     }
     for (const m of sc.bodyMats) {
       const x = on && bodyMode === "xray";
-      m.transparent = x;
-      m.opacity = x ? 0.18 : 1;
-      m.depthWrite = !x;
+      let a = x ? 0.18 : 1;
+      // faldon del EMS y pared cercana del EDS: translucidos en las vistas generales, para ver el mecanismo
+      // que esconden (imanes, estator y hueco; imanes superconductores y bobinas)
+      if (on && !x && m.userData.skirt && bodyMode === "skirt" && (m.userData.side === undefined || m.userData.side === camSide)) a = SKIRT_ALPHA;
+      m.transparent = a < 1;
+      m.opacity = a;
+      m.depthWrite = a >= 1;
       m.needsUpdate = true;
     }
   }
@@ -118,7 +126,10 @@ function applyBody() {
 // Las lineas de flujo se dibujan sin prueba de profundidad: solo tienen sentido
 // cuando los imanes estan a la vista (vistas de detalle, rayos X o corte).
 function magnetsVisible() {
-  return DETAIL.includes(view.rig) || effBody() !== "solid";
+  const b = effBody();
+  // con el faldon translucido del EMS se ven desde la orbita; desde Seguir o Arriba las lineas (sin prueba de
+  // profundidad) se dibujarian sobre la carroceria, y en el EDS lo que se ve por la pared ya es la geometria
+  return DETAIL.includes(view.rig) || b === "xray" || b === "cut" || (b === "skirt" && view.rig === "orbit" && mode === "ems");
 }
 
 // ---- camaras con transicion ----
@@ -315,8 +326,16 @@ canvas.addEventListener("pointerleave", () => {
 // ---- etiquetas: solo en las vistas de detalle y con nombres cortos ----
 let labels;
 const DETAIL = ["gap", "section"];
-// la cifra de un rotulo es la real; si el dibujo esta ampliado, se dice cuanto
-const drawnTag = () => (effExag() > 1 ? ` · dibujo ×${effExag()}` : "");
+// la cifra de un rotulo es la real; si el dibujo esta ampliado, se dice cuanto. En el EMS la exageracion
+// multiplica el hueco; en el EDS, lo que el coche sube sobre la altura de las ruedas.
+function drawnTag() {
+  const ex = effExag();
+  if (ex <= 1) return "";
+  if (mode === "ems") return ` · dibujo ×${ex}`;
+  const g = train.sections[1].gap;
+  const drawn = EDS.gapWheels + (g - EDS.gapWheels) * ex;
+  return Math.abs(drawn - g) < 0.002 ? "" : ` · dibujo ${(drawn * 1000).toFixed(0)} mm`;
+}
 function buildLabels() {
   labels.clear();
   const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -327,7 +346,7 @@ function buildLabels() {
   labels.add({ text: () => `${mode === "ems" ? "Atracción" : "Repulsión"} ${(train.sections[1].lift / 1e3).toFixed(0)} kN`, pos: () => f.tips.lift, rigs: OVERVIEW, when: () => view.layers.forces && !view.parts });
   labels.add({ text: () => `Peso ${(((train.sections[1].mass + train.sections[1].extraMass) * G) / 1e3).toFixed(0)} kN`, pos: () => f.tips.weight, rigs: OVERVIEW, when: () => view.layers.forces && !view.parts });
   labels.add({
-    text: () => (train.levitated ? `Levita a ${train.sections[1].gapMm.toFixed(mode === "ems" ? 1 : 0).replace(".", ",")} mm` : mode === "ems" ? "Sobre patines" : "Sobre ruedas"),
+    text: () => (train.levitated ? `Levita a ${train.sections[1].gapMm.toFixed(mode === "ems" ? 1 : 0).replace(".", ",")} mm${drawnTag()}` : mode === "ems" ? "Sobre patines" : "Sobre ruedas"),
     pos: () => V(midGroup().x, mode === "ems" ? DIM.statorBottom - 1.4 : EDIM.slabTop - 0.4, mode === "ems" ? 2.5 : 2.9),
     rigs: OVERVIEW,
     when: () => !view.parts,
@@ -372,6 +391,10 @@ const ui = createUI({
   },
   perturb,
   replayIntro: () => startIntro({ replay: true }),
+  tourToggle: () => tourToggle(),
+  tourStep: (dir) => tourStep(dir),
+  tourEnd: () => tourEnd(),
+  tourEsc: () => tourEsc(),
   setParts: (on) => setParts(on),
   setExplode: (on) => setExplodeView(on),
   partStep: (dir) => partStep(dir),
@@ -391,6 +414,7 @@ labels = createLabels(ui.els.labels);
 
 function setMode(next) {
   if (next === mode) return;
+  if (tour.active) tourEnd();
   if (selected) closePart();
   mode = next;
   train.setMode(next);
@@ -417,7 +441,38 @@ function slowForPerturbation() {
   // a x5 o mas la respuesta dura una fraccion de segundo: se pasa a tiempo real
   if (view.timeScale > 2) ui.setTimeScale(1);
 }
-function perturb(kind, btn) {
+
+// ---- eventos visibles ----
+// Lo que cambia el estado del tren (cae, se pega, lo golpean) dura una fraccion de segundo: el coche cae
+// en 0,1 s. Se mira en camara lenta y, si la camara no es de detalle, desde la de los imanes; pasados unos
+// segundos todo vuelve a como estaba, salvo lo que el usuario haya tocado entretanto.
+const ev = { active: false, end: 0, prevRig: null, movedTo: null, prevTs: 0, slowTs: 0 };
+const EVENT_SLOW = { cutPower: { scale: 0.12, seconds: 3 }, ctrlOff: { scale: 0.12, seconds: 2.5 }, kick: { scale: 0.2, seconds: 2.5 } };
+function showEvent({ scale = 0.12, seconds = 2.5 } = {}) {
+  if (intro.active) return;
+  if (!ev.active) {
+    ev.active = true;
+    ev.prevTs = view.timeScale;
+    ev.prevRig = view.rig;
+    ev.movedTo = null;
+  }
+  if (view.paused) ui.setPaused(false);
+  if (!["gap", "section", "field"].includes(view.rig) && !ev.movedTo) {
+    ev.movedTo = "gap";
+    setRig("gap");
+  }
+  ev.slowTs = scale;
+  ui.setTimeScale(scale);
+  ev.end = performance.now() + (seconds + 1.2) * 1000;
+}
+function endEvent() {
+  ev.active = false;
+  // el usuario manda: si cambio la escala de tiempo o la camara durante el evento, no se le devuelve la anterior
+  if (view.timeScale === ev.slowTs) ui.setTimeScale(ev.prevTs);
+  if (ev.movedTo && view.rig === ev.movedTo && !userMoved) setRig(ev.prevRig);
+  ev.movedTo = null;
+}
+function perturb(kind, btn, opts = {}) {
   const s = train.sections[midIdx()];
   const W = (s.mass + s.extraMass) * G;
   const ems = mode === "ems";
@@ -426,7 +481,12 @@ function perturb(kind, btn) {
     label, unit: "mm", digits: ems ? 2 : 1, ref: s.gap * 1000, tol, maxTime: 15,
     get: (t) => t.sections[midIdx()].gap * 1000,
   });
-  slowForPerturbation();
+  const turningOn = btn?.getAttribute("aria-pressed") !== "true";
+  if ((kind === "cutPower" || kind === "kick" || (kind === "ctrlOff" && turningOn)) && (kind !== "ctrlOff" || ems)) {
+    showEvent({ ...(EVENT_SLOW[kind] ?? {}), ...(opts.slow ?? {}) });
+  } else {
+    slowForPerturbation();
+  }
   if (kind === "load") {
     const d = ems ? gapSignal("Carga +12 %", 0.05) : null;
     if (s.extraMass > 0) s.clearLoad();
@@ -566,6 +626,7 @@ const orbitPoseNow = () => {
 };
 function startIntro({ replay = false } = {}) {
   if (intro.active) return;
+  if (tour.active) tourEnd();
   if (selected) closePart();
   if (view.parts) setParts(false);
   if (view.explode) setExplodeView(false);
@@ -600,7 +661,9 @@ function endIntro({ toOrbit = false, snap = false } = {}) {
   document.getElementById("stopBtn")?.setAttribute("aria-pressed", "false");
   ui.setTimeScale(intro.saved?.timeScale ?? 5);
   // despues del gesto que la corto: el mismo evento, ya en fase de burbuja, cerraria la pista recien puesta
-  setTimeout(() => ui.startHint(), 0);
+  setTimeout(() => {
+    if (!tour.active) ui.startHint();
+  }, 0);
   if (toOrbit) setRig("orbit", snap);
   else applyBody();
 }
@@ -651,8 +714,92 @@ const skipIntro = () => endIntro({ toOrbit: true });
 for (const ev of ["pointerdown", "keydown", "wheel"]) window.addEventListener(ev, skipIntro, { capture: true, passive: true });
 introEls.skip.addEventListener("click", skipIntro);
 
+// ---- visita guiada ----
+// Pasos fijos (ui/tourData.js): cada uno pone camara, capas, escala de tiempo y, a veces, provoca un evento.
+// Al terminar se devuelve lo que habia (camara, capas, escala de tiempo, pausa); el viaje si se reinicia.
+const tour = { active: false, i: 0, saved: null, timers: [] };
+const perturbBtn = (kind) => document.querySelector(`#perturb [data-p="${kind}"]`);
+function tourClearTimers() {
+  tour.timers.forEach(clearTimeout);
+  tour.timers = [];
+}
+// el control apagado por un paso no se deja puesto al salir de el
+function tourReleaseControl() {
+  const b = perturbBtn("ctrlOff");
+  if (mode === "ems" && b?.getAttribute("aria-pressed") === "true") perturb("ctrlOff", b);
+}
+function tourGo(i) {
+  const steps = stepsOf(mode);
+  if (!steps.length) return tourEnd();
+  tourClearTimers();
+  tourReleaseControl();
+  tour.i = Math.min(steps.length - 1, Math.max(0, i));
+  const st = steps[tour.i];
+  if (st.reset) {
+    train.reset();
+    ui.resetControls();
+  }
+  if (st.advance) train.advance(st.advance);
+  if (view.paused) ui.setPaused(false);
+  Object.assign(view.layers, st.layers ?? {});
+  ui.syncLayers(view.layers);
+  setRig(st.rig);
+  ui.setTimeScale(st.timeScale);
+  ui.loupe.setOpen(!!st.loupe);
+  ui.tour.show(st, tour.i, steps.length);
+  if (st.event) {
+    const arrive = 900; // ms: lo que tarda la camara en llegar a su sitio
+    tour.timers.push(
+      setTimeout(() => {
+        const b = perturbBtn(st.event);
+        if (b) perturb(st.event, b, { slow: st.slow });
+      }, arrive),
+    );
+    if (st.eventUndo) tour.timers.push(setTimeout(tourReleaseControl, arrive + st.eventUndo * 1000));
+  }
+}
+function tourStart() {
+  if (tour.active || document.body.dataset.view !== "sim") return;
+  if (intro.active) endIntro();
+  if (selected) closePart();
+  if (view.parts) setParts(false);
+  if (view.explode) setExplodeView(false);
+  tour.saved = { rig: view.rig, layers: { ...view.layers }, timeScale: view.timeScale, paused: view.paused, loupe: ui.loupe.open };
+  tour.active = true;
+  document.body.dataset.tour = "on";
+  ui.setTourActive(true);
+  tourGo(0);
+}
+function tourEnd() {
+  if (!tour.active) return;
+  tourClearTimers();
+  tourReleaseControl();
+  tour.active = false;
+  const sv = tour.saved;
+  tour.saved = null;
+  document.body.dataset.tour = "off";
+  ui.tour.hide();
+  ui.setTourActive(false);
+  Object.assign(view.layers, sv.layers);
+  ui.syncLayers(view.layers);
+  ui.loupe.setOpen(sv.loupe);
+  ui.setTimeScale(sv.timeScale);
+  ui.setPaused(sv.paused);
+  if (view.rig !== sv.rig) setRig(sv.rig);
+  ui.startHint();
+}
+function tourStep(dir) {
+  if (!tour.active) return;
+  const next = tour.i + dir;
+  if (next >= stepsOf(mode).length) return tourEnd();
+  if (next >= 0) tourGo(next);
+}
+const tourToggle = () => (tour.active ? tourEnd() : tourStart());
+const tourEsc = () => (tour.active ? (tourEnd(), true) : false);
+
 // ---- bucle ----
 let last = performance.now();
+let lastSide = 1;
 let scFrozen = null;
 const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 // Si la camara se vuelve inutilizable (valores no finitos o muy lejos) o un fotograma lanza una
@@ -692,6 +839,7 @@ function step(now) {
   const dt = Math.min(0.05, wall);
   last = now;
   if (intro.active) introTick(wall);
+  if (ev.active && now >= ev.end) endEvent();
   if (!view.paused) {
     // trozos de a lo sumo 20 ms: mantiene el historial y la precision con escalas altas
     let left = dt * view.timeScale;
@@ -760,6 +908,12 @@ function step(now) {
   applyFraming();
   keepAboveGround();
   controls.update();
+  // la pared del EDS que se vuelve translucida es la que queda del lado de la camara
+  const side = camera.position.z >= 0 ? 1 : -1;
+  if (side !== lastSide) {
+    lastSide = side;
+    applyBody();
+  }
   if (!cameraIsSane(camera.position, controls.target, camera.projectionMatrix.elements)) {
     recoverView("camara no finita o demasiado lejos");
     return;
@@ -779,4 +933,4 @@ if (introAllowed()) startIntro();
 else ui.startHint();
 
 window.__THREE = THREE;
-window.__app = { intro: { start: startIntro, end: endIntro, state: intro, seek: seekIntro }, world, renderer, partIds: () => partIds(mode), partStep, selectPart, setParts, setExplodeView, train, view, setRig, setMode, applyBody, camera, controls, scene, scenes, ui, perturb, depart };
+window.__app = { intro: { start: startIntro, end: endIntro, state: intro, seek: seekIntro }, tour: { start: tourStart, end: tourEnd, state: tour, total: () => stepsOf(mode).length }, event: showEvent, world, renderer, partIds: () => partIds(mode), partStep, selectPart, setParts, setExplodeView, train, view, setRig, setMode, applyBody, camera, controls, scene, scenes, ui, perturb, depart };

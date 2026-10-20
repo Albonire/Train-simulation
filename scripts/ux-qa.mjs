@@ -254,8 +254,143 @@ async function lamps() {
   await page.close();
 }
 
+// ---- 7: el mecanismo se ve en la vista por defecto ----
+async function visibility() {
+  const S = "visibilidad";
+  {
+    const { page, errors } = await open({ size: [1920, 918], advance: 80 });
+    await page.evaluate(() => window.__app.setRig("orbit", true));
+    await frames(page, 4);
+    const r = await page.evaluate(() => {
+      const a = window.__app;
+      const T = window.__THREE;
+      const sec = a.scenes.ems.sections[1];
+      const box = new T.Box3().setFromObject(sec.air);
+      const px = (y) => (-new T.Vector3((box.min.x + box.max.x) / 2, y, box.max.z).project(a.camera).y * 0.5 + 0.5) * innerHeight;
+      const skirt = a.scenes.ems.bodyMats.filter((m) => m.userData.skirt);
+      return {
+        gapPx: Math.abs(px(box.min.y) - px(box.max.y)),
+        airVisible: sec.air.visible,
+        skirt: skirt.map((m) => ({ transparent: m.transparent, opacity: m.opacity })),
+        exag: a.view.exag.ems,
+      };
+    });
+    check(S, "EMS, orbita 1920x918: el hueco mide al menos 4 px", r.gapPx >= 4, r.gapPx.toFixed(1) + " px");
+    check(S, "EMS: la banda de aire se dibuja", r.airVisible === true);
+    check(S, "EMS: el faldon es translucido por defecto", r.skirt.length >= 3 && r.skirt.every((m) => m.transparent && m.opacity < 0.5), JSON.stringify(r.skirt));
+    await page.click('[data-tab="view"]');
+    await page.click('[data-body="solid"]');
+    await frames(page, 3);
+    const solid = await page.evaluate(() => window.__app.scenes.ems.bodyMats.filter((m) => m.userData.skirt).map((m) => m.opacity));
+    check(S, "EMS: con la carroceria Solida el faldon es opaco", solid.every((o) => o === 1), JSON.stringify(solid));
+    check(S, "EMS: sin errores", errors.length === 0, errors.join(" | "));
+    await page.close();
+  }
+  {
+    const { page, errors } = await open({ size: [1920, 918], advance: 150 });
+    await page.evaluate(() => window.__app.setMode("eds"));
+    await page.evaluate(() => window.__app.setRig("orbit", true));
+    await frames(page, 4);
+    const r = await page.evaluate(() => {
+      const a = window.__app;
+      const m = a.scenes.eds.shared.m;
+      return { near: m.wallPos.opacity, far: m.wallNeg.opacity, nearT: m.wallPos.transparent, camZ: a.camera.position.z };
+    });
+    check(S, "EDS, orbita: la pared cercana a la camara es translucida y la lejana opaca", r.camZ > 0 && r.nearT && r.near < 0.5 && r.far === 1, JSON.stringify(r));
+    await page.evaluate(() => {
+      const a = window.__app;
+      a.camera.position.z = -Math.abs(a.camera.position.z);
+      a.controls.update();
+    });
+    await frames(page, 4);
+    const flip = await page.evaluate(() => {
+      const m = window.__app.scenes.eds.shared.m;
+      return { pos: m.wallPos.opacity, neg: m.wallNeg.opacity };
+    });
+    check(S, "EDS: al pasar al otro lado se invierte cual pared es translucida", flip.neg < 0.5 && flip.pos === 1, JSON.stringify(flip));
+    check(S, "EDS: sin errores", errors.length === 0, errors.join(" | "));
+    await page.close();
+  }
+}
+
+// ---- 8: eventos visibles: camara lenta y camara de detalle, y despues todo vuelve ----
+async function events() {
+  const S = "evento";
+  const { page, errors } = await open({ pause: true });
+  await page.evaluate(() => {
+    const a = window.__app;
+    a.setRig("orbit", true);
+    a.ui.setTimeScale(5);
+  });
+  await page.click('[data-tab="ctrl"]');
+  await page.click('[data-p="cutPower"]');
+  await frames(page, 2);
+  let st = await page.evaluate(() => ({ rig: window.__app.view.rig, ts: window.__app.view.timeScale }));
+  check(S, "Sin corriente desde la orbita: pasa a la camara de los imanes", st.rig === "gap", JSON.stringify(st));
+  check(S, "Sin corriente: camara lenta", st.ts < 1, JSON.stringify(st));
+  await page.waitForFunction(() => window.__app.view.rig === "orbit", null, { timeout: 40000 });
+  st = await page.evaluate(() => ({ rig: window.__app.view.rig, ts: window.__app.view.timeScale }));
+  check(S, "despues vuelve a la orbita y a la escala de tiempo de antes", st.rig === "orbit" && st.ts === 5, JSON.stringify(st));
+  // si el usuario cambia de camara durante el evento, no se la quitan
+  await page.click('[data-p="kick"]');
+  await frames(page, 2);
+  await page.evaluate(() => window.__app.setRig("top", true));
+  await page.waitForTimeout(6000);
+  st = await page.evaluate(() => ({ rig: window.__app.view.rig, ts: window.__app.view.timeScale }));
+  check(S, "si el usuario elige otra camara, el evento no se la devuelve a la orbita", st.rig === "top", JSON.stringify(st));
+  check(S, "pero la escala de tiempo si se restablece", st.ts === 5, JSON.stringify(st));
+  check(S, "sin errores", errors.length === 0, errors.join(" | "));
+  await page.close();
+}
+
+// ---- 9: visita guiada ----
+async function tour() {
+  const S = "visita";
+  for (const mode of ["ems", "eds"]) {
+    const { page, errors } = await open({ pause: false, advance: 0 });
+    await page.evaluate((m) => window.__app.setMode(m), mode);
+    const before = await page.evaluate(() => {
+      const a = window.__app;
+      return { rig: a.view.rig, layers: { ...a.view.layers }, ts: a.view.timeScale, paused: a.view.paused };
+    });
+    await page.click("#tourBtn");
+    await frames(page, 2);
+    const total = await page.evaluate(() => window.__app.tour.total());
+    check(S, `${mode}: la visita tiene entre 4 y 6 pasos`, total >= 4 && total <= 6, String(total));
+    for (let i = 0; i < total; i++) {
+      const st = await page.evaluate(() => ({
+        open: document.getElementById("tourCard").matches(":popover-open"),
+        title: document.getElementById("tcTitle").textContent,
+        text: document.getElementById("tcText").textContent,
+        count: document.getElementById("tcCount").textContent,
+        next: document.getElementById("tcNext").textContent,
+        rig: window.__app.view.rig,
+      }));
+      check(S, `${mode}: paso ${i + 1}: la tarjeta se ve con su titulo y su texto`, st.open && st.title.length > 3 && st.text.length > 20 && st.count === `${i + 1} de ${total}`, JSON.stringify(st));
+      check(S, `${mode}: paso ${i + 1}: el ultimo dice Terminar`, (i === total - 1) === (st.next === "Terminar"), st.next);
+      await page.click('[data-tc="next"]');
+      await frames(page, 2);
+    }
+    const end = await page.evaluate(() => {
+      const a = window.__app;
+      return { open: document.getElementById("tourCard").matches(":popover-open"), rig: a.view.rig, layers: { ...a.view.layers }, ts: a.view.timeScale, paused: a.view.paused, hold: a.train.hold };
+    });
+    check(S, `${mode}: al terminar la tarjeta se cierra`, end.open === false, JSON.stringify(end));
+    check(S, `${mode}: al terminar vuelve la camara, las capas, la escala de tiempo y la pausa de antes`, end.rig === before.rig && JSON.stringify(end.layers) === JSON.stringify(before.layers) && end.ts === before.ts && end.paused === before.paused && end.hold === false, JSON.stringify({ before, end }));
+    // salir a la mitad con Esc
+    await page.click("#tourBtn");
+    await frames(page, 2);
+    await page.keyboard.press("Escape");
+    await frames(page, 2);
+    const esc = await page.evaluate(() => ({ open: document.getElementById("tourCard").matches(":popover-open"), active: window.__app.tour.state.active }));
+    check(S, `${mode}: Esc sale de la visita`, !esc.open && !esc.active, JSON.stringify(esc));
+    check(S, `${mode}: sin errores`, errors.length === 0, errors.join(" | "));
+    await page.close();
+  }
+}
+
 const only = process.env.QA_ONLY?.split(",");
-const scenarios = { hints, ctrlOff, cutPower, reset, exaggeration, lamps };
+const scenarios = { hints, ctrlOff, cutPower, reset, exaggeration, lamps, visibility, events, tour };
 for (const [name, fn] of Object.entries(scenarios)) {
   if (only && !only.includes(name)) continue;
   try {

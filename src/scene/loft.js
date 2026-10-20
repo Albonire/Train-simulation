@@ -77,7 +77,12 @@ function densify(points, maxSeg) {
   return out;
 }
 
-export function loft(rawPoints, stations, { close = true, maxSeg = 0.25 } = {}) {
+/**
+ * Con `skirtBelow` (una y del contorno), los costados cuyo punto medio queda por debajo de esa altura van en
+ * un segundo grupo de indices (materialIndex 1): asi el faldon puede llevar otro material, translucido,
+ * sin tocar el resto de la carroceria. Las tapas de los extremos van siempre en el grupo 0.
+ */
+export function loft(rawPoints, stations, { close = true, maxSeg = 0.25, skirtBelow = null } = {}) {
   // Los costados planos se subdividen: en la nariz cada estacion escala el contorno
   // y un triangulo grande deformaria la textura (franja dentada).
   const points = densify(rawPoints, maxSeg);
@@ -90,7 +95,9 @@ export function loft(rawPoints, stations, { close = true, maxSeg = 0.25 } = {}) 
   const x1 = stations[stations.length - 1].x;
   const pos = [];
   const uv = [];
-  const idx = [];
+  const idx = []; // grupo 0
+  const idxSkirt = []; // grupo 1
+  const isSkirt = points.map((p, j) => skirtBelow !== null && (p[1] + points[(j + 1) % n][1]) / 2 < skirtBelow);
   for (const st of stations) {
     const u = (st.x - x0) / (x1 - x0);
     for (let j = 0; j <= n; j++) {
@@ -105,7 +112,7 @@ export function loft(rawPoints, stations, { close = true, maxSeg = 0.25 } = {}) 
       const b = i * m + j + 1;
       const c = (i + 1) * m + j;
       const d = (i + 1) * m + j + 1;
-      idx.push(a, c, b, b, c, d);
+      (isSkirt[j] ? idxSkirt : idx).push(a, c, b, b, c, d);
     }
   }
   if (close) {
@@ -133,7 +140,11 @@ export function loft(rawPoints, stations, { close = true, maxSeg = 0.25 } = {}) 
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
-  g.setIndex(idx);
+  g.setIndex(skirtBelow === null ? idx : [...idx, ...idxSkirt]);
+  if (skirtBelow !== null) {
+    g.addGroup(0, idx.length, 0);
+    g.addGroup(idx.length, idxSkirt.length, 1);
+  }
   g.computeVertexNormals();
   return g;
 }

@@ -11,6 +11,7 @@ import { renderGuia } from "./pages/guia.js";
 import { renderLaminas, clearLaminas } from "./pages/laminas.js";
 import { KEYS } from "./info.js";
 import { createPartCard } from "./partCard.js";
+import { createTourCard } from "./tourCard.js";
 import { createLoupe } from "./loupe.js";
 import { EDS, G } from "../physics/constants.js";
 import { EdsSection } from "../physics/eds.js";
@@ -100,6 +101,7 @@ export function createUI(h) {
       <button data-mode="eds" aria-pressed="false" title="Suspensión electrodinámica: repulsión por corrientes inducidas">EDS</button>
     </div>
     <span class="mode-name" id="modeName"></span>
+    <button class="btn tour-btn" id="tourBtn" aria-pressed="false" title="Visita guiada: unos pasos cortos que explican qué pasa. Reinicia el viaje (V)">${ICONS.tour}<span>Visita</span></button>
     <nav class="nav" aria-label="Secciones">
       <a href="${routeHref("sim")}" data-page="sim">${ICONS.train}<span>Simulación</span></a>
       <a href="${routeHref("guia")}" data-page="guia" aria-label="Guía">${ICONS.book}<span>Guía</span></a>
@@ -194,7 +196,7 @@ export function createUI(h) {
       <div class="chips" id="layers">
         <button data-layer="fields" aria-pressed="true" title="Líneas de flujo magnético">Flujo</button>
         <button data-layer="wave" aria-pressed="true" title="Onda del estator: rojo N, azul S">Onda</button>
-        <button data-layer="forces" aria-pressed="true" title="Flechas de fuerza (escala de raíz cuadrada)">Fuerzas</button>
+        <button data-layer="forces" aria-pressed="false" title="Flechas de fuerza (escala de raíz cuadrada)">Fuerzas</button>
         <button data-layer="labels" aria-pressed="true" title="Nombres de las piezas en las vistas de detalle">Nombres</button>
       </div>
       <h3>Apertura</h3>
@@ -215,6 +217,7 @@ export function createUI(h) {
   `;
   document.body.appendChild(root);
   const card = createPartCard(root, { onPrev: () => h.partStep(-1), onNext: () => h.partStep(1), onClose: () => h.partClose() });
+  const tourCard = createTourCard(root, { onPrev: () => h.tourStep(-1), onNext: () => h.tourStep(1), onClose: () => h.tourEnd() });
 
   const loupe = createLoupe($("#loupe"), { setRig: (n) => h.setRig(n), toast: (m) => toast(m) });
 
@@ -327,6 +330,11 @@ export function createUI(h) {
     press($("#panelBtn"), open);
     try { localStorage.setItem("maglev-panel", open ? "1" : "0"); } catch {}
   }
+  const setTourActive = (on) => press($("#tourBtn"), on);
+  /** Las capas las cambia la visita sin pasar por las fichas: se dejan al dia. */
+  function syncLayers(layers) {
+    for (const b of root.querySelectorAll("[data-layer]")) press(b, !!layers[b.dataset.layer]);
+  }
   function setPaused(on) {
     const b = $("#pauseBtn");
     press(b, on);
@@ -370,6 +378,7 @@ export function createUI(h) {
       }
       case "resetBtn": return h.reset();
       case "introBtn": return h.replayIntro?.();
+      case "tourBtn": return h.tourToggle?.();
       case "themeBtn": return toggleTheme();
       case "panelBtn": return setPanel(els.side.classList.contains("closed"));
     }
@@ -388,7 +397,7 @@ export function createUI(h) {
     if (e.key === "Escape") {
       // un popover abierto se cierra solo; despues la tarjeta de pieza; si no, se vuelve a la simulacion
       if (keysPop.matches?.(":popover-open")) return;
-      if (view.page === "sim" && h.partEsc()) return;
+      if (view.page === "sim" && (h.tourEsc?.() || h.partEsc())) return;
       if (view.page !== "sim") router.go("sim");
       return;
     }
@@ -403,6 +412,11 @@ export function createUI(h) {
     if (e.key === "h" || e.key === "H") return setPanel(els.side.classList.contains("closed"));
     if (e.key === "l" || e.key === "L") return loupe.toggle();
     if (e.key === "i" || e.key === "I") return h.replayIntro?.();
+    if (e.key === "v" || e.key === "V") return h.tourToggle?.();
+    if (document.body.dataset.tour === "on" && document.body.dataset.parts !== "on" && (e.key === "ArrowRight" || e.key === "ArrowLeft") && tag !== "BUTTON") {
+      e.preventDefault();
+      return h.tourStep(e.key === "ArrowRight" ? 1 : -1);
+    }
     if (e.key === "p" || e.key === "P") return h.setParts(document.querySelector('[data-tool="parts"]').getAttribute("aria-pressed") !== "true");
     if (e.key === "e" || e.key === "E") return h.setExplode(document.querySelector('[data-tool="explode"]').getAttribute("aria-pressed") !== "true");
     if (document.body.dataset.parts === "on" && (e.key === "ArrowRight" || e.key === "ArrowLeft") && tag !== "BUTTON") {
@@ -706,5 +720,5 @@ export function createUI(h) {
 
   document.body.dataset.view = "sim";
   router.start();
-  return { root, els, card, loupe, startHint: () => startHint(), build, update, sample, toast, hist, setTimeScale, setPaused, setOutputs, resetControls, setExagState, router, view };
+  return { root, els, card, loupe, startHint: () => startHint(), build, update, sample, toast, hist, setTimeScale, setPaused, setOutputs, resetControls, setExagState, tour: tourCard, setTourActive, syncLayers, router, view };
 }
