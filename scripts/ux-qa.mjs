@@ -444,13 +444,14 @@ async function state() {
       window.__app.setRig("gap", true);
       window.__app.ui.setTimeScale(60);
     });
-    await page.waitForFunction(() => location.hash.includes("c=gap") && location.hash.includes("t=60"), null, { timeout: 20000 });
-    check(S, "el hash sigue a la vista sin recargar", true);
+    await page.waitForFunction(() => (localStorage.getItem("maglev-state") ?? "").includes('"c":"gap"'), null, { timeout: 20000 });
+    check(S, "la vista se guarda", true);
+    check(S, "la barra de direcciones no cambia sola (recargar no cuenta como enlace con estado)", await page.evaluate(() => !location.hash.includes("c=")));
     await page.reload({ waitUntil: "load" });
     await page.waitForFunction(() => window.__app, null, { timeout: 30000 });
     await frames(page, 2);
-    const r = await page.evaluate(() => ({ rig: window.__app.view.rig, ts: window.__app.view.timeScale, title: document.title }));
-    check(S, "al recargar vuelve a la camara y a la escala de tiempo de antes", r.rig === "gap" && r.ts === 60, JSON.stringify(r));
+    const r = await page.evaluate(() => ({ mode: document.documentElement.dataset.mode, ts: window.__app.view.timeScale, title: document.title }));
+    check(S, "al recargar vuelve el modo y la escala de tiempo de antes", r.mode === "ems" && r.ts === 60, JSON.stringify(r));
     check(S, "el titulo de la pagina dice donde estas", /Simulaci/.test(r.title), r.title);
     check(S, "sin errores", errors.length === 0, errors.join(" | "));
     await page.close();
