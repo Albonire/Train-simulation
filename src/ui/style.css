@@ -300,10 +300,11 @@ body:not([data-view="sim"]) #view { visibility: hidden; }
   .nav a[data-page="sim"] { display: none; }
   .nav a { padding: 0 10px; }
   .tools { padding-left: 4px; }
-  #cams { top: calc(var(--bar) + 8px); left: 8px; right: 8px; flex-direction: row; overflow-x: auto; scrollbar-width: none; }
-  #cams button { min-width: 0; grid-template-columns: 16px auto; padding: 0 12px; flex: 1 0 auto; justify-content: center; }
-  #cams button:not([aria-pressed="true"]) span:not(.k) { display: none; }
-  #cams button:not([aria-pressed="true"]) { grid-template-columns: 16px; }
+  /* en el movil el carril cabe entero: dos filas, sin desplazamiento lateral */
+  #cams { top: calc(var(--bar) + 8px); left: 8px; right: 8px; flex-direction: row; flex-wrap: wrap; }
+  #cams button { min-width: 0; grid-template-columns: 16px auto; padding: 0 12px; flex: 1 1 calc(25% - 4px); justify-content: center; }
+  #cams button:not([aria-pressed="true"]) span:not(.k) { font-size: var(--t-s); }
+  #cams .rule { display: none; }
   #cams .k { display: none; }
   #hud { left: 8px; right: 8px; bottom: 8px; width: auto; max-width: none; flex-wrap: wrap; gap: 8px 16px; padding: 10px 12px; }
   body:has(#side.closed) #hud { right: 8px; }
