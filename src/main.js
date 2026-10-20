@@ -51,6 +51,9 @@ controls.enableDamping = true;
 controls.minDistance = 3;
 controls.maxDistance = 420;
 controls.screenSpacePanning = true;
+// con el lienzo enfocado, las flechas mueven la vista (teclado)
+canvas.tabIndex = 0;
+controls.listenToKeyEvents(canvas);
 
 const train = new Train("ems");
 const scenes = { ems: createEmsScene(world), eds: createEdsScene(world) };
@@ -356,7 +359,7 @@ function buildLabels() {
     text: () => (train.levitated ? `Levita a ${train.sections[1].gapMm.toFixed(mode === "ems" ? 1 : 0).replace(".", ",")} mm${drawnTag()}` : mode === "ems" ? "Sobre patines" : "Sobre ruedas"),
     pos: () => V(midGroup().x, mode === "ems" ? DIM.statorBottom - 1.4 : EDIM.slabTop - 0.4, mode === "ems" ? 2.5 : 2.9),
     rigs: OVERVIEW,
-    when: () => !view.parts,
+    when: () => !view.parts && !ui.loupe.open, // con la lupa abierta la cifra ya esta ahi
     cls: "lev",
   });
   if (mode === "ems") {
