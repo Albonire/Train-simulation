@@ -323,11 +323,20 @@ async function events() {
     a.ui.setTimeScale(5);
   });
   await page.click('[data-tab="ctrl"]');
+  // en un equipo lento el evento puede empezar y acabar entre dos lecturas: se anota lo que pase, a 20 ms
+  await page.evaluate(() => {
+    window.__seen = { gap: false, slow: false };
+    setInterval(() => {
+      const v = window.__app.view;
+      if (v.rig === "gap") window.__seen.gap = true;
+      if (v.timeScale < 1) window.__seen.slow = true;
+    }, 20);
+  });
   await page.click('[data-p="cutPower"]');
-  await frames(page, 2);
-  let st = await page.evaluate(() => ({ rig: window.__app.view.rig, ts: window.__app.view.timeScale }));
-  check(S, "Sin corriente desde la orbita: pasa a la camara de los imanes", st.rig === "gap", JSON.stringify(st));
-  check(S, "Sin corriente: camara lenta", st.ts < 1, JSON.stringify(st));
+  await page.waitForFunction(() => window.__seen.gap && window.__seen.slow, null, { timeout: 15000 }).catch(() => {});
+  let st = await page.evaluate(() => window.__seen);
+  check(S, "Sin corriente desde la orbita: pasa a la camara de los imanes", st.gap === true, JSON.stringify(st));
+  check(S, "Sin corriente: camara lenta", st.slow === true, JSON.stringify(st));
   await page.waitForFunction(() => window.__app.view.rig === "orbit", null, { timeout: 40000 });
   st = await page.evaluate(() => ({ rig: window.__app.view.rig, ts: window.__app.view.timeScale }));
   check(S, "despues vuelve a la orbita y a la escala de tiempo de antes", st.rig === "orbit" && st.ts === 5, JSON.stringify(st));
