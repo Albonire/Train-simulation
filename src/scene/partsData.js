@@ -22,7 +22,7 @@ export const PARTS = {
     {
       id: "coche",
       name: "Coche",
-      text: "Cada sección abraza la viga por debajo y por los lados. De su faldón cuelgan los imanes. En el modelo mide 20 m y pesa 60 t.",
+      text: "Cada sección abraza la viga por debajo y por los lados. De su faldón cuelgan los imanes. En el modelo mide 14 m y pesa 60 t.",
       live: (t, tr) => [["Velocidad", f(t.speedKmh, 0), "km/h"], ["Masa", f(tr.sections[1].mass / 1e3, 0), "t"]],
       pose: { az: 28, el: 14, fit: 1.05 },
       span: 10,
@@ -87,7 +87,7 @@ export const PARTS = {
     {
       id: "coche",
       name: "Coche",
-      text: "Rueda sobre neumáticos hasta unos 150 km/h y después levita sobre sus imanes. En el modelo cada sección mide 20 m y pesa 25 t.",
+      text: "Rueda sobre neumáticos hasta unos 150 km/h y después levita sobre sus imanes. En el modelo cada sección mide 14 m y pesa 25 t.",
       live: (t) => [["Velocidad", f(t.speedKmh, 0), "km/h"], ["Elevación", f(t.gapMm, 0), "mm"]],
       pose: { az: 30, el: 12, fit: 1.05 },
       span: 10,

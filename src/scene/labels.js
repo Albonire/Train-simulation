@@ -22,7 +22,7 @@ export function createLabels(container) {
       // estrechas varias piezas caen en el mismo sitio
       const placed = [];
       for (const it of items) {
-        const show = enabled && it.spec.rigs.includes(rig);
+        const show = enabled && it.spec.rigs.includes(rig) && (!it.spec.when || it.spec.when());
         if (!show) {
           it.el.style.display = "none";
           continue;

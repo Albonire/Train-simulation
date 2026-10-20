@@ -26,8 +26,9 @@ export const EMS = {
   // => 60 t por seccion [derivado]
   sectionMass: 60e3,
   // [ilustrativo] largo de cada seccion. La fuente da 27 m (54 m / 2); se acorta
-  // a 20 m para que el tren entero quepa en pantalla con buen tamano.
-  sectionLength: 20,
+  // a 14 m para que el tren entero quepa en pantalla con buen tamano. La masa por
+  // seccion no cambia: es un dato del modelo, no sale de la longitud.
+  sectionLength: 14,
   sections: 3, // [ilustrativo] tren de tres secciones
   // [fuente] empuje maximo 85 kN para dos secciones => 42.5 kN por seccion [derivado]
   thrustPerSection: 42.5e3,
@@ -74,8 +75,8 @@ export const EDS = {
   // arrancar; las bobinas en 8 de flujo nulo lo reducen. Aqui: L/D = v/(kappa*vc).
   dragFactor: 0.35,
   sectionMass: 25e3,
-  // [ilustrativo] igual que en EMS: 20 m por seccion
-  sectionLength: 20,
+  // [ilustrativo] igual que en EMS: 14 m por seccion
+  sectionLength: 14,
   sections: 3,
   // [ilustrativo] amortiguamiento de la suspension secundaria, N*s/m por kg
   dampingPerKg: 8,
