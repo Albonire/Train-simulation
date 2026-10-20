@@ -44,6 +44,10 @@ async function open({ query = "", size = [1280, 720], pause = true, advance = 80
   const errors = [];
   page.on("pageerror", (e) => errors.push("excepcion: " + e));
   page.on("console", (m) => m.type() === "error" && !/Failed to load resource/.test(m.text()) && errors.push("consola: " + m.text()));
+  // el panel lateral arranca cerrado por debajo de 1500 px: los escenarios lo necesitan abierto
+  await page.addInitScript(() => {
+    try { if (localStorage.getItem("maglev-panel") === null) localStorage.setItem("maglev-panel", "1"); } catch {}
+  });
   await page.goto(URL_BASE + query, { waitUntil: "load", timeout: 120000 });
   await page.waitForFunction(() => window.__app, null, { timeout: 30000 });
   await page.evaluate(([p, adv]) => {
@@ -398,8 +402,26 @@ async function tour() {
   }
 }
 
+// ---- 10: pestanas y teclado ----
+async function tabs() {
+  const S = "pestanas";
+  const { page, errors } = await open();
+  const sel = () => page.evaluate(() => [...document.querySelectorAll("[data-tab]")].map((b) => b.getAttribute("aria-selected") === "true").join());
+  check(S, "las pestanas son un tablist con tabpanel asociado", await page.evaluate(() => !!document.querySelector('[role=tablist]') && document.querySelectorAll('[role=tabpanel]').length === 3 && document.getElementById("tab-data").getAttribute("aria-controls") === "pane-data"));
+  await page.focus("#tab-data");
+  await page.keyboard.press("ArrowRight");
+  check(S, "flecha derecha pasa a Control y lo enfoca", (await sel()) === "false,true,false" && (await page.evaluate(() => document.activeElement.id)) === "tab-ctrl");
+  await page.keyboard.press("End");
+  check(S, "Fin va a la ultima", (await sel()) === "false,false,true");
+  await page.keyboard.press("ArrowRight");
+  check(S, "flecha derecha de la ultima vuelve a la primera", (await sel()) === "true,false,false");
+  check(S, "solo la pestana activa entra en el orden de tabulacion", await page.evaluate(() => [...document.querySelectorAll("[data-tab]")].filter((b) => b.tabIndex === 0).length === 1));
+  check(S, "sin errores", errors.length === 0, errors.join(" | "));
+  await page.close();
+}
+
 const only = process.env.QA_ONLY?.split(",");
-const scenarios = { hints, ctrlOff, cutPower, reset, exaggeration, lamps, visibility, events, tour };
+const scenarios = { hints, ctrlOff, cutPower, reset, exaggeration, lamps, visibility, events, tour, tabs };
 for (const [name, fn] of Object.entries(scenarios)) {
   if (only && !only.includes(name)) continue;
   try {
