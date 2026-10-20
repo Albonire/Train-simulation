@@ -206,8 +206,15 @@ async function exaggeration() {
     await page.click('[data-tab="view"]');
     await page.evaluate(() => window.__app.setRig("orbit", true));
     await frames(page, 3);
-    let st = await page.evaluate(() => ({ off: document.getElementById("exag").disabled, out: document.getElementById("exagOut").textContent, user: Number(document.getElementById("exag").value) }));
+    let st = await page.evaluate(() => ({ off: document.getElementById("exag").disabled, out: document.getElementById("exagOut").textContent, user: Number(document.getElementById("exag").value), drawn: window.__app.view.exag[document.documentElement.dataset.mode] }));
     check(S, `${mode}: en la orbita el deslizador es del usuario`, !st.off && /^×\d+$/.test(st.out), JSON.stringify(st));
+    check(S, `${mode}: el deslizador muestra la exageracion que se dibuja`, st.user === st.drawn, JSON.stringify(st));
+    // se baja a x8 para que la camara de detalle (que fija x24 en el EMS) tenga algo que forzar
+    await page.evaluate(() => {
+      const el = document.getElementById("exag");
+      el.value = "8";
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    });
     await page.evaluate(() => window.__app.setRig("gap", true));
     await frames(page, 4);
     st = await page.evaluate(() => ({ off: document.getElementById("exag").disabled, out: document.getElementById("exagOut").textContent, label: document.getElementById("labels").textContent }));
