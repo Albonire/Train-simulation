@@ -24,6 +24,7 @@ export const ICONS = {
   kick: svg('<path d="M8 2v7"/><path d="M5 6l3 3 3-3"/><path d="M2.5 13h11"/>'),
   ctrl: svg('<path d="M2 8h2.5l1.5-4 2.5 8 1.5-4H14"/>'),
   power: svg('<path d="M8 2v6"/><path d="M4.6 4.4a5 5 0 1 0 6.8 0"/>'),
+  tour: svg('<path d="M3.5 14V2.5"/><path d="M3.5 3.5h8.2l-2 2.6 2 2.6H3.5"/>'),
   close: svg('<path d="M4 4l8 8M12 4l-8 8"/>'),
   view: svg('<path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/>'),
   data: svg('<path d="M2.5 13.5h11"/><path d="M4.5 11V7M8 11V4M11.5 11V8.5"/>'),

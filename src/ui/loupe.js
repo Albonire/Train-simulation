@@ -68,10 +68,12 @@ export function createLoupe(root, { setRig, toast }) {
   canvas.width = Math.round(W * dpr);
   canvas.height = Math.round(H * dpr);
 
-  function setOpen(v) {
+  // persist: lo que el usuario elige se recuerda; lo que abre la visita guiada, no
+  function setOpen(v, persist = true) {
     open = v;
     root.dataset.open = String(v);
     head.setAttribute("aria-expanded", String(v));
+    if (!persist) return;
     try {
       localStorage.setItem("lupa", v ? "1" : "0");
     } catch {
@@ -373,6 +375,8 @@ export function createLoupe(root, { setRig, toast }) {
       else drawEds(c, tel, train, view, t);
     },
     toggle: () => setOpen(!open),
+    /** La visita guiada abre y cierra la lupa sin cambiar lo que el usuario dejo guardado. */
+    setOpen: (v) => setOpen(!!v, false),
     get open() {
       return open;
     },

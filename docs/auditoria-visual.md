@@ -114,3 +114,33 @@ Otras correcciones de esta pasada:
   suciedad por altura del mundo (zocalo salpicado); la pintura del coche, menos metalica y con suciedad
   en el faldon; las montanas, roca por pendiente y nieve solo en lo alto y plano; postes con zocalo.
 
+
+## Cuarta revision: lo que mostro el roast
+
+Un roast honesto de la simulacion (estetica, uso, texturas, que tan visible y entendible es) puntuo la
+visibilidad de la levitacion en 2 sobre 10: en la vista por defecto el hueco medido era de 1,8 px y todo
+el mecanismo (imanes, estator, guia) quedaba tras el faldon opaco; en el EDS la pared tapaba el 56 % del
+coche. Lo que se corrigio, y como se comprueba:
+
+- **Sin control y Sin corriente eran placebos** (`Train.step` los deshacia en 1 ms). Ahora los lleva la
+  `Train` (`tests/perturb.test.js`, con la `Train` real).
+- **Pistas tras omitir la apertura**: el mismo evento las cerraba. Se confirmo que la prueba de
+  `scripts/ux-qa.mjs` falla con el codigo anterior y pasa con el arreglo.
+- **Farolas**: una caja libre ya no oculta losetas enteras sino los tramos con geometria
+  (`tileBlocked`); Seguir y la orbita no ocultan nada.
+- **Cordillera**: la fila interior baja al suelo (`tests/terrain.test.js`).
+- **Faldon translucido** (EMS): el contorno lleva un vertice a y = 0 y `loft(skirtBelow)` separa el
+  faldon en un segundo grupo con su propio material; en las vistas generales se ve a traves de el el
+  estator con su onda roja y azul, los imanes y su bobinado. **Banda de aire**: una caja por modulo entre
+  la cara polar y el estator, cian en el hueco nominal, ambar fuera de el y roja si el coche cayo en marcha.
+- **EDS**: la pared cercana a la camara es translucida (la que cambia con el lado) y la orbita sube a unos
+  26 grados.
+- **Honestidad**: los rotulos dicen cuanto se amplia el dibujo ("dibujo x24" en EMS, la altura dibujada en
+  EDS); el deslizador de Vista muestra la exageracion que fija la camara.
+- **Evento visible**: al provocar una falla se pasa a camara lenta y a la camara de los imanes unos
+  segundos, y despues vuelve todo, salvo lo que el usuario toque.
+- **Visita guiada** (V): cinco pasos en el EMS y cuatro en el EDS (`src/ui/tourData.js`); las pruebas
+  comprueban con la `Train` real que lo que dice cada paso es lo que pasa.
+
+Limite: el renderizado de las pruebas es por software; la apariencia de las transparencias en una GPU
+real no esta medida.
