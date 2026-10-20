@@ -19,6 +19,8 @@ const IRON = new THREE.Color("#ffe3a8");
 // banda de aire: cian en el hueco nominal, ambar fuera de el, rojo si el vehiculo cayo o se pego en marcha
 const AIR = { ok: new THREE.Color("#35d0ff"), off: new THREE.Color("#ffb02e"), bad: new THREE.Color("#ff4d3d") };
 
+const REDUCED = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+
 export function createEmsFields(sceneApi) {
   const mid = sceneApi.sections[Math.floor(sceneApi.sections.length / 2)];
   const midBaseX = mid.baseX;
@@ -120,7 +122,7 @@ export function createEmsFields(sceneApi) {
       // particulas: en la vista Campo mas grandes y brillantes
       // los puntos se miden en pixeles del buffer, no en pixeles CSS
       const px = ((h / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * Math.min(window.devicePixelRatio || 1, 1.5);
-      const t = (performance.now() - t0) / 1000;
+      const t = REDUCED ? 0 : (performance.now() - t0) / 1000; // con movimiento reducido las particulas se quedan quietas
       train.sections.forEach((sec, i) => {
         const f = fluxes[i];
         f.object.visible = show;

@@ -450,8 +450,31 @@ async function state() {
   }
 }
 
+// ---- 12: la lupa provoca fallas ----
+async function loupeFails() {
+  const S = "lupa";
+  const { page, errors } = await open({ pause: true });
+  await page.evaluate(() => {
+    window.__app.ui.loupe.setOpen(true);
+    window.__app.setRig("orbit", true);
+    window.__seen = { gap: false };
+    setInterval(() => { if (window.__app.view.rig === "gap") window.__seen.gap = true; }, 20);
+  });
+  await frames(page, 2);
+  const btns = await page.evaluate(() => [...document.querySelectorAll("#lpFail [data-fail]")].map((b) => b.dataset.fail));
+  check(S, "EMS: la lupa ofrece Sin control, Sin corriente y Golpe", btns.join() === "ctrlOff,cutPower,kick", btns.join());
+  await page.click('#lpFail [data-fail="cutPower"]');
+  await page.waitForFunction(() => window.__seen.gap, null, { timeout: 15000 }).catch(() => {});
+  const r = await page.evaluate(() => ({ gap: window.__seen.gap, down: window.__app.train.sections.every((s) => s.powered === false || s.fallen || s.contact || s.I < 49) }));
+  check(S, "pulsar Sin corriente en la lupa provoca el evento (camara de los imanes)", r.gap === true, JSON.stringify(r));
+  const lab = await page.evaluate(() => document.getElementById("labels").textContent);
+  check(S, "con la lupa abierta no se repite 'Levita a' en 3D", !/Levita a/.test(lab), lab);
+  check(S, "sin errores", errors.length === 0, errors.join(" | "));
+  await page.close();
+}
+
 const only = process.env.QA_ONLY?.split(",");
-const scenarios = { hints, ctrlOff, cutPower, reset, exaggeration, lamps, visibility, events, tour, tabs, state };
+const scenarios = { hints, ctrlOff, cutPower, reset, exaggeration, lamps, visibility, events, tour, tabs, state, loupeFails };
 for (const [name, fn] of Object.entries(scenarios)) {
   if (only && !only.includes(name)) continue;
   try {

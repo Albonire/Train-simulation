@@ -380,6 +380,9 @@ body[data-parts="on"] #view { cursor: pointer; }
 .lp-body canvas { display: block; width: 336px; height: 196px; }
 .lp-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px 8px 12px; }
 .lp-note { color: var(--muted); font-size: var(--t-s); }
+.lp-fail { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 2px 8px 4px 12px; }
+.lp-fail span { color: var(--muted); font-size: var(--t-s); margin-right: 2px; }
+.lp-fail .btn { min-height: 28px; padding: 2px 10px; font-size: var(--t-s); }
 .lp-go { min-height: 32px; padding: 4px 10px; font-size: var(--t-b); }
 body[data-card="open"] #loupe { display: none; }
 body:not([data-view="sim"]) #loupe { display: none; }

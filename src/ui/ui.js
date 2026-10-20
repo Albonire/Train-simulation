@@ -225,7 +225,12 @@ export function createUI(h) {
   const card = createPartCard(root, { onPrev: () => h.partStep(-1), onNext: () => h.partStep(1), onClose: () => h.partClose() });
   const tourCard = createTourCard(root, { onPrev: () => h.tourStep(-1), onNext: () => h.tourStep(1), onClose: () => h.tourEnd() });
 
-  const loupe = createLoupe($("#loupe"), { setRig: (n) => h.setRig(n), toast: (m) => toast(m) });
+  const loupe = createLoupe($("#loupe"), { setRig: (n) => h.setRig(n), toast: (m) => toast(m), onFail: (k) => firePerturb(k) });
+  // la lupa provoca lo mismo que los botones de Control (con su respuesta medida)
+  function firePerturb(kind) {
+    const b = els.perturb.querySelector(`[data-p="${kind}"]`);
+    if (b) perturbClick(b);
+  }
 
   const els = {
     rows: $("#rows"), hSpeed: $("#hSpeed"), hState: $("#hState"), hTarget: $("#hTarget"), hGap: $("#hGap"),

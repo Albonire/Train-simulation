@@ -15,6 +15,8 @@ const ARROW_RIGS = ["orbit", "chase", "top"];
 const N_COL = new THREE.Color("#ff4d3d");
 const S_COL = new THREE.Color("#2f8cff");
 
+const REDUCED = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+
 export function createEdsFields(sceneApi) {
   const mid = sceneApi.sections[Math.floor(sceneApi.sections.length / 2)];
   const baseX = mid.baseX;
@@ -105,7 +107,7 @@ export function createEdsFields(sceneApi) {
       mat.resolution.set(window.innerWidth, window.innerHeight);
 
       const px = ((h / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * Math.min(window.devicePixelRatio || 1, 1.5);
-      const t = (performance.now() - t0) / 1000;
+      const t = REDUCED ? 0 : (performance.now() - t0) / 1000;
       const alpha = Math.min(0.8, 0.25 + 0.5 * Math.min(1, tel.induced + 0.1)) * (view.boost ? 1 : 0.8);
       fluxes.forEach((f) => {
         f.object.visible = show;
