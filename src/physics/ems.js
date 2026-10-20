@@ -86,6 +86,8 @@ export class EmsSection {
     this.integ = 0;
     this.control = !resting;
     this.openLoop = false; // control apagado pero corriente fija en I0 (demostracion)
+    this.forcedOff = false; // el usuario apago el control de esta seccion: el tren no lo vuelve a encender
+    this.powered = true; // false mientras dura un corte de alimentacion: no circula corriente por ningun iman
     this.contact = false; // toca el patin superior (pegado al riel)
     this.fallen = false; // cayo al patin inferior
 
@@ -135,7 +137,7 @@ export class EmsSection {
     // ---- vertical ----
     const sensed = this.gap + (this._rand() - 0.5) * 2 * this.noise;
     this.lastSensed = sensed;
-    let Icmd = this.openLoop && !this.control ? this.I0 : 0;
+    let Icmd = this.openLoop && !this.control && this.powered ? this.I0 : 0;
     if (this.control) {
       if (this.gapRef > this.gap0) this.gapRef = Math.max(this.gap0, this.gapRef - this.refRate * dt);
       // corriente de equilibrio para la referencia actual: I_ff = I0 * gapRef / gap0
@@ -180,8 +182,9 @@ export class EmsSection {
     const yS = this.y + (this._rand() - 0.5) * 2 * this.noise;
     let uy = 0;
     if (this.control) uy = -(this.lk.kp * yS + this.lk.kd * this.vy);
-    const IRcmd = clamp(this.Ib + uy, 0, this.Imax);
-    const ILcmd = clamp(this.Ib - uy, 0, this.Imax);
+    const Ibias = this.powered ? this.Ib : 0;
+    const IRcmd = clamp(Ibias + uy, 0, this.Imax);
+    const ILcmd = clamp(Ibias - uy, 0, this.Imax);
     this.IR += (IRcmd - this.IR) * a;
     this.IL += (ILcmd - this.IL) * a;
     const gR = Math.max(this.gap0 - this.y, 1e-4);

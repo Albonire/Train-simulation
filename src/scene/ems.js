@@ -10,6 +10,7 @@
 // multiplican por un factor de exageracion visual que muestra la interfaz.
 
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { glowMaterial, poleTexture, sets } from "./glow.js";
 import { loft, bodyStations } from "./loft.js";
 import { liveryTextures, paintMaterial, bellows } from "./livery.js";
@@ -126,6 +127,7 @@ export function outline() {
   const H = DIM.roof - 1.3;
   const pts = [];
   pts.push([W, DIM.skirtBottom]);
+  pts.push([W, 0]); // el faldon (lo que cuelga bajo el suelo) acaba aqui: ver loft(skirtBelow)
   // arco superior (superelipse n = 3) de derecha a izquierda
   const N = 36;
   for (let k = 0; k <= N; k++) {
@@ -134,6 +136,7 @@ export function outline() {
     const sn = Math.sin(a);
     pts.push([W * Math.sign(c) * Math.abs(c) ** (2 / 3), 1.3 + H * Math.abs(sn) ** (2 / 3)]);
   }
+  pts.push([-W, 0]);
   pts.push([-W, DIM.skirtBottom]);
   pts.push([-Wc, DIM.skirtBottom]);
   pts.push([-Wc, 0]);
@@ -181,12 +184,16 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
     },
   });
   const bodyM = paintMaterial(livery);
-  bodyMats.push(bodyM);
-  const body = new THREE.Mesh(loft(pts, stations), bodyM);
+  // El faldon (lo que cuelga bajo el suelo del coche) lleva la misma pintura pero puede volverse
+  // translucido: detras estan los imanes, el estator y el hueco, que es lo que hay que ver.
+  const skirtM = paintMaterial(livery);
+  skirtM.userData.skirt = true;
+  bodyMats.push(bodyM, skirtM);
+  const body = new THREE.Mesh(loft(pts, stations, { skirtBelow: -0.01 }), [bodyM, skirtM]);
   body.castShadow = true;
   body.receiveShadow = true;
   group.add(body);
-  clipMats.push(bodyM);
+  clipMats.push(bodyM, skirtM);
 
   // equipos de techo
   const roof = roofEquipment({ len: length - 0.6, role, roofY: DIM.roof });
@@ -254,12 +261,14 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
   const levGroup = new THREE.Group(); // se mueve en y con la exageracion
   const guideGroup = new THREE.Group();
   mag.add(levGroup, guideGroup);
+  const airGeos = []; // una caja por modulo y lado: el aire entre la cara polar y el estator
   for (const s of [-1, 1]) {
     for (let i = 0; i < nMod; i++) {
       const raw = (i - (nMod - 1) / 2) * (MOD + 0.12) + (role === "front" ? -1.2 : role === "rear" ? 1.2 : 0);
       const start = Math.round((baseX + raw - MOD / 2) / PAIR) * PAIR; // alineado con la onda
       const x = start + MOD / 2 - baseX;
       if (s > 0) modules.push({ x0: start, xc: start + MOD / 2 });
+      airGeos.push(new THREE.BoxGeometry(MOD - 0.04, 1, DIM.statorZ1 - DIM.statorZ0).translate(x, 0.5, s * (DIM.statorZ0 + DIM.statorZ1) / 2));
       // sustentacion: nucleo, bobinado y cara polar (en y local de levGroup: 0 = cara polar)
       const core = new THREE.Mesh(new THREE.BoxGeometry(MOD - 0.04, 0.14, 0.5), levM);
       core.position.set(x, -0.075, s * (DIM.statorZ0 + DIM.statorZ1) / 2);
@@ -304,12 +313,23 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
   levGroup.children.forEach((c) => c.isMesh && tagPart("ems", "lev", c, Math.sign(c.position.z) || 1));
   guideGroup.children.forEach((h) => h.children.forEach((c) => tagPart("ems", "guide", c, h.userData.side)));
 
+  // El hueco de 10 mm, dibujado como una banda de color entre la cara polar (y = 0 en levGroup) y el estator
+  // (y = hueco dibujado): sin ella el hueco es una rendija que se confunde con la sombra. No es una pieza.
+  const airM = new THREE.MeshBasicMaterial({ color: "#35d0ff", transparent: true, opacity: 0.34, depthWrite: false });
+  clipMats.push(airM);
+  const air = new THREE.Mesh(mergeGeometries(airGeos), airM);
+  air.renderOrder = 3;
+  air.frustumCulled = false;
+  levGroup.add(air);
+
   // refs
   const api = {
     group,
     bodyMats,
     clipMats,
     levGroup,
+    air,
+    airM,
     modules,
     poleM,
     length,
@@ -321,6 +341,7 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
       group.position.z = lateralM * exag;
       // cara polar a statorBottom - gap0*exag respecto del origen local del vehiculo
       levGroup.position.y = DIM.statorBottom - gap0 * exag - (DIM.plateTop + DIM.floorClear);
+      air.scale.y = Math.max(gv, 1e-4);
       // guiado: cara a plateHalf + .06 + gap0*exag del riel
       for (const h of guideMeshes) {
         const s = h.userData.side;

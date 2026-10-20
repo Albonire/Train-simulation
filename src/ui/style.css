@@ -25,6 +25,7 @@
   --surface-2: #232b35;
   --line: #313b46;
   --line-strong: #4a5663;
+  --edge: #7a8794; /* borde de los controles: 3:1 sobre la superficie */
   --text: #eaeef2;
   --muted: #aab4bf;
   --faint: #8c98a5;
@@ -43,7 +44,7 @@
 /* fondo de lo activo: un tinte del acento sobre la superficie, en vez de una raya lateral */
 :root { --tint: color-mix(in oklab, var(--accent) 20%, var(--surface)); }
 :root[data-mode="eds"] {
-  --accent: #5ea6ec;
+  --accent: #6cb0f0;
   --accent-ink: #091a2b;
 }
 :root[data-theme="light"] {
@@ -52,10 +53,11 @@
   --surface-2: #eef1f4;
   --line: #d5dbe1;
   --line-strong: #b4bec8;
+  --edge: #7d8a98;
   --text: #14202b;
   --muted: #475665;
-  --faint: #667587;
-  --accent: #0e7a6b;
+  --faint: #566677;
+  --accent: #0b6b5e;
   --accent-ink: #ffffff;
   --ok: #1f7a46;
   --warn: #9a6200;
@@ -105,7 +107,7 @@ a { color: var(--accent); text-underline-offset: 2px; }
 .ib { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; min-width: 40px; padding: 0 10px; border-radius: var(--r-s); color: var(--muted); font-weight: 500; transition: background-color 0.15s, color 0.15s; }
 .ib:hover { background: var(--surface-2); color: var(--text); }
 .ib[aria-pressed="true"] { color: var(--accent); }
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 12px; border-radius: var(--r-s); border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); font-weight: 500; transition: background-color 0.15s, border-color 0.15s; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 12px; border-radius: var(--r-s); border: 1px solid var(--edge); background: var(--surface); color: var(--text); font-weight: 500; transition: background-color 0.15s, border-color 0.15s; }
 .btn:hover { background: var(--surface-2); }
 .btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
 .btn:active { transform: translateY(1px); }
@@ -188,6 +190,7 @@ body:has(#side.closed) #hint { right: 12px; }
 .field > span { display: flex; justify-content: space-between; color: var(--muted); }
 .field output { color: var(--text); font-size: var(--t-m); font-weight: 500; }
 input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; height: 24px; }
+input[type="range"]:disabled { opacity: 0.45; cursor: not-allowed; }
 .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 18px; }
 
 /* perturbaciones: filas con el efecto a la vista */
@@ -297,10 +300,11 @@ body:not([data-view="sim"]) #view { visibility: hidden; }
   .nav a[data-page="sim"] { display: none; }
   .nav a { padding: 0 10px; }
   .tools { padding-left: 4px; }
-  #cams { top: calc(var(--bar) + 8px); left: 8px; right: 8px; flex-direction: row; overflow-x: auto; scrollbar-width: none; }
-  #cams button { min-width: 0; grid-template-columns: 16px auto; padding: 0 12px; flex: 1 0 auto; justify-content: center; }
-  #cams button:not([aria-pressed="true"]) span:not(.k) { display: none; }
-  #cams button:not([aria-pressed="true"]) { grid-template-columns: 16px; }
+  /* en el movil el carril cabe entero: dos filas, sin desplazamiento lateral */
+  #cams { top: calc(var(--bar) + 8px); left: 8px; right: 8px; flex-direction: row; flex-wrap: wrap; }
+  #cams button { min-width: 0; grid-template-columns: 16px auto; padding: 0 12px; flex: 1 1 calc(25% - 4px); justify-content: center; }
+  #cams button:not([aria-pressed="true"]) span:not(.k) { font-size: var(--t-s); }
+  #cams .rule { display: none; }
   #cams .k { display: none; }
   #hud { left: 8px; right: 8px; bottom: 8px; width: auto; max-width: none; flex-wrap: wrap; gap: 8px 16px; padding: 10px 12px; }
   body:has(#side.closed) #hud { right: 8px; }
@@ -376,6 +380,9 @@ body[data-parts="on"] #view { cursor: pointer; }
 .lp-body canvas { display: block; width: 336px; height: 196px; }
 .lp-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px 8px 12px; }
 .lp-note { color: var(--muted); font-size: var(--t-s); }
+.lp-fail { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 2px 8px 4px 12px; }
+.lp-fail span { color: var(--muted); font-size: var(--t-s); margin-right: 2px; }
+.lp-fail .btn { min-height: 28px; padding: 2px 10px; font-size: var(--t-s); }
 .lp-go { min-height: 32px; padding: 4px 10px; font-size: var(--t-b); }
 body[data-card="open"] #loupe { display: none; }
 body:not([data-view="sim"]) #loupe { display: none; }
@@ -384,6 +391,30 @@ body:not([data-view="sim"]) #loupe { display: none; }
 }
 @media (max-width: 760px) {
   #loupe { left: 8px; right: 8px; width: auto; bottom: 8px; display: none; }
+}
+
+/* ---- visita guiada: boton de la barra y tarjeta ---- */
+.tour-btn { min-height: 32px; padding: 4px 12px; gap: 7px; }
+.tour-btn[aria-pressed="true"] { background: var(--tint); color: var(--accent); }
+#tourCard {
+  position: fixed; inset: auto; margin: 0; left: 50%; bottom: 96px; transform: translateX(-50%); width: min(430px, calc(100vw - 24px));
+  padding: 12px 16px 14px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--surface); color: var(--text);
+}
+#tourCard .tc-head { display: flex; align-items: center; justify-content: space-between; margin: -2px -8px 0 0; }
+#tourCard #tcCount { color: var(--muted); font-size: var(--t-s); font-family: var(--num); }
+#tourCard h2 { margin: 2px 0 0; font-size: var(--t-l); line-height: 1.25; font-weight: 650; }
+#tourCard h2:focus { outline: none; }
+#tourCard p { margin: 6px 0 14px; color: var(--muted); font-size: var(--t-b); line-height: 1.5; }
+#tourCard .tc-nav { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; }
+#tourCard .tc-nav .btn { min-height: 36px; padding: 4px 10px; }
+#tourCard .tc-dots { display: flex; justify-content: center; gap: 6px; }
+#tourCard .tc-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line-strong); }
+#tourCard .tc-dots i.on { background: var(--accent); }
+body[data-tour="on"] #hint { opacity: 0; }
+@media (max-width: 760px) {
+  .tour-btn span { display: none; }
+  .tour-btn { padding: 4px 8px; }
+  #tourCard { left: 8px; right: 8px; bottom: 190px; width: auto; transform: none; }
 }
 
 /* ---- apertura: pie de texto y boton para saltarla ---- */
@@ -395,4 +426,12 @@ body[data-intro="on"] #hint { opacity: 0; }
 body[data-intro="on"] #loupe { opacity: 0.0; pointer-events: none; }
 @media (max-width: 760px) {
   #intro { bottom: 190px; width: calc(100% - 16px); }
+}
+
+/* pantallas tactiles: objetivos de al menos 40 px */
+@media (pointer: coarse) {
+  .seg button, .seg.sm button { min-height: 40px; }
+  .chips button, .tour-btn, .lp-go, #introSkip { min-height: 40px; }
+  #partCard .pc-nav .btn, #tourCard .tc-nav .btn { min-height: 44px; }
+  .ib { min-width: 40px; min-height: 40px; }
 }

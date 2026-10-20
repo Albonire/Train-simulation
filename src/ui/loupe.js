@@ -23,7 +23,7 @@ const COPPER = "#c8742a";
 /** Estado en palabras para la insignia. Devuelve [texto, tipo de insignia]. */
 export function loupeState(mode, tel, train) {
   if (mode === "ems") {
-    if (train.sections.some((s) => s.fallen)) return ["Sobre patines", "bad"];
+    if (train.sections.some((s) => s.fallen)) return ["Sobre patines", tel.speedKmh > 20 ? "bad" : "idle"];
     if (train.sections.some((s) => s.contact)) return ["Pegado al riel", "bad"];
     if (!tel.levitated) return [tel.state === "reposo" ? "Sobre patines" : "Despegando", tel.state === "reposo" ? "idle" : "warn"];
     return ["Levitando", "ok"];
@@ -32,7 +32,13 @@ export function loupeState(mode, tel, train) {
   return ["Levitando", "ok"];
 }
 
-export function createLoupe(root, { setRig, toast }) {
+// lo que se puede romper desde la lupa, por modo: mismas acciones que la pestana Control
+const FAILS = {
+  ems: [["ctrlOff", "Sin control"], ["cutPower", "Sin corriente"], ["kick", "Golpe"]],
+  eds: [["kick", "Golpe"]],
+};
+
+export function createLoupe(root, { setRig, toast, onFail = () => {} }) {
   root.innerHTML = `
     <button class="lp-head" id="lpHead" aria-expanded="true" aria-controls="lpBody" title="Mostrar u ocultar la lupa (L)">
       <span class="lp-title" id="lpTitle">Entrehierro</span>
@@ -42,6 +48,7 @@ export function createLoupe(root, { setRig, toast }) {
     </button>
     <div class="lp-body" id="lpBody">
       <canvas id="lpCanvas" width="${W}" height="${H}" aria-hidden="true"></canvas>
+      <div class="lp-fail" id="lpFail" role="group" aria-label="Provocar una falla"></div>
       <div class="lp-foot">
         <span class="lp-note" id="lpNote"></span>
         <button class="btn lp-go" id="lpGo" title="Abre la cámara de primer plano de los imanes (4)">Ver en 3D</button>
@@ -68,10 +75,12 @@ export function createLoupe(root, { setRig, toast }) {
   canvas.width = Math.round(W * dpr);
   canvas.height = Math.round(H * dpr);
 
-  function setOpen(v) {
+  // persist: lo que el usuario elige se recuerda; lo que abre la visita guiada, no
+  function setOpen(v, persist = true) {
     open = v;
     root.dataset.open = String(v);
     head.setAttribute("aria-expanded", String(v));
+    if (!persist) return;
     try {
       localStorage.setItem("lupa", v ? "1" : "0");
     } catch {
@@ -81,6 +90,12 @@ export function createLoupe(root, { setRig, toast }) {
   setOpen(open);
   head.addEventListener("click", () => setOpen(!open));
   root.querySelector("#lpGo").addEventListener("click", () => setRig("gap"));
+  const failBox = root.querySelector("#lpFail");
+  failBox.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-fail]");
+    if (b) onFail(b.dataset.fail);
+  });
+  let failMode = "";
 
   // colores del tema: se leen una vez por cambio de tema o de modo
   let colors = null;
@@ -340,6 +355,10 @@ export function createLoupe(root, { setRig, toast }) {
   return {
     /** Se llama cada fotograma; dibuja a 30 por segundo como mucho. */
     update(mode, tel, train, view, hidden) {
+      if (failMode !== mode) {
+        failMode = mode;
+        failBox.innerHTML = `<span>¿Y si falla?</span>` + FAILS[mode].map(([k, l]) => `<button class="btn" data-fail="${k}">${l}</button>`).join("");
+      }
       const [label, kind] = loupeState(mode, tel, train);
       const s = train.sections[Math.floor(train.sections.length / 2)];
       // el texto solo se toca si cambia: asignarlo cada fotograma invalida el diseno
@@ -347,7 +366,7 @@ export function createLoupe(root, { setRig, toast }) {
       if (els.state.dataset.k !== kind) els.state.dataset.k = kind;
       set(els.title, mode === "ems" ? "Entrehierro" : "Elevación");
       set(els.val, mode === "ems" ? `${fmt(s.gap * 1000, 1)} mm` : `${fmt(tel.gapMm, 0)} mm`);
-      set(els.note, mode === "ems" ? "Corte transversal, hueco ampliado" : "Vista frontal, elevación ampliada");
+      set(els.note, mode === "ems" ? "Esquema fuera de escala: el hueco real mide 10 mm" : "Esquema fuera de escala: elevación ampliada");
       // avisos de despegue y aterrizaje: el estado debe mantenerse medio segundo, para que una
       // perturbacion breve no dispare avisos
       const levitating = kind === "ok";
@@ -373,6 +392,8 @@ export function createLoupe(root, { setRig, toast }) {
       else drawEds(c, tel, train, view, t);
     },
     toggle: () => setOpen(!open),
+    /** La visita guiada abre y cierra la lupa sin cambiar lo que el usuario dejo guardado. */
+    setOpen: (v) => setOpen(!!v, false),
     get open() {
       return open;
     },
