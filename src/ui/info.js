@@ -1,5 +1,5 @@
-// Contenido de la guia. Cada modo tiene sus secciones; las comunes (motor lineal,
-// colores, controles) se comparten. Lo que es dato de una fuente, lo que se derivo y
+// contenido de la guia. cada modo tiene sus secciones; las comunes (motor lineal,
+// colores, controles) se comparten. lo que es dato de una fuente, lo que se derivo y
 // lo que es ilustrativo va marcado en la tabla de fuentes.
 
 import { routeHref } from "./router.js";
@@ -49,7 +49,7 @@ const EMS = {
     {
       id: "avanza",
       title: "Cómo avanza",
-      html: `${MOTOR}<p>En el Transrapid el estator largo va en la vía y se alimenta por <b>tramos</b> que se conmutan al paso del vehículo (${L("https://patents.google.com/patent/WO1997047493A1/en", "WO 1997/047493")}). Con τ = 258 mm, 215 Hz equivalen a 399 km/h.</p>`,
+      html: `${MOTOR}<p>En el Transrapid el estator largo va en la vía y se alimenta por <b>tramos</b> que se conmutan al paso del vehículo (${L("https://patents.google.com/patent/wo1997047493a1/en", "wo 1997/047493")}). con τ = 258 mm, 215 hz equivalen a 399 km/h.</p>`,
     },
     { id: "colores", title: "Colores", html: COLORES },
     { id: "controles", title: "Controles", html: CONTROLES },

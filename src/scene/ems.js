@@ -1,12 +1,12 @@
-// Geometria EMS (estilo Transrapid): viga guia en T y secciones de vehiculo que
-// la abrazan. Unidades en metros. x = a lo largo de la via, y = arriba, z = lateral.
+// geometria ems (estilo transrapid): viga guia en t y secciones de vehiculo que
+// la abrazan. unidades en metros. x = a lo largo de la via, y = arriba, z = lateral.
 //
-// Disposicion (corte transversal):
-//   - Viga: alma central y placa superior con voladizos laterales.
-//   - Estatores bajo los voladizos (mirando hacia abajo).
-//   - Imanes de sustentacion DEBAJO de los estatores, con el entrehierro entre ambos.
-//   - Rieles de guiado en los costados de la placa; imanes de guiado en los faldones.
-// Los entrehierros reales (10 mm) son invisibles a esta escala, por eso se
+// disposicion (corte transversal):
+//   - viga: alma central y placa superior con voladizos laterales.
+//   - estatores bajo los voladizos (mirando hacia abajo).
+//   - imanes de sustentacion debajo de los estatores, con el entrehierro entre ambos.
+//   - rieles de guiado en los costados de la placa; imanes de guiado en los faldones.
+// los entrehierros reales (10 mm) son invisibles a esta escala, por eso se
 // multiplican por un factor de exageracion visual que muestra la interfaz.
 
 import * as THREE from "three";
@@ -21,7 +21,7 @@ import { EMS } from "../physics/constants.js";
 
 export const SEG = 25.8; // 400 ranuras de 64.5 mm: el patron no salta al reciclar tramos
 export const SLOT_PITCH = SEG / 400;
-export const PAIR = 2 * EMS.polePitch; // par de polos N+S, m
+export const PAIR = 2 * EMS.polePitch; // par de polos n+s, m
 export const MOD = 6 * PAIR; // modulo imán: 12 polos = 3.096 m
 
 // cotas (mundo)
@@ -72,7 +72,7 @@ function statorTexture() {
   return t;
 }
 
-/** Un tramo de via (se recicla en un pool). */
+/** un tramo de via (se recicla en un pool). */
 export function buildEmsSegment(shared) {
   const g = new THREE.Group();
   const add = (geo, m, x, y, z, cast = true) => {
@@ -127,7 +127,7 @@ export function outline() {
   const H = DIM.roof - 1.3;
   const pts = [];
   pts.push([W, DIM.skirtBottom]);
-  pts.push([W, 0]); // el faldon (lo que cuelga bajo el suelo) acaba aqui: ver loft(skirtBelow)
+  pts.push([W, 0]); // el faldon (lo que cuelga bajo el suelo) acaba aqui: ver loft(skirtbelow)
   // arco superior (superelipse n = 3) de derecha a izquierda
   const N = 36;
   for (let k = 0; k <= N; k++) {
@@ -146,8 +146,8 @@ export function outline() {
 }
 
 /**
- * Una seccion del vehiculo. `role`: "front" | "mid" | "rear".
- * Devuelve { group, setGap(gapM, lateralM, exag), setCurrent(rel), bodyMats }.
+ * una seccion del vehiculo. `role`: "front" | "mid" | "rear".
+ * devuelve { group, setgap(gapm, lateralm, exag), setcurrent(rel), bodymats }.
  */
 // largo de la nariz aerodinamica de las secciones de cabeza y cola (m)
 const NOSE = 6.5;
@@ -184,7 +184,7 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
     },
   });
   const bodyM = paintMaterial(livery);
-  // El faldon (lo que cuelga bajo el suelo del coche) lleva la misma pintura pero puede volverse
+  // el faldon (lo que cuelga bajo el suelo del coche) lleva la misma pintura pero puede volverse
   // translucido: detras estan los imanes, el estator y el hueco, que es lo que hay que ver.
   const skirtM = paintMaterial(livery);
   skirtM.userData.skirt = true;
@@ -223,7 +223,7 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
   const floorM = mat.floor();
   const seatM = mat.seat();
   clipMats.push(floorM, seatM);
-  bodyMats.push(floorM, seatM); // en rayos X el interior tambien se vuelve transparente
+  bodyMats.push(floorM, seatM); // en rayos x el interior tambien se vuelve transparente
   const fl = new THREE.Mesh(new THREE.BoxGeometry(Lb, 0.08, DIM.halfW * 2 - 0.1), floorM);
   fl.position.set(xc, 0.5, 0);
   interior.add(fl);
@@ -269,7 +269,7 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
       const x = start + MOD / 2 - baseX;
       if (s > 0) modules.push({ x0: start, xc: start + MOD / 2 });
       airGeos.push(new THREE.BoxGeometry(MOD - 0.04, 1, DIM.statorZ1 - DIM.statorZ0).translate(x, 0.5, s * (DIM.statorZ0 + DIM.statorZ1) / 2));
-      // sustentacion: nucleo, bobinado y cara polar (en y local de levGroup: 0 = cara polar)
+      // sustentacion: nucleo, bobinado y cara polar (en y local de levgroup: 0 = cara polar)
       const core = new THREE.Mesh(new THREE.BoxGeometry(MOD - 0.04, 0.14, 0.5), levM);
       core.position.set(x, -0.075, s * (DIM.statorZ0 + DIM.statorZ1) / 2);
       const coil = new THREE.Mesh(new THREE.BoxGeometry(MOD - 0.3, 0.12, 0.66), copperM);
@@ -313,8 +313,8 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
   levGroup.children.forEach((c) => c.isMesh && tagPart("ems", "lev", c, Math.sign(c.position.z) || 1));
   guideGroup.children.forEach((h) => h.children.forEach((c) => tagPart("ems", "guide", c, h.userData.side)));
 
-  // El hueco de 10 mm, dibujado como una banda de color entre la cara polar (y = 0 en levGroup) y el estator
-  // (y = hueco dibujado): sin ella el hueco es una rendija que se confunde con la sombra. No es una pieza.
+  // el hueco de 10 mm, dibujado como una banda de color entre la cara polar (y = 0 en levgroup) y el estator
+  // (y = hueco dibujado): sin ella el hueco es una rendija que se confunde con la sombra. no es una pieza.
   const airM = new THREE.MeshBasicMaterial({ color: "#35d0ff", transparent: true, opacity: 0.34, depthWrite: false });
   clipMats.push(airM);
   const air = new THREE.Mesh(mergeGeometries(airGeos), airM);
@@ -333,16 +333,16 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
     modules,
     poleM,
     length,
-    /** gapM, lateralM: entrehierro y desplazamiento reales; exag: factor visual */
+    /** gapm, lateralm: entrehierro y desplazamiento reales; exag: factor visual */
     setGap(gapM, lateralM, exag, gap0 = EMS.gapNominal) {
       const gv = gapM * exag;
       // el vehiculo cuelga: origen local y = 7.22 - (gap - gap0) * exag
       group.position.y = DIM.plateTop + DIM.floorClear - (gapM - gap0) * exag;
       group.position.z = lateralM * exag;
-      // cara polar a statorBottom - gap0*exag respecto del origen local del vehiculo
+      // cara polar a statorbottom - gap0*exag respecto del origen local del vehiculo
       levGroup.position.y = DIM.statorBottom - gap0 * exag - (DIM.plateTop + DIM.floorClear);
       air.scale.y = Math.max(gv, 1e-4);
-      // guiado: cara a plateHalf + .06 + gap0*exag del riel
+      // guiado: cara a platehalf + .06 + gap0*exag del riel
       for (const h of guideMeshes) {
         const s = h.userData.side;
         h.position.set(0, (DIM.railY0 + DIM.railY1) / 2 - (DIM.plateTop + DIM.floorClear), s * (DIM.plateHalf + 0.06 + gap0 * exag + 0.07));

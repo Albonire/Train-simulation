@@ -1,13 +1,13 @@
-// Interfaz. Principios: la escena manda; lo esencial (velocidad, estado, entrehierro,
+// interfaz. principios: la escena manda; lo esencial (velocidad, estado, entrehierro,
 // progreso del tramo, tiempo) vive en un cuadro de mando compacto abajo; el resto va en
-// un panel plegable con pestanas. Lo que requiere lectura (guia y laminas) son paginas
+// un panel plegable con pestanas. lo que requiere lectura (guia y laminas) son paginas
 // con su ruta, no dialogos; los atajos, un popover pequeno.
 
 import { History, drawChart } from "./charts.js";
 import { ICONS } from "./icons.js";
 import { createRouter, routeHref } from "./router.js";
 import { ResponseTracker } from "./response.js";
-// la Guia y las Laminas (y las figuras) pesan mas que la simulacion: se cargan al entrar en ellas
+// la guia y las laminas (y las figuras) pesan mas que la simulacion: se cargan al entrar en ellas
 const pagesGuia = () => import("./pages/guia.js");
 const pagesLaminas = () => import("./pages/laminas.js");
 import { KEYS, GLOSARIO } from "./info.js";

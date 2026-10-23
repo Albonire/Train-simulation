@@ -1,4 +1,4 @@
-// Pagina "Guia": lectura con indice lateral, en lugar de un dialogo con scroll.
+// pagina "guia": lectura con indice lateral, en lugar de un dialogo con scroll.
 
 import { guide } from "../info.js";
 import { routeHref } from "../router.js";

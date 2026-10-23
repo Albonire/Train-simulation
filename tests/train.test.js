@@ -3,14 +3,14 @@ import { Train } from "../src/physics/train.js";
 import { EMS } from "../src/physics/constants.js";
 import { speedFor } from "../src/physics/lsm.js";
 
-// Corre hasta la primera parada en estacion y devuelve metricas
+// corre hasta la primera parada en estacion y devuelve metricas
 function firstTrip(mode, { maxSeconds = 1500 } = {}) {
   const t = new Train(mode);
   const dt = 0.001;
   let maxV = 0;
   let maxF = 0;
   let maxStepDx = 0;
-  let work = 0; // integral de F*v
+  let work = 0; // integral de f*v
   let resWork = 0; // integral de resistencia*v
   let minGap = Infinity;
   let maxGapErr = 0;

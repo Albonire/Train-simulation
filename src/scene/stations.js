@@ -1,6 +1,6 @@
-// Estaciones: anden elevado sobre columnas junto a la via, con parapeto de
+// estaciones: anden elevado sobre columnas junto a la via, con parapeto de
 // vidrio, marquesina, escalera al suelo y un edificio de acceso.
-// Hay tres instancias que se reciclan: las estaciones estan en los multiplos de
+// hay tres instancias que se reciclan: las estaciones estan en los multiplos de
 // la distancia entre estaciones y se muestran las mas cercanas al tren.
 
 import * as THREE from "three";
@@ -38,14 +38,14 @@ const M = {
   roof: new THREE.MeshStandardMaterial({ color: "#e6ebf0", roughness: 0.45, metalness: 0.35 }),
   steel: new THREE.MeshStandardMaterial({ color: "#4a525b", roughness: 0.55, metalness: 0.7 }),
   glass: new THREE.MeshStandardMaterial({ color: "#a9d2ef", roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.32, depthWrite: false }),
-  // la franja va a 4 mm de la losa: sin polygonOffset se pelearia con ella a distancia (depth.js)
+  // la franja va a 4 mm de la losa: sin polygonoffset se pelearia con ella a distancia (depth.js)
   edge: new THREE.MeshStandardMaterial({ color: "#f2c230", roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }),
   lamp: new THREE.MeshStandardMaterial({ color: "#fff6e0", emissive: "#fff1d0", emissiveIntensity: 0.9 }),
   build: new THREE.MeshStandardMaterial({ color: "#d9dde2", roughness: 0.8 }),
   window: new THREE.MeshStandardMaterial({ color: "#274868", roughness: 0.15, metalness: 0.6 }),
 };
 
-/** Escalera recta de `rise` metros (huella 0.3, contrahuella <= 0.18) que baja hacia -x. */
+/** escalera recta de `rise` metros (huella 0.3, contrahuella <= 0.18) que baja hacia -x. */
 function stairGeometry(rise, width) {
   const n = Math.max(2, Math.ceil(rise / 0.18));
   const h = rise / n;
@@ -105,7 +105,7 @@ export function createStations() {
   for (const it of items) group.add(it.obj);
   const textures = new Map();
 
-  /** cfg: { floorY (cara superior del anden), zIn (borde del anden junto a la via) } */
+  /** cfg: { floory (cara superior del anden), zin (borde del anden junto a la via) } */
   function place(obj, cfg) {
     const u = obj.userData;
     const { floorY, zIn } = cfg;
@@ -159,15 +159,15 @@ export function createStations() {
 
   return {
     group,
-    /** Luces de la marquesina y ventanas del edificio: apagadas de dia, encendidas al atardecer. */
+    /** luces de la marquesina y ventanas del edificio: apagadas de dia, encendidas al atardecer. */
     setNight(on) {
       M.lamp.emissiveIntensity = on ? 2.4 : 0.05;
       M.window.emissive.set(on ? "#ffd9a0" : "#000000");
       M.window.emissiveIntensity = on ? 0.6 : 0;
     },
     /**
-     * Huella de las estaciones visibles en coordenadas de pista ({ x0, x1, z0, z1 }): el anden, la
-     * escalera y el edificio de acceso. Lo que el entorno ponga ahi (postes, cerca, arbustos) se oculta.
+     * huella de las estaciones visibles en coordenadas de pista ({ x0, x1, z0, z1 }): el anden, la
+     * escalera y el edificio de acceso. lo que el entorno ponga ahi (postes, cerca, arbustos) se oculta.
      */
     footprints(cfg) {
       const out = [];
@@ -177,7 +177,7 @@ export function createStations() {
       }
       return out;
     },
-    /** sCenter: coordenada de pista del centro del tren; lenTrain: largo del tren */
+    /** scenter: coordenada de pista del centro del tren; lentrain: largo del tren */
     update(sCenter, lenTrain, spacing, cfg) {
       const k0 = Math.round((sCenter + lenTrain / 2) / spacing);
       items.forEach((it, j) => {

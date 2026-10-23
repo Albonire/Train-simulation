@@ -1,10 +1,10 @@
-// Material estandar al que se le inyecta una emision calculada por posicion.
-// Cada "juego de uniformes" (set) controla un tipo de superficie:
-//  - estator del EMS y bobinas de propulsion del EDS: onda del campo viajero
-//  - bobinas de levitacion del EDS: corrientes inducidas por el paso de los imanes
-// Como el motor es SINCRONO, la onda viaja a la velocidad del tren, asi que en
+// material estandar al que se le inyecta una emision calculada por posicion.
+// cada "juego de uniformes" (set) controla un tipo de superficie:
+//  - estator del ems y bobinas de propulsion del eds: onda del campo viajero
+//  - bobinas de levitacion del eds: corrientes inducidas por el paso de los imanes
+// como el motor es sincrono, la onda viaja a la velocidad del tren, asi que en
 // coordenadas del tren esta quieta; lo que se mueve es la via por debajo.
-// La posicion x que usa el shader es la del mundo con el tren centrado en x = 0.
+// la posicion x que usa el shader es la del mundo con el tren centrado en x = 0.
 
 import * as THREE from "three";
 import { DETAIL } from "./depth.js";
@@ -24,11 +24,11 @@ function makeSet(pitch) {
   };
 }
 
-/** Uniformes por tipo de superficie. */
+/** uniformes por tipo de superficie. */
 export const sets = {
-  stator: makeSet(0.258), // estator del EMS
-  propulsion: makeSet(0.9), // bobinas de propulsion del EDS
-  induced: makeSet(0.9), // bobinas de levitacion del EDS
+  stator: makeSet(0.258), // estator del ems
+  propulsion: makeSet(0.9), // bobinas de propulsion del eds
+  induced: makeSet(0.9), // bobinas de levitacion del eds
 };
 export const shared = sets.stator; // compatibilidad
 
@@ -44,7 +44,7 @@ const GLSL = /* glsl */ `
 `;
 
 /**
- * @param params  parametros de MeshStandardMaterial
+ * @param params  parametros de meshstandardmaterial
  * @param set     juego de uniformes (sets.stator, sets.propulsion, sets.induced)
  * @param opts    { sign: +1|-1, gain: intensidad, key: id de cache }
  */

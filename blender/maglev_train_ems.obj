@@ -1,6 +1,6 @@
-# Maglev Train 3D Model
-# Scale 1:1 (meters) - Car length 14.0m, Width 3.2m, Height 3.6m
-# Designed for Blender and Three.js WebGL simulation
+# modelo 3d del tren maglev
+# escala 1:1 (metros) - coche: 14 m, ancho: 3.2 m, altura: 3.6 m
+# diseno para blender y visualizacion webgl
 mtllib maglev_train_ems.mtl
 
 o Viga_Guia_Nucleo

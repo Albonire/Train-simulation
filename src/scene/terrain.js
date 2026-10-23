@@ -1,11 +1,11 @@
-// Fondo lejano: cordillera en anillos (con perspectiva atmosferica gracias a la
-// niebla) y capa de nubes. Todo queda fijo respecto del observador salvo las nubes,
+// fondo lejano: cordillera en anillos (con perspectiva atmosferica gracias a la
+// niebla) y capa de nubes. todo queda fijo respecto del observador salvo las nubes,
 // que derivan despacio.
 
 import * as THREE from "three";
 import { cloudTexture, rng } from "./textures.js";
 
-// ruido de valor 3D (periodico en el angulo al muestrear sobre un circulo)
+// ruido de valor 3d (periodico en el angulo al muestrear sobre un circulo)
 function hash3(x, y, z) {
   let h = (x * 374761393 + y * 668265263 + z * 2147483647) ^ 0x5bd1e995;
   h = (h ^ (h >>> 13)) * 1274126177;
@@ -28,7 +28,7 @@ const smoothUnit = (x) => {
 };
 const fbm = (x, y, z) => 0.5 * noise3(x, y, z) + 0.28 * noise3(x * 2.1, y * 2.1, z * 2.1) + 0.14 * noise3(x * 4.3, y * 4.3, z * 4.3) + 0.08 * noise3(x * 8.7, y * 8.7, z * 8.7);
 
-/** Anillo de montanas: estribaciones suaves cerca y crestas altas (con nieve) lejos. */
+/** anillo de montanas: estribaciones suaves cerca y crestas altas (con nieve) lejos. */
 export function createMountains() {
   const nT = 900;
   const r0 = 1300;
@@ -98,7 +98,7 @@ export function createMountains() {
   return { mesh, material: mat };
 }
 
-/** Dos capas de nubes que derivan con el viento y con un ligero paralaje. */
+/** dos capas de nubes que derivan con el viento y con un ligero paralaje. */
 export function createClouds() {
   const tex = cloudTexture();
   const group = new THREE.Group();

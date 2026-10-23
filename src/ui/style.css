@@ -1,6 +1,6 @@
-/* Sistema visual. Superficies solidas con un solo borde (sin sombra ni desenfoque),
-   tipografia Barlow (senaletica ferroviaria) y un acento por modo tomado de la libreria
-   de cada tren: verde azulado en EMS, azul en EDS. */
+/* sistema visual. superficies solidas con un solo borde (sin sombra ni desenfoque),
+   tipografia barlow (senaletica ferroviaria) y un acento por modo tomado de la libreria
+   de cada tren: verde azulado en ems, azul en eds. */
 
 :root {
   --font: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -211,7 +211,7 @@ input[type="range"]:disabled { opacity: 0.45; cursor: not-allowed; }
 .legend { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; color: var(--muted); }
 .legend i { display: inline-block; width: 12px; height: 4px; border-radius: 2px; margin-right: 8px; vertical-align: middle; }
 
-/* ---- etiquetas 3D ---- */
+/* ---- etiquetas 3d ---- */
 #labels { position: fixed; inset: 0; overflow: hidden; z-index: 0; }
 .lbl { position: absolute; transform: translate(-50%, -100%); font-size: var(--t-s); font-weight: 600; padding: 3px 8px; border-radius: 6px; background: var(--surface); color: var(--text); border: 1px solid var(--line-strong); white-space: nowrap; }
 .lbl.n { border-color: var(--n); }
@@ -356,7 +356,7 @@ body[data-parts="on"] #view { cursor: pointer; }
 #partCard #pcCount { color: var(--muted); font-size: var(--t-s); font-family: var(--num); }
 #partHover { position: fixed; z-index: 3; pointer-events: none; padding: 3px 9px; border-radius: 6px; background: var(--surface); border: 1px solid var(--line-strong); color: var(--text); font-size: var(--t-s); font-weight: 600; white-space: nowrap; transform: translate(12px, 12px); }
 
-/* indicador de campo del cuadro de mando: tambien es el atajo a la camara Campo */
+/* indicador de campo del cuadro de mando: tambien es el atajo a la camara campo */
 .h-field { display: flex; flex-direction: column; gap: 4px; min-width: 96px; padding: 2px 6px; margin: -2px -6px; border-radius: var(--r-s); text-align: left; transition: background-color 0.15s; }
 .h-field:hover { background: var(--surface-2); }
 .h-field output { font-size: var(--t-m); font-weight: 600; }

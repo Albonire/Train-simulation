@@ -1,6 +1,6 @@
-// Encuadre de una pieza: dado su caja en el mundo, devuelve donde poner la camara y a donde
-// mirar. Es codigo puro (sin three) para poder probar todos los casos raros: cajas vacias,
-// planas, invertidas, con NaN o enormes. Devuelve null si no hay un encuadre fiable, y quien
+// encuadre de una pieza: dado su caja en el mundo, devuelve donde poner la camara y a donde
+// mirar. es codigo puro (sin three) para poder probar todos los casos raros: cajas vacias,
+// planas, invertidas, con nan o enormes. devuelve null si no hay un encuadre fiable, y quien
 // llama conserva entonces la vista actual en vez de quedarse con una camara rota.
 
 import { poseDirection } from "./partsData.js";
@@ -11,9 +11,9 @@ const vec3 = (v) => v && fin(v.x) && fin(v.y) && fin(v.z);
 export const FRAME_LIMITS = { minDist: 3.2, maxDist: 80, minY: 1.7, maxRadius: 60 };
 
 /**
- * Caja de una pieza de la via (periodica): se recorta en x a +-span alrededor de su propio
+ * caja de una pieza de la via (periodica): se recorta en x a +-span alrededor de su propio
  * centro, de modo que nunca queda invertida aunque la pieza este lejos del centro del tren.
- * Para piezas del coche (cerca de x = 0) el resultado es el mismo que recortar a +-span.
+ * para piezas del coche (cerca de x = 0) el resultado es el mismo que recortar a +-span.
  */
 export function windowBox(box, span, center = 0) {
   if (!box || !vec3(box.min) || !vec3(box.max) || !fin(span) || span <= 0) return null;
@@ -29,7 +29,7 @@ export function windowBox(box, span, center = 0) {
 
 /**
  * box: { min, max } en el mundo. def: { pose: { az, el, fit } }.
- * Devuelve { target: [x, y, z], position: [x, y, z], distance } o null.
+ * devuelve { target: [x, y, z], position: [x, y, z], distance } o null.
  */
 export function framePart(box, def, { aspect = 1.6, fov = 44, limits = FRAME_LIMITS } = {}) {
   if (!box || !vec3(box.min) || !vec3(box.max) || !def?.pose || !fin(aspect) || !fin(fov) || fov <= 1 || fov >= 120) return null;
@@ -53,7 +53,7 @@ export function framePart(box, def, { aspect = 1.6, fov = 44, limits = FRAME_LIM
   return { target, position, distance };
 }
 
-/** Comprueba que una camara es utilizable: valores finitos y no demasiado lejos del origen. */
+/** comprueba que una camara es utilizable: valores finitos y no demasiado lejos del origen. */
 export function cameraIsSane(position, target, projection, maxFromOrigin = 1000) {
   const v = [position.x, position.y, position.z, target.x, target.y, target.z];
   if (!v.every(fin)) return false;
@@ -62,16 +62,16 @@ export function cameraIsSane(position, target, projection, maxFromOrigin = 1000)
 }
 
 /**
- * Encuadre de la camara orbital: distancia y desplazamiento del objetivo para que una caja (el
- * tren) llene `fill` del area libre de la pantalla, CENTRADA en ella. La camara mira a `target`
+ * encuadre de la camara orbital: distancia y desplazamiento del objetivo para que una caja (el
+ * tren) llene `fill` del area libre de la pantalla, centrada en ella. la camara mira a `target`
  * desde la direccion `dir` (hacia la camara, unitaria); `fov` es el vertical en grados y `aspect`
  * el de la ventana. `free`: { fx, fy } = fraccion del ancho y del alto de la ventana que dejan
- * libre los paneles; el objetivo se muestra en el centro de esa area (lo hace `setViewOffset`).
+ * libre los paneles; el objetivo se muestra en el centro de esa area (lo hace `setviewoffset`).
  *
- * Como el extremo cercano del tren se ve mas grande que el lejano, centrar el objetivo en el tren
- * deja un lado casi vacio. Por eso se desplaza el objetivo (a lo largo de la derecha y la vertical
+ * como el extremo cercano del tren se ve mas grande que el lejano, centrar el objetivo en el tren
+ * deja un lado casi vacio. por eso se desplaza el objetivo (a lo largo de la derecha y la vertical
  * de la camara) hasta que el tren queda centrado, y se busca por biseccion la distancia a la que su
- * extension proyectada ocupa `fill`. Devuelve { distance, shift: [x, y, z] } o null.
+ * extension proyectada ocupa `fill`. devuelve { distance, shift: [x, y, z] } o null.
  */
 export function fitDistance({ target, dir, fov, aspect, free, box, fill = 0.88, min = 6, max = 420 }) {
   const ok = [...target, ...dir, fov, aspect, free?.fx, free?.fy, fill].every(fin) && box && [...box.min, ...box.max].every(fin);
@@ -79,7 +79,7 @@ export function fitDistance({ target, dir, fov, aspect, free, box, fill = 0.88, 
   const len = Math.hypot(...dir);
   if (len < 1e-6) return null;
   const d0 = dir.map((v) => v / len);
-  // base de la camara: f hacia el objetivo, R a la derecha, U arriba
+  // base de la camara: f hacia el objetivo, r a la derecha, u arriba
   const f = d0.map((v) => -v);
   let R = [-f[2], 0, f[0]];
   const rl = Math.hypot(...R);
@@ -93,7 +93,7 @@ export function fitDistance({ target, dir, fov, aspect, free, box, fill = 0.88, 
   const lat = corners.map((c) => dot(c, R));
   const ver = corners.map((c) => dot(c, U));
   const dep = corners.map((c) => dot(c, f));
-  // a la distancia d: extension proyectada (mitad de la anchura y del alto, en NDC) con el tren
+  // a la distancia d: extension proyectada (mitad de la anchura y del alto, en ndc) con el tren
   // centrado, y el desplazamiento del objetivo que lo centra
   const at = (d) => {
     const depth = dep.map((z) => d + z);
@@ -109,7 +109,7 @@ export function fitDistance({ target, dir, fov, aspect, free, box, fill = 0.88, 
       const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
       hx = (x1 - x0) / 2;
       hy = (y1 - y0) / 2;
-      // pasar el centro de la extension al centro de la pantalla: en NDC cx equivale a cx / k metros
+      // pasar el centro de la extension al centro de la pantalla: en ndc cx equivale a cx / k metros
       const mk = k.reduce((a, v) => a + v, 0) / k.length;
       dx += ((x0 + x1) / 2) * aspect / mk;
       dy += ((y0 + y1) / 2) / mk;

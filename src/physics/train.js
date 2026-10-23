@@ -1,5 +1,5 @@
-// Tren completo: secciones + dinamica longitudinal + controlador de viaje.
-// Es un modelo puro (sin DOM): lo comparten la escena 3D y las laminas.
+// tren completo: secciones + dinamica longitudinal + controlador de viaje.
+// es un modelo puro (sin dom): lo comparten la escena 3d y las laminas.
 
 import { EMS, EDS, RHO_AIR, G, toKmh } from "./constants.js";
 import { EmsSection } from "./ems.js";
@@ -74,19 +74,19 @@ export class Train {
     this.dwell = 30; // s de parada en estacion [ilustrativo]
     this.thrust = 0;
     this.loadAngle = 0;
-    this.energyTraction = 0; // J
-    this.energyRegen = 0; // J
+    this.energyTraction = 0; // j
+    this.energyRegen = 0; // j
     this.gridPower = 0;
     this.lastSnap = 0;
     this.hold = false; // el usuario pide quedarse en reposo
-    this.powerCut = 0; // s simulados que le quedan al corte de alimentacion (solo EMS)
+    this.powerCut = 0; // s simulados que le quedan al corte de alimentacion (solo ems)
     for (const s of this.sections) s.reset(this.mode.id === "ems");
   }
 
   /**
-   * Apaga (o devuelve) el control de una seccion EMS: queda la corriente fija en I0 y el equilibrio
-   * es inestable, asi que el vehiculo cae a los patines en menos de 0,25 s. El tren no lo vuelve a
-   * encender mientras el usuario no lo pida. Devuelve false si no es un tren EMS.
+   * apaga (o devuelve) el control de una seccion ems: queda la corriente fija en i0 y el equilibrio
+   * es inestable, asi que el vehiculo cae a los patines en menos de 0,25 s. el tren no lo vuelve a
+   * encender mientras el usuario no lo pida. devuelve false si no es un tren ems.
    */
   setControlOff(index, off = true) {
     const s = this.sections[index];
@@ -102,7 +102,7 @@ export class Train {
     return true;
   }
 
-  /** Corta la alimentacion de todos los imanes durante `seconds` de tiempo simulado; despues vuelven a subir. */
+  /** corta la alimentacion de todos los imanes durante `seconds` de tiempo simulado; despues vuelven a subir. */
   cutPower(seconds = 3.5) {
     if (this.mode.id !== "ems") return false;
     this.powerCut = seconds;
@@ -126,7 +126,7 @@ export class Train {
     return frequencyFor(this.v, this.polePitch);
   }
 
-  /** Cambia la distancia entre estaciones; la siguiente es la mas cercana por delante. */
+  /** cambia la distancia entre estaciones; la siguiente es la mas cercana por delante. */
   setSpacing(meters) {
     this.stationSpacing = meters;
     this.nextStation = (Math.floor(this.x / meters + 1e-6) + 1) * meters;
@@ -140,7 +140,7 @@ export class Train {
     return 0.5 * RHO_AIR * this.cfg.dragCd * this.cfg.dragArea * v * v;
   }
 
-  /** Resistencia total sin contar el motor, N. */
+  /** resistencia total sin contar el motor, n. */
   resistance(v) {
     let r = this.aero(v);
     if (this.mode.id === "eds") {
@@ -161,7 +161,7 @@ export class Train {
     return !this.sections[0].onWheels;
   }
 
-  /** Llamar con intervalos pequenos (<= 2 ms). */
+  /** llamar con intervalos pequenos (<= 2 ms). */
   step(dt) {
     const m = this.totalMass;
     this.time += dt;
@@ -208,7 +208,7 @@ export class Train {
         break;
     }
 
-    // distancia a la estacion, calculada DESPUES de cualquier cambio de estacion
+    // distancia a la estacion, calculada despues de cualquier cambio de estacion
     const remaining = this.nextStation - this.x;
     const driving =
       this.state === STATES.ACELERANDO || this.state === STATES.CRUCERO || this.state === STATES.FRENANDO;
@@ -217,7 +217,7 @@ export class Train {
       const vBrake = this.autoTrip ? Math.sqrt(2 * aPlan * Math.max(0, remaining - 0.05)) : Infinity;
       vRef = Math.min(this.targetSpeed, vBrake);
       // anticipacion: sobre el perfil de frenado la velocidad de referencia baja
-      // a -aPlan; sin este termino el seguimiento por realimentacion arrastra un
+      // a -aplan; sin este termino el seguimiento por realimentacion arrastra un
       // retardo de velocidad y el tren se pasa de la estacion
       const aFF = vBrake < this.targetSpeed ? -aPlan : 0;
       const aDecMax = clamp((0.9 * Fmax0) / m, aPlan, 1.2);
@@ -262,7 +262,7 @@ export class Train {
     for (const s of this.sections) s.step(dt, this.v);
   }
 
-  /** Avanza `seconds` de tiempo simulado con paso fijo. */
+  /** avanza `seconds` de tiempo simulado con paso fijo. */
   advance(seconds, dt = 0.001) {
     const n = Math.max(1, Math.round(seconds / dt));
     for (let i = 0; i < n; i++) this.step(dt);
@@ -273,7 +273,7 @@ export class Train {
     this.stateTime = 0;
   }
 
-  /** Foto de las magnitudes que muestra la interfaz. */
+  /** foto de las magnitudes que muestra la interfaz. */
   telemetry() {
     const gaps = this.sections.map((s) => s.gapMm);
     const mid = Math.floor(gaps.length / 2);

@@ -1,4 +1,4 @@
-// Escena EDS completa: via en U + tren + camaras propias del modo.
+// escena eds completa: via en u + tren + camaras propias del modo.
 
 import * as THREE from "three";
 import { SEG, D, buildEdsSegment, createEdsShared, buildEdsSection, edsOutline } from "./edsGeo.js";

@@ -1,8 +1,8 @@
-// Capturas de la escena para revisarlas a ojo (desarrollo).
+// capturas de la escena para revisarlas a ojo (desarrollo).
 //
 //   node scripts/shot.mjs <url> <carpeta> <especificacion>...
 //
-// Especificacion: modo:tema:camara:AnchoxAlto[:clave=valor...]
+// especificacion: modo:tema:camara:anchoxalto[:clave=valor...]
 //   modo   ems | eds            tema   light | dark         camara   orbit chase section gap top field
 //   claves: cam=x,y,z  tgt=x,y,z   (camara y objetivo a mano)  adv=s (segundos de viaje antes)
 //           intro=t (apertura en el instante t, en s; la camara y el viaje se ignoran)

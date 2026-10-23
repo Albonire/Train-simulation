@@ -1,5 +1,5 @@
-// Incrusta modulos del modelo fisico (src/physics) en una pagina autonoma.
-// Quita los import/export y envuelve todo en una funcion para no chocar con los
+// incrusta modulos del modelo fisico (src/physics) en una pagina autonoma.
+// quita los import/export y envuelve todo en una funcion para no chocar con los
 // nombres del kit ni de la pagina.
 
 import { readFileSync } from "node:fs";

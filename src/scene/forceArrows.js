@@ -1,5 +1,5 @@
-// Conjunto de flechas de fuerza de una seccion (peso, sustentacion, empuje,
-// resistencia y fuerza lateral). Comparte la logica entre EMS y EDS.
+// conjunto de flechas de fuerza de una seccion (peso, sustentacion, empuje,
+// resistencia y fuerza lateral). comparte la logica entre ems y eds.
 
 import * as THREE from "three";
 import { makeArrow, arrowLength } from "./arrows.js";
@@ -12,7 +12,7 @@ const nX = new THREE.Vector3(-1, 0, 0);
 const nY = new THREE.Vector3(0, -1, 0);
 const nZ = new THREE.Vector3(0, 0, -1);
 
-// Diagrama de cuerpo libre sobre el techo: todas las flechas salen de un mismo
+// diagrama de cuerpo libre sobre el techo: todas las flechas salen de un mismo
 // punto, por encima de la carroceria, para que no se mezclen con ella.
 export function createForceArrows(parent, roofY) {
   const group = new THREE.Group();
@@ -38,7 +38,7 @@ export function createForceArrows(parent, roofY) {
   return {
     group,
     tips,
-    /** sec: seccion fisica central; train: tren; drag: resistencia total por seccion (N) */
+    /** sec: seccion fisica central; train: tren; drag: resistencia total por seccion (n) */
     update(sec, train, drag, visible) {
       group.visible = visible;
       if (!visible) return;

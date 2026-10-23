@@ -1,12 +1,12 @@
-// Geometria EDS (estilo SCMaglev): via en U con bobinas en las paredes y vehiculo
-// con imanes superconductores. Unidades en metros.
+// geometria eds (estilo scmaglev): via en u con bobinas en las paredes y vehiculo
+// con imanes superconductores. unidades en metros.
 //
-// Esquema (las bobinas reales estan apiladas en la pared; aqui se separan en
+// esquema (las bobinas reales estan apiladas en la pared; aqui se separan en
 // filas para poder explicarlas):
 //   - fila inferior: bobinas de levitacion en 8 (lazo superior e inferior con
 //     corrientes opuestas)
 //   - fila superior: bobinas de propulsion
-// El vehiculo lleva criostatos con electroimanes superconductores (polos N/S
+// el vehiculo lleva criostatos con electroimanes superconductores (polos n/s
 // alternos, paso 0.9 m) enfrentados a las dos filas.
 
 import * as THREE from "three";
@@ -73,7 +73,7 @@ function ringGeometry(w, h, thick, depth) {
   return new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 3 });
 }
 
-/** Tira de bobinas a lo largo de un tramo (una pared), geometria fusionada. */
+/** tira de bobinas a lo largo de un tramo (una pared), geometria fusionada. */
 function coilStrip(side, yCenter, h, w = 0.72) {
   const geos = [];
   const n = Math.round(SEG / COIL_P);
@@ -128,7 +128,7 @@ export function buildEdsSegment(sh) {
   // cada malla se etiqueta con su pieza para el explorador (parts.js)
   tagPart("eds", "pier", add(sh.g.pillar, sh.m.concrete, 0, D.pillarH / 2, 0));
   tagPart("eds", "pier", add(sh.g.cap, sh.m.concrete, 0, D.pillarH - 0.18, 0));
-  // juntas de dilatacion al inicio del tramo: en el suelo de la U y en las paredes
+  // juntas de dilatacion al inicio del tramo: en el suelo de la u y en las paredes
   tagPart("eds", "pier", add(sh.g.jointSlab, sh.m.dark, 0.02, D.slabTop + 0.01, 0, false));
   tagPart("eds", "pier", add(sh.g.slab, sh.m.concrete, SEG / 2, D.slabTop - 0.3, 0));
   for (const s of [-1, 1]) {
@@ -208,7 +208,7 @@ export function buildEdsSection({ length = EDS.sectionLength, role = "mid", base
   const floorM = m.floor();
   const seatM = m.seat();
   clipMats.push(floorM, seatM);
-  bodyMats.push(floorM, seatM); // en rayos X el interior tambien se vuelve transparente
+  bodyMats.push(floorM, seatM); // en rayos x el interior tambien se vuelve transparente
   const fl = new THREE.Mesh(new THREE.BoxGeometry(Lb, 0.08, D.halfW * 2 - 0.1), floorM);
   fl.position.set(xc, 0.5, 0);
   group.add(fl);
@@ -286,7 +286,7 @@ export function buildEdsSection({ length = EDS.sectionLength, role = "mid", base
 
   return {
     group, bodyMats, clipMats, modules, poleM, wheels, length,
-    /** gapM: separacion real; exag: factor visual. Origen: suelo sobre la via. */
+    /** gapm: separacion real; exag: factor visual. origen: suelo sobre la via. */
     setPose(gapM, lateralM, exag) {
       group.position.y = D.slabTop + EDS.gapWheels + (gapM - EDS.gapWheels) * exag;
       group.position.z = lateralM * Math.max(1, exag);

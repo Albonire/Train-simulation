@@ -1,12 +1,12 @@
-// Libreria pintada sobre la carroceria (u = a lo largo de x, v = perimetro del
-// contorno, ver loft.js). Cada coche lleva cuatro texturas sobre las mismas UV:
+// libreria pintada sobre la carroceria (u = a lo largo de x, v = perimetro del
+// contorno, ver loft.js). cada coche lleva cuatro texturas sobre las mismas uv:
 //   map        color (ventanas, puertas, franja, rotulo, parabrisas, faros)
 //   emissive   faros, pilotos y luz tenue de las ventanas (se nota al atardecer)
 //   bump       relieve: juntas de paneles, marcos de puerta y de ventana
 //   orm        rugosidad y metalicidad: los cristales reflejan mas que la pintura
 //
-// Las coordenadas de pintura son metros del vehiculo (x a lo largo, y altura): el
-// helper convierte a pixeles y corrige el sentido de cada flanco. En el flanco +z
+// las coordenadas de pintura son metros del vehiculo (x a lo largo, y altura): el
+// helper convierte a pixeles y corrige el sentido de cada flanco. en el flanco +z
 // la imagen queda invertida en vertical (v crece hacia arriba) y en el -z invertida
 // en horizontal (se ve desde el otro lado), asi que el texto se dibuja ya corregido.
 
@@ -40,8 +40,8 @@ function layer(w, h, base) {
 
 /**
  * points: contorno [z, y]; x0, x1: extremos del loft; len: tramo recto (centrado en 0);
- * role: "front" | "mid" | "rear"; noseLen: largo de la nariz; carNo: numero de coche.
- * style: { base, lower, lowerY, accent, stripeY: [a, b], windowY: [a, b], winW, winPitch, name }
+ * role: "front" | "mid" | "rear"; noselen: largo de la nariz; carno: numero de coche.
+ * style: { base, lower, lowery, accent, stripey: [a, b], windowy: [a, b], winw, winpitch, name }
  */
 export function liveryTextures({ points, x0, x1, len, role, noseLen = 9, carNo = 1, style }) {
   const pu = W / (x1 - x0); // px por metro a lo largo

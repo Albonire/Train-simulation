@@ -1,18 +1,18 @@
-// QA de uso: lo que un usuario hace con los controles y lo que la interfaz tiene que contestar.
-// Cada escenario corre en una pagina nueva (sin almacenamiento previo) y comprueba el comportamiento,
+// qa de uso: lo que un usuario hace con los controles y lo que la interfaz tiene que contestar.
+// cada escenario corre en una pagina nueva (sin almacenamiento previo) y comprueba el comportamiento,
 // no el aspecto (para eso estan visual-qa.mjs y las capturas de shot.mjs).
 //
 //   node scripts/ux-qa.mjs                       contra http://127.0.0.1:5173/
 //   node scripts/ux-qa.mjs http://127.0.0.1:5174/
 //
-// Escenarios:
-//   1  Las pistas de primera visita aparecen tras omitir la apertura (tecla, clic, boton) y se
+// escenarios:
+//   1  las pistas de primera visita aparecen tras omitir la apertura (tecla, clic, boton) y se
 //      cierran con el gesto siguiente
-//   2  "Sin control" tira la seccion central a los patines y no la rescata la maquina de estados
-//   3  "Sin corriente" tira todo el tren y 3,5 s simulados despues vuelve a levitar
-//   4  "Reiniciar" deja velocidad, estaciones, perturbaciones y respuesta como al principio
-//   5  La exageracion que fija la camara se dice (rotulo y deslizador) y no se finge
-//   6  Con la camara Seguir ninguna farola parpadea al pasar el decorado
+//   2  "sin control" tira la seccion central a los patines y no la rescata la maquina de estados
+//   3  "sin corriente" tira todo el tren y 3,5 s simulados despues vuelve a levitar
+//   4  "reiniciar" deja velocidad, estaciones, perturbaciones y respuesta como al principio
+//   5  la exageracion que fija la camara se dice (rotulo y deslizador) y no se finge
+//   6  con la camara seguir ninguna farola parpadea al pasar el decorado
 
 import { chromium } from "playwright-core";
 import { existsSync } from "node:fs";

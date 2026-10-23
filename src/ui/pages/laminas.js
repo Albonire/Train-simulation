@@ -1,4 +1,4 @@
-// Pagina "Laminas": lista de las figuras isometricas y la figura elegida a pantalla grande.
+// pagina "laminas": lista de las figuras isometricas y la figura elegida a pantalla grande.
 
 import { FIGURES } from "../info.js";
 import { routeHref } from "../router.js";

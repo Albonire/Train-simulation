@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GLOSARIO } from "../src/ui/info.js";
 
-// ids de las filas de datos (ROWS en ui.js) y de los indicadores del cuadro de mando
+// ids de las filas de datos (rows en ui.js) y de los indicadores del cuadro de mando
 const IDS = {
   ems: ["cur", "freq", "thr", "ang", "lift", "aero", "pow", "en", "gap", "field"],
   eds: ["ind", "freq", "thr", "lift", "drag", "whl", "pow", "en", "gap", "field"],

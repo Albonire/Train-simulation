@@ -1,5 +1,5 @@
-// Mide la respuesta del tren a una perturbacion: cuanto se desvia como maximo y en
-// cuanto tiempo vuelve a quedar dentro de una banda. Trabaja con el tiempo simulado,
+// mide la respuesta del tren a una perturbacion: cuanto se desvia como maximo y en
+// cuanto tiempo vuelve a quedar dentro de una banda. trabaja con el tiempo simulado,
 // asi que el resultado no depende de la escala de tiempo ni de los fotogramas.
 
 export class ResponseTracker {
@@ -9,7 +9,7 @@ export class ResponseTracker {
 
   /**
    * label: texto para el resultado; ref: valor antes de perturbar; tol: banda minima
-   * (misma unidad que `ref`); t: tiempo simulado actual; maxTime: limite de espera (s).
+   * (misma unidad que `ref`); t: tiempo simulado actual; maxtime: limite de espera (s).
    */
   start({ label, ref, tol, t, maxTime = 12 }) {
     this.cur = { label, ref, tol, t0: t, peak: 0, calmSince: null, maxTime, result: null };
@@ -19,7 +19,7 @@ export class ResponseTracker {
     return this.cur !== null && this.cur.result === null;
   }
 
-  /** Devuelve el resultado la primera vez que esta listo; despues, null. */
+  /** devuelve el resultado la primera vez que esta listo; despues, null. */
   push(t, value) {
     const a = this.cur;
     if (!a || a.result) return null;

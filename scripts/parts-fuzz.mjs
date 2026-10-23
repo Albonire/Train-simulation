@@ -1,8 +1,8 @@
-// Fuzz del explorador de piezas: acciones al azar (con semilla) sobre la interfaz real, con
-// comprobaciones de que la escena sigue viva. Reproduce secuencias que ningun guion previsto cubre.
+// fuzz del explorador de piezas: acciones al azar (con semilla) sobre la interfaz real, con
+// comprobaciones de que la escena sigue viva. reproduce secuencias que ningun guion previsto cubre.
 //
 //   node scripts/parts-fuzz.mjs <url> [semilla] [pasos]
-//   QA_SIZE=1920x918
+//   qa_size=1920x918
 
 import { chromium } from "playwright-core";
 import { existsSync } from "node:fs";
@@ -106,7 +106,7 @@ for (let i = 0; i < STEPS; i++) {
     console.log(`FALLA paso ${i} tras "${name}": ${bad.join("; ")}`);
     console.log("  estado:", JSON.stringify(st));
     console.log("  ultimas acciones:", log.slice(-12).join(" > "));
-    await page.screenshot({ path: `/tmp/claude-0/-home-user-Train-simulation/53ed65f6-341a-5b64-be7d-353c7d390790/scratchpad/fuzz_${seed}_${i}.png` });
+    await page.screenshot({ path: `/tmp/fuzz_${seed}_${i}.png` });
     break;
   }
 }

@@ -1,5 +1,5 @@
-// Mundo: renderer, cielo, luces, terreno y pool de tramos de via.
-// El tren esta siempre en x = 0 (centrado); lo que se desplaza es la via. Asi no
+// mundo: renderer, cielo, luces, terreno y pool de tramos de via.
+// el tren esta siempre en x = 0 (centrado); lo que se desplaza es la via. asi no
 // hay perdida de precision en recorridos de decenas de kilometros.
 
 import * as THREE from "three";
@@ -147,8 +147,8 @@ export function createWorld(canvas) {
       .replace("#include <map_fragment>", `#include <map_fragment>
 vec3 mc = texture2D(uMacro, (vWorldXZ + uMacroOff) / ${MACRO.toFixed(1)}).rgb * 2.0;
 diffuseColor.rgb *= mc;
-// Franjas que dependen solo de la distancia a la via (z): no varian con el avance, asi que no
-// parpadean. Margen de tierra junto al corredor de grava y hierba mas seca hasta la cerca; la
+// franjas que dependen solo de la distancia a la via (z): no varian con el avance, asi que no
+// parpadean. margen de tierra junto al corredor de grava y hierba mas seca hasta la cerca; la
 // banda sigue un poco al mapa de parcelas para que no parezca una raya pintada.
 float az = abs(vWorldXZ.y);
 float wob = clamp(0.75 + 0.7 * (mc.g - 1.0), 0.35, 1.0);

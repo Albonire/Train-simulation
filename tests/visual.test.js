@@ -19,9 +19,9 @@ describe("resolucion de profundidad", () => {
   });
 });
 
-// Superficies pegadas a otra en la escena: [descripcion, separacion en m, tiene polygonOffset, distancia
-// maxima a la que se ve de forma razonable]. Si alguien anade una capa pegada a otra, debe
-// anadirla aqui: el test obliga a decidir entre separarla o darle polygonOffset.
+// superficies pegadas a otra en la escena: [descripcion, separacion en m, tiene polygonoffset, distancia
+// maxima a la que se ve de forma razonable]. si alguien anade una capa pegada a otra, debe
+// anadirla aqui: el test obliga a decidir entre separarla o darle polygonoffset.
 const LAYERS = [
   ["corredor de grava sobre el terreno", 0.05, true, 600],
   ["franja amarilla sobre la losa del anden", 0.004, true, 400],

@@ -1,4 +1,4 @@
-// Genera las laminas isometricas (figures/*/build.mjs) en los dos temas y las copia a
+// genera las laminas isometricas (figures/*/build.mjs) en los dos temas y las copia a
 // public/figures/ para que la aplicacion las muestre y `vite build` las incluya.
 //
 //   node scripts/build-figures.mjs

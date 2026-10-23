@@ -1,10 +1,10 @@
-// Mobiliario de via y vegetacion baja: postes de luz, hitos, cerca de servicio y arbustos.
+// mobiliario de via y vegetacion baja: postes de luz, hitos, cerca de servicio y arbustos.
 //
-// Sin instancias de GPU: cada tipo es un conjunto de mallas fusionadas ("losetas") que siguen la
-// via con la tecnica de la cinta. Una loseta cubre un tramo fijo de pista y es identica a las
+// sin instancias de gpu: cada tipo es un conjunto de mallas fusionadas ("losetas") que siguen la
+// via con la tecnica de la cinta. una loseta cubre un tramo fijo de pista y es identica a las
 // demas (o se repite cada pocas), de modo que al salir por un extremo se recoloca en el otro sin
-// cambiar su contenido. Cada loseta es un objeto aparte: asi se puede ocultar entera cuando cae
-// una estacion encima o una camara baja a su lado (ver setClear). La prueba mira solo los tramos de
+// cambiar su contenido. cada loseta es un objeto aparte: asi se puede ocultar entera cuando cae
+// una estacion encima o una camara baja a su lado (ver setclear). la prueba mira solo los tramos de
 // la loseta que tienen geometria (spans en x, zs en z), no la loseta entera.
 
 import * as THREE from "three";
@@ -14,7 +14,7 @@ import { tileBlocked } from "./clearance.js";
 
 const flat = (g) => (g.index ? g.toNonIndexed() : g);
 
-/** Fusiona geometrias, cada una con su matriz, en una sola. */
+/** fusiona geometrias, cada una con su matriz, en una sola. */
 function merge(list) {
   const out = list.map(({ geo, at = [0, 0, 0], rotY = 0, scale = [1, 1, 1] }) => {
     const g = flat(geo.clone());
@@ -31,10 +31,10 @@ export function createProps(scene) {
   const rings = []; // { tile, count, zs, tiles: [{ meshes, spans }] }
 
   /**
-   * Anillo de losetas. parts: [{ geos: [geometria por variante], mat }]; M variantes que se repiten
-   * (count debe ser multiplo de M). spans: tramos de x (relativos a la loseta) con geometria, o una
-   * funcion j -> tramos si cada variante es distinta; zs: tramos de z con geometria. Con ellos se
-   * decide si una caja libre alcanza a la loseta (ver tileBlocked).
+   * anillo de losetas. parts: [{ geos: [geometria por variante], mat }]; m variantes que se repiten
+   * (count debe ser multiplo de m). spans: tramos de x (relativos a la loseta) con geometria, o una
+   * funcion j -> tramos si cada variante es distinta; zs: tramos de z con geometria. con ellos se
+   * decide si una caja libre alcanza a la loseta (ver tileblocked).
    */
   function ring({ tile, count, parts, spans, zs }) {
     const M = parts[0].geos.length;
@@ -159,7 +159,7 @@ export function createProps(scene) {
   let clear = [];
 
   return {
-    /** Cajas del mundo que deben quedar libres (estaciones y camara baja). */
+    /** cajas del mundo que deben quedar libres (estaciones y camara baja). */
     setClear(boxes) {
       clear = boxes;
     },

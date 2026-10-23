@@ -1,14 +1,14 @@
-// Apertura de la simulacion: unos segundos de primer plano sobre el mecanismo de levitacion y
-// despues la vista general. Es codigo puro (claves, interpolacion, textos), asi se prueba sin
+// apertura de la simulacion: unos segundos de primer plano sobre el mecanismo de levitacion y
+// despues la vista general. es codigo puro (claves, interpolacion, textos), asi se prueba sin
 // navegador; el estado vive en main.js.
 //
-// EMS: se ve desde fuera, de costado y casi a ras, el hueco entre la cara inferior de la viga
+// ems: se ve desde fuera, de costado y casi a ras, el hueco entre la cara inferior de la viga
 //      (estator) y las caras polares del iman, con el coche aun sobre los patines; el tren
 //      despega (el hueco baja de 20 a 10 mm) y la camara se aleja hasta la orbita.
-// EDS: corte transversal (como la camara Imanes) con la pared y sus bobinas en 8, el iman
+// eds: corte transversal (como la camara imanes) con la pared y sus bobinas en 8, el iman
 //      superconductor y el coche, que sube al recogerse las ruedas; despues la orbita.
 //
-// Todas las poses son { pos, tgt, fov } en coordenadas del mundo.
+// todas las poses son { pos, tgt, fov } en coordenadas del mundo.
 
 const smoother = (x) => {
   const t = Math.min(1, Math.max(0, x));
@@ -24,7 +24,7 @@ export const INTRO = {
     preAdvance: 0, // s de viaje que se adelantan sin dibujar
     tsClose: 1, // escala de tiempo durante el primer plano (el despegue dura 3,3 s)
     tsAt: 4.6, // y a partir de aqui, la habitual
-    closeUntil: 6.0, // hasta aqui: rayos X, campo realzado, rotulos del hueco
+    closeUntil: 6.0, // hasta aqui: rayos x, campo realzado, rotulos del hueco
     exag: 24, // exageracion del entrehierro en el primer plano
     exagRamp: [6.0, 7.6], // y como vuelve a la normal
     keys: [
@@ -41,7 +41,7 @@ export const INTRO = {
     tsClose: 4,
     tsAt: 4.4,
     closeUntil: 4.4,
-    bodyRig: "gap", // se ve en corte transversal, como la camara Imanes: pared con bobinas, iman y coche
+    bodyRig: "gap", // se ve en corte transversal, como la camara imanes: pared con bobinas, iman y coche
     exag: 12,
     exagRamp: [4.4, 5.8],
     keys: [
@@ -52,7 +52,7 @@ export const INTRO = {
   },
 };
 
-/** Pose de la camara en el instante t (s); `orbit` es la pose final, { pos, tgt, fov }. */
+/** pose de la camara en el instante t (s); `orbit` es la pose final, { pos, tgt, fov }. */
 export function introPose(cfg, t, orbit) {
   const keys = [...cfg.keys, { t: cfg.duration, ...orbit }];
   if (t <= keys[0].t) return { pos: keys[0].pos, tgt: keys[0].tgt, fov: keys[0].fov };
@@ -68,7 +68,7 @@ export function introPose(cfg, t, orbit) {
   return { pos: z.pos, tgt: z.tgt, fov: z.fov };
 }
 
-/** Exageracion del entrehierro: entera, para no reconstruir las lineas de campo a cada fotograma. */
+/** exageracion del entrehierro: entera, para no reconstruir las lineas de campo a cada fotograma. */
 export function introExag(cfg, t, base) {
   const [t0, t1] = cfg.exagRamp;
   if (t <= t0) return cfg.exag;
@@ -78,7 +78,7 @@ export function introExag(cfg, t, base) {
 export const introTimeScale = (cfg, t, base) => (t < cfg.tsAt ? cfg.tsClose : base);
 export const introXray = (cfg, t) => t < cfg.closeUntil;
 
-/** Pie de texto segun lo que pasa en el modelo; cadena vacia cuando ya no hace falta. */
+/** pie de texto segun lo que pasa en el modelo; cadena vacia cuando ya no hace falta. */
 export function introCaption(mode, t, cfg, tel) {
   if (t >= cfg.closeUntil) return "";
   if (mode === "ems") {

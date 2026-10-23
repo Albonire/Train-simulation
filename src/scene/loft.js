@@ -1,9 +1,9 @@
-// Carrocerias por "loft": una seccion transversal (poligono cerrado en el plano
+// carrocerias por "loft": una seccion transversal (poligono cerrado en el plano
 // z-y) que se repite a lo largo de x, con una nariz que se cierra suavemente.
 
 import * as THREE from "three";
 
-/** Superelipse (exponente n) como lista de puntos [z, y], sentido antihorario. */
+/** superelipse (exponente n) como lista de puntos [z, y], sentido antihorario. */
 export function superellipse(halfW, height, n = 3, steps = 48, y0 = 0) {
   const pts = [];
   for (let i = 0; i < steps; i++) {
@@ -19,9 +19,9 @@ export function superellipse(halfW, height, n = 3, steps = 48, y0 = 0) {
 
 /**
  * stations: [{ x, sy, sz, dy }]  escala vertical/lateral y desplazamiento en y
- * de la seccion en cada estacion. Devuelve BufferGeometry con normales suaves.
+ * de la seccion en cada estacion. devuelve buffergeometry con normales suaves.
  */
-/** Fraccion de perimetro acumulado de cada punto del contorno cerrado (n + 1 valores). */
+/** fraccion de perimetro acumulado de cada punto del contorno cerrado (n + 1 valores). */
 export function perimeterV(points) {
   const n = points.length;
   const acc = [0];
@@ -34,7 +34,7 @@ export function perimeterV(points) {
   return acc.map((a) => a / total);
 }
 
-/** Longitud (m) del contorno cerrado: escala de v. */
+/** longitud (m) del contorno cerrado: escala de v. */
 export function perimeterLength(points) {
   let t = 0;
   for (let j = 0; j < points.length; j++) {
@@ -47,7 +47,7 @@ export function perimeterLength(points) {
 
 /**
  * v (0..1) del contorno a la altura `y` en el costado `side` (+1: z > 0, -1: z < 0).
- * Toma el primer cruce del lado pedido; los contornos de carroceria tienen uno por costado
+ * toma el primer cruce del lado pedido; los contornos de carroceria tienen uno por costado
  * en la zona de ventanas.
  */
 export function vAt(points, side, y) {
@@ -64,7 +64,7 @@ export function vAt(points, side, y) {
   return null;
 }
 
-/** Subdivide los tramos largos del contorno (misma polilinea, mismo v). */
+/** subdivide los tramos largos del contorno (misma polilinea, mismo v). */
 function densify(points, maxSeg) {
   const out = [];
   const n = points.length;
@@ -78,12 +78,12 @@ function densify(points, maxSeg) {
 }
 
 /**
- * Con `skirtBelow` (una y del contorno), los costados cuyo punto medio queda por debajo de esa altura van en
- * un segundo grupo de indices (materialIndex 1): asi el faldon puede llevar otro material, translucido,
- * sin tocar el resto de la carroceria. Las tapas de los extremos van siempre en el grupo 0.
+ * con `skirtbelow` (una y del contorno), los costados cuyo punto medio queda por debajo de esa altura van en
+ * un segundo grupo de indices (materialindex 1): asi el faldon puede llevar otro material, translucido,
+ * sin tocar el resto de la carroceria. las tapas de los extremos van siempre en el grupo 0.
  */
 export function loft(rawPoints, stations, { close = true, maxSeg = 0.25, skirtBelow = null } = {}) {
-  // Los costados planos se subdividen: en la nariz cada estacion escala el contorno
+  // los costados planos se subdividen: en la nariz cada estacion escala el contorno
   // y un triangulo grande deformaria la textura (franja dentada).
   const points = densify(rawPoints, maxSeg);
   // n + 1 vertices por anillo: el ultimo repite el primero para que la textura
@@ -150,8 +150,8 @@ export function loft(rawPoints, stations, { close = true, maxSeg = 0.25, skirtBe
 }
 
 /**
- * Estaciones de una seccion: tramo recto de longitud `len` centrado en 0 y,
- * opcionalmente, una nariz elipsoidal de longitud `noseLen` hacia +x o -x.
+ * estaciones de una seccion: tramo recto de longitud `len` centrado en 0 y,
+ * opcionalmente, una nariz elipsoidal de longitud `noselen` hacia +x o -x.
  */
 export function bodyStations(len, { noseFront = 0, noseRear = 0, noseDrop = 0.25 } = {}) {
   const st = [];

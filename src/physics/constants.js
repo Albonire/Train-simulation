@@ -1,36 +1,36 @@
-// Constantes del modelo. Cada valor lleva su procedencia:
-//   [fuente]       valor encontrado en una fuente citada (ver README).
+// constantes del modelo. cada valor lleva su procedencia:
+//   [fuente]       valor encontrado en una fuente citada (ver readme).
 //   [derivado]     calculado a partir de valores con fuente.
-//   [ilustrativo]  elegido por el autor para que el modelo sea coherente; NO es
+//   [ilustrativo]  elegido por el autor para que el modelo sea coherente; no es
 //                  un dato oficial y la interfaz lo marca como tal.
 
-export const MU0 = 4 * Math.PI * 1e-7; // permeabilidad del vacio, H/m
+export const MU0 = 4 * Math.PI * 1e-7; // permeabilidad del vacio, h/m
 export const G = 9.81; // m/s^2
 export const RHO_AIR = 1.225; // kg/m^3, aire a nivel del mar
 
 export const KMH = 1 / 3.6; // multiplicar km/h por esto para obtener m/s
 export const toKmh = (ms) => ms * 3.6;
 
-// ---------------------------------------------------------------- EMS (Transrapid)
+// ---------------------------------------------------------------- ems (transrapid)
 export const EMS = {
   // [fuente] entrehierro nominal de 10 mm mantenido por control activo
-  // (patentes USPTO 7637214 / 7814840 y ficha tecnica Transrapid; rango 10-15 mm
+  // (patentes uspto 7637214 / 7814840 y ficha tecnica transrapid; rango 10-15 mm
   // en la tabla del vehiculo de pruebas).
   gapNominal: 0.010,
-  // [fuente] paso polar del estator 258 mm (Transrapid, MDPI Actuators 14(11):514)
+  // [fuente] paso polar del estator 258 mm (transrapid, mdpi actuators 14(11):514)
   polePitch: 0.258,
-  // [fuente] frecuencia maxima 215 Hz en el vehiculo de pruebas
+  // [fuente] frecuencia maxima 215 hz en el vehiculo de pruebas
   // => v = 2*tau*f = 111 m/s = 399 km/h [derivado]
   fMax: 215,
   // [fuente] vehiculo de pruebas de dos secciones: 120 t vacio, 54 m
   // => 60 t por seccion [derivado]
   sectionMass: 60e3,
-  // [ilustrativo] largo de cada seccion. La fuente da 27 m (54 m / 2); se acorta
-  // a 14 m para que el tren entero quepa en pantalla con buen tamano. La masa por
+  // [ilustrativo] largo de cada seccion. la fuente da 27 m (54 m / 2); se acorta
+  // a 14 m para que el tren entero quepa en pantalla con buen tamano. la masa por
   // seccion no cambia: es un dato del modelo, no sale de la longitud.
   sectionLength: 14,
   sections: 3, // [ilustrativo] tren de tres secciones
-  // [fuente] empuje maximo 85 kN para dos secciones => 42.5 kN por seccion [derivado]
+  // [fuente] empuje maximo 85 kn para dos secciones => 42.5 kn por seccion [derivado]
   thrustPerSection: 42.5e3,
   // [ilustrativo] potencia electrica maxima del tramo energizado, por seccion
   powerPerSection: 3.0e6,
@@ -52,33 +52,33 @@ export const EMS = {
   dragCd: 0.3,
 };
 
-// ---------------------------------------------------------------- EDS (SCMaglev)
+// ---------------------------------------------------------------- eds (scmaglev)
 export const EDS = {
-  // [fuente] elevacion de 100 mm en crucero (JR Central, KIT)
+  // [fuente] elevacion de 100 mm en crucero (jr central, kit)
   gapCruise: 0.100,
   // [fuente aproximada] ruedas de goma por debajo de ~150 km/h (ficha educativa
-  // de JR Central; el dato describe la linea de pruebas de Yamanashi)
+  // de jr central; el dato describe la linea de pruebas de yamanashi)
   liftoffSpeed: 150 * KMH,
-  // [fuente] 603 km/h, record de la serie L0 (2015)
+  // [fuente] 603 km/h, record de la serie l0 (2015)
   recordSpeed: 603 * KMH,
-  // [fuente] 700 kA de fuerza magnetomotriz (NbTi, helio liquido) en el KIT
+  // [fuente] 700 ka de fuerza magnetomotriz (nbti, helio liquido) en el kit
   magnetMmf: 700e3,
   // [ilustrativo] separacion cuando el vehiculo descansa sobre las ruedas
   gapWheels: 0.085,
   // [ilustrativo] longitud de decaimiento de la fuerza con la distancia
-  // (se calibra para que gapCruise se alcance a alta velocidad)
-  // [ilustrativo] velocidad caracteristica de la bobina (L/R): el pico de
+  // (se calibra para que gapcruise se alcance a alta velocidad)
+  // [ilustrativo] velocidad caracteristica de la bobina (l/r): el pico de
   // arrastre ocurre alrededor de este valor
   vc: 20,
-  // [ilustrativo] factor de reduccion del arrastre inducido. Con la ley simple
-  // F_D = F_L*vc/v el pico de arrastre es ~0.6 del peso y el tren no podria
-  // arrancar; las bobinas en 8 de flujo nulo lo reducen. Aqui: L/D = v/(kappa*vc).
+  // [ilustrativo] factor de reduccion del arrastre inducido. con la ley simple
+  // f_d = f_l*vc/v el pico de arrastre es ~0.6 del peso y el tren no podria
+  // arrancar; las bobinas en 8 de flujo nulo lo reducen. aqui: l/d = v/(kappa*vc).
   dragFactor: 0.35,
   sectionMass: 25e3,
-  // [ilustrativo] igual que en EMS: 14 m por seccion
+  // [ilustrativo] igual que en ems: 14 m por seccion
   sectionLength: 14,
   sections: 3,
-  // [ilustrativo] amortiguamiento de la suspension secundaria, N*s/m por kg
+  // [ilustrativo] amortiguamiento de la suspension secundaria, n*s/m por kg
   dampingPerKg: 8,
   // [ilustrativo] frecuencia propia lateral a alta velocidad, rad/s
   lateralOmega: 6,

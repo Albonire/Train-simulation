@@ -1,5 +1,5 @@
-# Material Library for Maglev 3D Model
-# Designed for Blender 3.x / 4.x
+# biblioteca de materiales para blender
+# modelo 3d tren maglev
 
 newmtl Mat_Carroceria
 Ka 0.2 0.2 0.2

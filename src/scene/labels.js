@@ -1,4 +1,4 @@
-// Etiquetas HTML ancladas a puntos del mundo 3D.
+// etiquetas html ancladas a puntos del mundo 3d.
 
 import * as THREE from "three";
 
@@ -10,7 +10,7 @@ export function createLabels(container) {
       container.innerHTML = "";
       items.length = 0;
     },
-    /** spec: { text: () => string, pos: () => Vector3, rigs: [...], cls } */
+    /** spec: { text: () => string, pos: () => vector3, rigs: [...], cls } */
     add(spec) {
       const el = document.createElement("div");
       el.className = "lbl" + (spec.cls ? " " + spec.cls : "");

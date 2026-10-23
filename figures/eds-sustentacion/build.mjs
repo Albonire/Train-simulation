@@ -1,9 +1,9 @@
-// Fig 3. Banco de levitacion EDS: una cinta con bobinas bajo un bloque de imanes
-// superconductores. Sin movimiento no hay corriente inducida y el bloque descansa
+// fig 3. banco de levitacion eds: una cinta con bobinas bajo un bloque de imanes
+// superconductores. sin movimiento no hay corriente inducida y el bloque descansa
 // en sus ruedas; al subir la velocidad aparece la repulsion, el bloque se eleva y
-// las ruedas se retraen. La cinta se dibuja en camara lenta (1/40).
-// Todo numero sale de EdsSection (src/physics/eds.js), el mismo modelo de la
-// simulacion, cuya ley de sustentacion es cualitativa (ver "Como funciona").
+// las ruedas se retraen. la cinta se dibuja en camara lenta (1/40).
+// todo numero sale de edssection (src/physics/eds.js), el mismo modelo de la
+// simulacion, cuya ley de sustentacion es cualitativa (ver "como funciona").
 //
 //   node figures/eds-sustentacion/build.mjs [--light]
 

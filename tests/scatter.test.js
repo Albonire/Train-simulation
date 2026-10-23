@@ -70,12 +70,12 @@ describe("arbustos", () => {
 
 describe("sin instancias de GPU en el entorno", () => {
   it("ningun archivo del entorno crea un InstancedMesh", () => {
-    // las instancias fallan en algunas GPU: el entorno usa mallas fusionadas (ver forest.js y props.js)
+    // las instancias fallan en algunas gpu: el entorno usa mallas fusionadas (ver forest.js y props.js)
     const dir = new URL("../src/scene/", import.meta.url);
     for (const f of readdirSync(dir).filter((n) => n.endsWith(".js"))) {
       const src = readFileSync(new URL(f, dir), "utf8");
       const code = src.replace(/\/\/.*$/gm, "");
-      if (f === "parts.js") continue; // solo comprueba `isInstancedMesh` por si llega una
+      if (f === "parts.js") continue; // solo comprueba `isinstancedmesh` por si llega una
       expect(code.includes("new THREE.InstancedMesh"), f).toBe(false);
     }
   });

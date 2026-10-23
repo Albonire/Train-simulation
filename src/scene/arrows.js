@@ -1,4 +1,4 @@
-// Flechas de fuerza 3D. La longitud sigue una escala de raiz cuadrada respecto
+// flechas de fuerza 3d. la longitud sigue una escala de raiz cuadrada respecto
 // de una fuerza de referencia, para que fuerzas de ordenes distintos se vean.
 
 import * as THREE from "three";
@@ -27,5 +27,5 @@ export function makeArrow(color, { radius = 0.07, head = 0.32 } = {}) {
   return g;
 }
 
-/** Longitud (m) a partir de la fuerza F y la de referencia Fref (escala de raiz). */
+/** longitud (m) a partir de la fuerza f y la de referencia fref (escala de raiz). */
 export const arrowLength = (F, Fref, Lref = 3.2) => Lref * Math.sqrt(Math.max(0, F) / Fref);

@@ -1,4 +1,4 @@
-// QA del explorador de piezas: recorre secuencias de seleccion, Separar, modos, temas y
+// qa del explorador de piezas: recorre secuencias de seleccion, separar, modos, temas y
 // tamanos de ventana, y tras cada paso comprueba que la escena sigue viva:
 //   - camara, objetivo y proyeccion finitos y a menos de 1000 m del origen
 //   - el fotograma no es liso (un color uniforme es una escena vacia)
@@ -7,7 +7,7 @@
 //
 //   npm run qa:parts                       contra http://127.0.0.1:5173/
 //   node scripts/parts-qa.mjs <url>        contra otra direccion
-//   QA_MODES=ems QA_THEMES=dark QA_SIZES=1920x918 node scripts/parts-qa.mjs
+//   qa_modes=ems qa_themes=dark qa_sizes=1920x918 node scripts/parts-qa.mjs
 
 import { chromium } from "playwright-core";
 import { existsSync } from "node:fs";

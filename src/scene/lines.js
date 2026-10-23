@@ -1,4 +1,4 @@
-// Lineas gruesas (Line2) con resolucion compartida, para contornos de corte.
+// lineas gruesas (line2) con resolucion compartida, para contornos de corte.
 
 import * as THREE from "three";
 import { Line2 } from "three/examples/jsm/lines/Line2.js";

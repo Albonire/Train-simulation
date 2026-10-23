@@ -1,19 +1,19 @@
-// Visita guiada: pasos fijos por tecnologia. Datos puros (sin DOM ni three): main.js los recorre
+// visita guiada: pasos fijos por tecnologia. datos puros (sin dom ni three): main.js los recorre
 // (camara, carroceria, capas, escala de tiempo, evento) y ui.js dibuja la tarjeta.
 //
-// Cada paso:
+// cada paso:
 //   id, title, text   lo que se lee (titulo corto, a lo sumo dos frases sencillas)
 //   rig               camara: orbit | chase | section | gap | top | field
 //   layers            capas que se encienden o se apagan en este paso (fields, wave, forces, labels)
-//   timeScale         escala de tiempo (1 = tiempo real)
+//   timescale         escala de tiempo (1 = tiempo real)
 //   loupe             true: la lupa del entrehierro abierta
 //   reset             true: el viaje vuelve al principio al entrar (solo el primer paso)
-//   advance           s simulados que se adelanta el viaje al entrar (el EDS necesita llegar a su velocidad)
-//   event             perturbacion que se dispara al entrar: ctrlOff | cutPower | kick | gust | null
+//   advance           s simulados que se adelanta el viaje al entrar (el eds necesita llegar a su velocidad)
+//   event             perturbacion que se dispara al entrar: ctrloff | cutpower | kick | gust | null
 //   slow              { scale, seconds }: camara lenta durante `seconds` de tiempo real tras el evento
-//   eventUndo         s de tiempo real tras los que se deshace el evento (ctrlOff) y vuelve el control
+//   eventundo         s de tiempo real tras los que se deshace el evento (ctrloff) y vuelve el control
 //
-// Las cifras que aparecen en el texto son las del modelo (hueco nominal de 10 mm, 150 km/h de las ruedas);
+// las cifras que aparecen en el texto son las del modelo (hueco nominal de 10 mm, 150 km/h de las ruedas);
 // el resto es explicacion cualitativa.
 
 const LAYERS_OFF = { fields: false, wave: false, forces: false };
@@ -115,15 +115,15 @@ export const TOUR = {
   ],
 };
 
-/** Pasos de un modo (siempre un arreglo, aunque el modo no exista). */
+/** pasos de un modo (siempre un arreglo, aunque el modo no exista). */
 export const stepsOf = (mode) => TOUR[mode] ?? [];
 
-/** Paso `i` acotado al rango valido, o null si el modo no tiene visita. */
+/** paso `i` acotado al rango valido, o null si el modo no tiene visita. */
 export function stepAt(mode, i) {
   const s = stepsOf(mode);
   if (!s.length) return null;
   return s[Math.min(s.length - 1, Math.max(0, Math.trunc(i) || 0))];
 }
 
-/** Texto del indicador de avance: "2 de 5". */
+/** texto del indicador de avance: "2 de 5". */
 export const stepLabel = (mode, i) => `${Math.min(stepsOf(mode).length, Math.max(0, i) + 1)} de ${stepsOf(mode).length}`;

@@ -38,18 +38,18 @@ describe("huella de una camara baja", () => {
     expect(cameraFootprint({ x: -24, y: 11.5, z: 59 })).toBe(null);
     expect(cameraFootprint({ x: 0, y: 58, z: 0.01 })).toBe(null);
   });
-  // posiciones de las camaras de emsScene.js / edsScene.js
+  // posiciones de las camaras de emsscene.js / edsscene.js
   it("Seguir (y = 9 m) y la camara de campo del EDS ven pasar los postes: no ocultan nada", () => {
     expect(cameraFootprint({ x: -45, y: 9, z: 13.5 })).toBe(null);
     expect(cameraFootprint({ x: -7, y: 16.5, z: 7 })).toBe(null);
   });
   it("las camaras de detalle, pegadas a la via, si dejan su hueco", () => {
     for (const p of [
-      { x: 10.5, y: 6.9, z: 0.01 }, // EMS seccion
-      { x: 3.6, y: 6.45, z: 5.2 }, // EMS imanes
-      { x: -11, y: 4.8, z: 10.5 }, // EMS campo
-      { x: 10, y: 7.0, z: 0.01 }, // EDS seccion
-      { x: 4.2, y: 6.95, z: 0.01 }, // EDS imanes
+      { x: 10.5, y: 6.9, z: 0.01 }, // ems seccion
+      { x: 3.6, y: 6.45, z: 5.2 }, // ems imanes
+      { x: -11, y: 4.8, z: 10.5 }, // ems campo
+      { x: 10, y: 7.0, z: 0.01 }, // eds seccion
+      { x: 4.2, y: 6.95, z: 0.01 }, // eds imanes
     ]) {
       const b = cameraFootprint(p);
       expect(b).not.toBe(null);

@@ -1,19 +1,19 @@
-// Suspension electromagnetica (EMS, estilo Transrapid): sustentacion y guiado.
+// suspension electromagnetica (ems, estilo transrapid): sustentacion y guiado.
 //
-// El electroiman de sustentacion esta DEBAJO del paquete de estator y atrae el
-// vehiculo hacia arriba. Con N espiras, area de polo A y entrehierro g, la
-// fuerza de un iman en U (dos polos) es
-//     F = mu0 * N^2 * I^2 * A / (4 g^2)  =  K * (I / g)^2
-// donde K agrupa mu0*N^2*A/4 de todos los imanes de la seccion. Como F crece
-// al disminuir g, el equilibrio es INESTABLE: sin control, el vehiculo se pega
-// al riel o cae. El lazo cerrado (sensor de entrehierro + PID sobre la corriente)
+// el electroiman de sustentacion esta debajo del paquete de estator y atrae el
+// vehiculo hacia arriba. con n espiras, area de polo a y entrehierro g, la
+// fuerza de un iman en u (dos polos) es
+//     f = mu0 * n^2 * i^2 * a / (4 g^2)  =  k * (i / g)^2
+// donde k agrupa mu0*n^2*a/4 de todos los imanes de la seccion. como f crece
+// al disminuir g, el equilibrio es inestable: sin control, el vehiculo se pega
+// al riel o cae. el lazo cerrado (sensor de entrehierro + pid sobre la corriente)
 // es lo que lo estabiliza.
 
 import { EMS, G } from "./constants.js";
 
 const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
-// PRNG determinista (mulberry32) para el ruido del sensor
+// prng determinista (mulberry32) para el ruido del sensor
 function rng(seed) {
   let a = seed >>> 0;
   return () => {
@@ -25,16 +25,16 @@ function rng(seed) {
   };
 }
 
-/** Fuerza de atraccion de un electroiman (lumped), N. */
+/** fuerza de atraccion de un electroiman (lumped), n. */
 export const magnetForce = (K, current, gap) => K * (current / gap) ** 2;
 
 /**
- * Ganancias del PID de entrehierro a partir de la planta linealizada.
- * Alrededor del equilibrio: m*x'' = (2W/g0) x - (2W/I0) u, con u = kp x + kd x' + ...
- * => w^2 = (2W/I0) kp/m - 2W/(m g0),  2 zeta w = (2W/I0) kd/m
+ * ganancias del pid de entrehierro a partir de la planta linealizada.
+ * alrededor del equilibrio: m*x'' = (2w/g0) x - (2w/i0) u, con u = kp x + kd x' + ...
+ * => w^2 = (2w/i0) kp/m - 2w/(m g0),  2 zeta w = (2w/i0) kd/m
  */
 export function designGapGains({ mass, gap0, I0, omega, zeta, ki }) {
-  const a = (2 * G) / I0; // = 2W/(m I0)
+  const a = (2 * G) / I0; // = 2w/(m i0)
   const kp = (omega * omega + (2 * G) / gap0) / a;
   const kd = (2 * zeta * omega) / a;
   return { kp, kd, ki: ki ?? 0.3 * kp };
@@ -50,7 +50,7 @@ export class EmsSection {
     this.noise = opts.noise ?? 0.00002; // m, ruido del sensor
     this._rand = rng(opts.seed ?? 1);
 
-    // K se fija para que a gap0 con I0 la fuerza iguale el peso en vacio
+    // k se fija para que a gap0 con i0 la fuerza iguale el peso en vacio
     this.K = (this.mass * G * this.gap0 ** 2) / this.I0 ** 2;
 
     const vg = designGapGains({
@@ -58,11 +58,11 @@ export class EmsSection {
     });
     this.vk = vg;
 
-    // Guiado lateral: pares diferenciales con polarizacion
+    // guiado lateral: pares diferenciales con polarizacion
     this.Ib = EMS.guideCurrentBias;
     const Fb = EMS.guideBiasFraction * this.mass * G; // fuerza de polarizacion por lado
     this.Kg = (Fb * this.gap0 ** 2) / this.Ib ** 2;
-    // linealizado: m y'' = (4Fb/h0) y + (4Fb/Ib) u  con u = -(kp y + kd y')
+    // linealizado: m y'' = (4fb/h0) y + (4fb/ib) u  con u = -(kp y + kd y')
     const wl = 36;
     const zl = 0.85;
     const gain = (4 * Fb) / this.Ib;
@@ -85,7 +85,7 @@ export class EmsSection {
     this.gapRef = this.gap0;
     this.integ = 0;
     this.control = !resting;
-    this.openLoop = false; // control apagado pero corriente fija en I0 (demostracion)
+    this.openLoop = false; // control apagado pero corriente fija en i0 (demostracion)
     this.forcedOff = false; // el usuario apago el control de esta seccion: el tren no lo vuelve a encender
     this.powered = true; // false mientras dura un corte de alimentacion: no circula corriente por ningun iman
     this.contact = false; // toca el patin superior (pegado al riel)
@@ -97,21 +97,21 @@ export class EmsSection {
     this.IL = this.Ib;
 
     this.extraMass = 0; // carga anadida, kg
-    this.gust = 0; // fuerza lateral externa, N
+    this.gust = 0; // fuerza lateral externa, n
     this.gustLeft = 0;
     this.lift = this.mass * G;
     this.lateralForce = 0;
     this.lastSensed = this.gap0;
   }
 
-  /** Activa el control y sube el vehiculo con una rampa de referencia. */
+  /** activa el control y sube el vehiculo con una rampa de referencia. */
   engage() {
     if (this.control) return;
     this.control = true;
     this.gapRef = Math.max(this.gap, this.gap0);
     this.integ = 0;
   }
-  /** Apaga el control: el vehiculo cae a los patines. */
+  /** apaga el control: el vehiculo cae a los patines. */
   release() {
     this.control = false;
   }
@@ -140,7 +140,7 @@ export class EmsSection {
     let Icmd = this.openLoop && !this.control && this.powered ? this.I0 : 0;
     if (this.control) {
       if (this.gapRef > this.gap0) this.gapRef = Math.max(this.gap0, this.gapRef - this.refRate * dt);
-      // corriente de equilibrio para la referencia actual: I_ff = I0 * gapRef / gap0
+      // corriente de equilibrio para la referencia actual: i_ff = i0 * gapref / gap0
       const Iff = (this.I0 * this.gapRef) / this.gap0;
       const x = sensed - this.gapRef;
       const u = this.vk.kp * x + this.vk.kd * this.gapVel + this.vk.ki * this.integ;
@@ -155,7 +155,7 @@ export class EmsSection {
 
     const F = magnetForce(this.K, this.I, Math.max(this.gap, 1e-4));
     this.lift = F;
-    // el vehiculo sube cuando F > m g; subir reduce el entrehierro
+    // el vehiculo sube cuando f > m g; subir reduce el entrehierro
     const gapAcc = (m * G - F) / m;
     this.gapVel += gapAcc * dt;
     this.gap += this.gapVel * dt;

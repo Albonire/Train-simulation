@@ -1,4 +1,4 @@
-// Capa de campos del modo EMS: lazos de flujo con particulas que recorren el circuito
+// capa de campos del modo ems: lazos de flujo con particulas que recorren el circuito
 // magnetico (estator, entrehierro, iman), onda del estator y flechas de fuerza.
 
 import * as THREE from "three";
@@ -72,7 +72,7 @@ export function createEmsFields(sceneApi) {
       const xb = xa + TAU;
       const xm = (xa + xb) / 2;
       const r = TAU / 2;
-      // [punto, color]: sube por el polo N (rojo), cruza el hierro (calido), baja por el S (azul)
+      // [punto, color]: sube por el polo n (rojo), cruza el hierro (calido), baja por el s (azul)
       const path = [[[xa, 0, z], N_COL], [[xa, gv, z], N_COL]];
       for (let i = 1; i <= ARC; i++) {
         const f = (Math.PI * i) / ARC;
@@ -99,7 +99,7 @@ export function createEmsFields(sceneApi) {
     arrows: arrowsApi.group,
     forces: arrowsApi,
     lines,
-    /** Intensidad relativa del campo (1 = nominal): I/I0 por g0/g. */
+    /** intensidad relativa del campo (1 = nominal): i/i0 por g0/g. */
     fieldLevel(train) {
       const s = train.sections[Math.floor(train.sections.length / 2)];
       return (s.I / s.I0) * (s.gap0 / s.gap);
@@ -119,8 +119,8 @@ export function createEmsFields(sceneApi) {
       mat.linewidth = view.intro ? 3.2 : 1.4;
       mat.resolution.set(window.innerWidth, window.innerHeight);
 
-      // particulas: en la vista Campo mas grandes y brillantes
-      // los puntos se miden en pixeles del buffer, no en pixeles CSS
+      // particulas: en la vista campo mas grandes y brillantes
+      // los puntos se miden en pixeles del buffer, no en pixeles css
       const px = ((h / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * Math.min(window.devicePixelRatio || 1, 1.5);
       const t = REDUCED ? 0 : (performance.now() - t0) / 1000; // con movimiento reducido las particulas se quedan quietas
       train.sections.forEach((sec, i) => {
@@ -151,7 +151,7 @@ export function createEmsFields(sceneApi) {
   };
 }
 
-/** Actualiza los uniformes globales de la onda del estator. */
+/** actualiza los uniformes globales de la onda del estator. */
 export function updateEmsGlow(tel, train, view) {
   const L = train.length;
   const shared = sets.stator;

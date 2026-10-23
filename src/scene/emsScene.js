@@ -1,4 +1,4 @@
-// Escena EMS completa: via + tren + camaras propias del modo.
+// escena ems completa: via + tren + camaras propias del modo.
 
 import * as THREE from "three";
 import { SEG, DIM, buildEmsSegment, createEmsShared, buildEmsSection, outline } from "./ems.js";
@@ -47,7 +47,7 @@ function buildCaps() {
   veh.add(fill);
   const line = fatLine(pts.map(([z, y]) => new THREE.Vector3(0, y, z)), { color: "#ffffff", width: 2.2, closed: true });
   veh.add(line);
-  // imanes de sustentacion (y local de levGroup: 0 = cara polar)
+  // imanes de sustentacion (y local de levgroup: 0 = cara polar)
   const zc = (DIM.statorZ0 + DIM.statorZ1) / 2;
   lev.add(capMesh(mirror(DIM.statorZ0, DIM.statorZ1).map(([a, b]) => [a, b, -0.14, 0]), "#59626d"));
   lev.add(capMesh(mirror(zc - 0.33, zc + 0.33).map(([a, b]) => [a, b, -0.27, -0.15]), "#d9822b"));

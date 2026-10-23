@@ -1,6 +1,6 @@
-// Tarjeta de pieza: nombre, un texto breve y hasta dos cifras en vivo. Es un popover manual
+// tarjeta de pieza: nombre, un texto breve y hasta dos cifras en vivo. es un popover manual
 // (capa superior del navegador, sin fondo oscuro ni bloqueo): la escena sigue manejable y se
-// puede girar la camara con la tarjeta abierta. Esc la cierra.
+// puede girar la camara con la tarjeta abierta. esc la cierra.
 
 import { ICONS } from "./icons.js";
 

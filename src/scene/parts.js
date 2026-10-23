@@ -1,11 +1,11 @@
-// Registro de piezas, explosion, seleccion y resaltado.
+// registro de piezas, explosion, seleccion y resaltado.
 //
-// Los constructores de la via y de los coches etiquetan cada malla con `tag(modo, id, malla, dir)`.
-// `dir` es el desplazamiento (m) de esa malla con la vista expandida al maximo. Con eso:
+// los constructores de la via y de los coches etiquetan cada malla con `tag(modo, id, malla, dir)`.
+// `dir` es el desplazamiento (m) de esa malla con la vista expandida al maximo. con eso:
 //  - `pick` lanza un rayo y devuelve la pieza bajo el puntero (el coche solo si no hay otra)
-//  - `setExplode(k)` separa las piezas (k de 0 a 1)
-//  - `setHighlight` superpone una copia translucida de las mallas de una pieza
-//  - `focusBox` da la caja que encuadra una pieza cerca del centro del tren
+//  - `setexplode(k)` separa las piezas (k de 0 a 1)
+//  - `sethighlight` superpone una copia translucida de las mallas de una pieza
+//  - `focusbox` da la caja que encuadra una pieza cerca del centro del tren
 
 import * as THREE from "three";
 import { partById } from "./partsData.js";
@@ -15,7 +15,7 @@ const reg = { ems: new Map(), eds: new Map() }; // id -> [{ mesh, rest, dir }]
 const lists = { ems: [], eds: [] }; // todas las mallas, para el rayo
 let explodeK = 0;
 
-/** Etiqueta una malla como parte de la pieza `id`. Llamar despues de fijar su posicion. */
+/** etiqueta una malla como parte de la pieza `id`. llamar despues de fijar su posicion. */
 export function tag(mode, id, mesh, dir = [0, 0, 0]) {
   mesh.userData.part = id;
   if (!reg[mode].has(id)) reg[mode].set(id, []);
@@ -25,7 +25,7 @@ export function tag(mode, id, mesh, dir = [0, 0, 0]) {
 }
 
 /**
- * Etiqueta una malla con el desplazamiento de explosion del catalogo (partsData.js).
+ * etiqueta una malla con el desplazamiento de explosion del catalogo (partsdata.js).
  * side: +1 o -1, el lado de la via: el desplazamiento lateral se refleja.
  */
 export function tagPart(mode, id, mesh, side = 1) {
@@ -33,7 +33,7 @@ export function tagPart(mode, id, mesh, side = 1) {
   return tag(mode, id, mesh, [e.dx, e.dy, e.dz * side]);
 }
 
-/** Etiqueta todas las mallas de un objeto con el catalogo. */
+/** etiqueta todas las mallas de un objeto con el catalogo. */
 export function tagPartTree(mode, id, obj, side = 1) {
   obj.traverse((o) => {
     if (o.isMesh) tagPart(mode, id, o, side);
@@ -41,7 +41,7 @@ export function tagPartTree(mode, id, obj, side = 1) {
   return obj;
 }
 
-/** Etiqueta todas las mallas de un objeto. */
+/** etiqueta todas las mallas de un objeto. */
 export function tagTree(mode, id, obj, dir) {
   obj.traverse((o) => {
     if (o.isMesh) tag(mode, id, o, dir);
@@ -62,7 +62,7 @@ export const getExplode = () => explodeK;
 const ray = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
 
-/** Pieza bajo el puntero (coordenadas de pantalla) o null. */
+/** pieza bajo el puntero (coordenadas de pantalla) o null. */
 export function pick(mode, camera, clientX, clientY, w, h) {
   ndc.set((clientX / w) * 2 - 1, -(clientY / h) * 2 + 1);
   ray.setFromCamera(ndc, camera);
@@ -78,7 +78,7 @@ export function pick(mode, camera, clientX, clientY, w, h) {
 }
 
 // ---- resaltado ----
-// Relleno translucido y aristas del mismo color: el relleno solo no se distingue sobre
+// relleno translucido y aristas del mismo color: el relleno solo no se distingue sobre
 // piezas claras o de color, y las aristas solas no se ven de lejos.
 const hlMat = new THREE.MeshBasicMaterial({
   color: "#19d9bd",
@@ -130,9 +130,9 @@ export function setHighlight(mode, id) {
 }
 
 /**
- * Caja (mundo) que encuadra la pieza cerca del centro del tren, recortada a +-span m en x.
- * La caja sale de la geometria de cada malla (sin su resaltado) y pasa por `windowBox`, que
- * nunca la deja invertida ni vacia. Devuelve null si no hay ninguna malla visible cerca.
+ * caja (mundo) que encuadra la pieza cerca del centro del tren, recortada a +-span m en x.
+ * la caja sale de la geometria de cada malla (sin su resaltado) y pasa por `windowbox`, que
+ * nunca la deja invertida ni vacia. devuelve null si no hay ninguna malla visible cerca.
  */
 export function focusBox(mode, id, span) {
   const box = new THREE.Box3();

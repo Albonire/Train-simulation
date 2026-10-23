@@ -1,7 +1,7 @@
-// Fig 1. Banco de levitacion EMS: un modulo de iman suspendido bajo un estator.
-// La regla de la izquierda lee el entrehierro; el amperimetro lee la corriente.
-// Todo numero y todo movimiento salen de src/physics/ems.js (el mismo modelo que la
-// simulacion 3D): el equilibrio es inestable y solo el lazo de control lo sostiene.
+// fig 1. banco de levitacion ems: un modulo de iman suspendido bajo un estator.
+// la regla de la izquierda lee el entrehierro; el amperimetro lee la corriente.
+// todo numero y todo movimiento salen de src/physics/ems.js (el mismo modelo que la
+// simulacion 3d): el equilibrio es inestable y solo el lazo de control lo sostiene.
 //
 //   node figures/ems-levitacion/build.mjs [--light]
 
@@ -18,7 +18,7 @@ const theme = process.argv.includes("--light") ? "light" : "dark";
 const WIDTH = 640;
 const HEIGHT = 410;
 
-// ---- escala: 1 mm de entrehierro = S px -------------------------------------
+// ---- escala: 1 mm de entrehierro = s px -------------------------------------
 const S = 2.4;
 const STATOR_BOTTOM = 150;
 const GAP0 = 10; // mm nominal

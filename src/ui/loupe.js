@@ -1,12 +1,12 @@
-// Lupa del entrehierro: un corte transversal en vivo del sistema de levitacion, dibujado en 2D.
+// lupa del entrehierro: un corte transversal en vivo del sistema de levitacion, dibujado en 2d.
 //
-// EMS: viga y estator arriba, el iman del coche debajo; el hueco entre ambos es el entrehierro, a
-//      una escala ampliada y a escala 1:1 en la cifra. Las lineas de campo salen del polo norte,
-//      cruzan el hueco y entran por el sur. La flecha verde es la atraccion; la blanca, el peso.
-// EDS: pared de la via con bobinas en 8 a la derecha, iman superconductor del coche a la izquierda;
+// ems: viga y estator arriba, el iman del coche debajo; el hueco entre ambos es el entrehierro, a
+//      una escala ampliada y a escala 1:1 en la cifra. las lineas de campo salen del polo norte,
+//      cruzan el hueco y entran por el sur. la flecha verde es la atraccion; la blanca, el peso.
+// eds: pared de la via con bobinas en 8 a la derecha, iman superconductor del coche a la izquierda;
 //      la levitacion sale de que el iman quede por encima del eje nulo de las bobinas.
 //
-// Todo sale de la telemetria del modelo: no hay nada dibujado "a mano" que no se mueva con ella.
+// todo sale de la telemetria del modelo: no hay nada dibujado "a mano" que no se mueva con ella.
 
 import { ICONS } from "./icons.js";
 
@@ -20,7 +20,7 @@ const S_COL = "#4a90f0";
 const LIFT = "#35e08a";
 const COPPER = "#c8742a";
 
-/** Estado en palabras para la insignia. Devuelve [texto, tipo de insignia]. */
+/** estado en palabras para la insignia. devuelve [texto, tipo de insignia]. */
 export function loupeState(mode, tel, train) {
   if (mode === "ems") {
     if (train.sections.some((s) => s.fallen)) return ["Sobre patines", tel.speedKmh > 20 ? "bad" : "idle"];
@@ -32,7 +32,7 @@ export function loupeState(mode, tel, train) {
   return ["Levitando", "ok"];
 }
 
-// lo que se puede romper desde la lupa, por modo: mismas acciones que la pestana Control
+// lo que se puede romper desde la lupa, por modo: mismas acciones que la pestana control
 const FAILS = {
   ems: [["ctrlOff", "Sin control"], ["cutPower", "Sin corriente"], ["kick", "Golpe"]],
   eds: [["kick", "Golpe"]],

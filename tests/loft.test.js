@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loft, bodyStations } from "../src/scene/loft.js";
 
-// Contorno parecido al del EMS (z, y): costados que llegan hasta y = -1,37, un vertice a y = 0 en cada
+// contorno parecido al del ems (z, y): costados que llegan hasta y = -1,37, un vertice a y = 0 en cada
 // costado exterior y la cavidad por donde pasa la viga.
 const W = 2.04;
 const Wc = 1.92;
@@ -64,7 +64,7 @@ describe("loft con faldon", () => {
     const pos = g.getAttribute("position");
     const idx = g.index;
     const skirt = g.groups[1];
-    // el techo de la cavidad es el segmento de (-Wc, 0) a (Wc, 0): ningun triangulo del faldon tiene
+    // el techo de la cavidad es el segmento de (-wc, 0) a (wc, 0): ningun triangulo del faldon tiene
     // todos sus vertices en y = 0
     for (let i = skirt.start; i < skirt.start + skirt.count; i += 3) {
       const ys = [0, 1, 2].map((k) => pos.getY(idx.getX(i + k)));

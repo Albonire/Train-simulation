@@ -1,8 +1,8 @@
-// Fig 2. Banco del motor lineal sincrono (LSM).
-// Un estator largo con bobinas que se energizan en onda y un vehiculo con cuatro
-// polos (N S N S) que se acopla a ella. La frecuencia fija la velocidad de la onda
+// fig 2. banco del motor lineal sincrono (lsm).
+// un estator largo con bobinas que se energizan en onda y un vehiculo con cuatro
+// polos (n s n s) que se acopla a ella. la frecuencia fija la velocidad de la onda
 // (v = 2 * tau * f); el angulo de carga delta es lo que el vehiculo se retrasa.
-// Todo sale de SyncDrive (src/physics/lsm.js), el modelo con tests.
+// todo sale de syncdrive (src/physics/lsm.js), el modelo con tests.
 //
 //   node figures/lsm-sincrono/build.mjs [--light]
 
@@ -19,7 +19,7 @@ const theme = process.argv.includes("--light") ? "light" : "dark";
 const WIDTH = 680;
 const HEIGHT = 300;
 
-// escala: tau = 258 mm = TAU px  =>  1 px = 7.17 mm
+// escala: tau = 258 mm = tau px  =>  1 px = 7.17 mm
 const TAU = 36;
 const PX_M = 0.258 / TAU;
 const COILS = 35;

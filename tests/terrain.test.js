@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { createMountains } from "../src/scene/terrain.js";
 
-// La cordillera es una lamina en anillos. Si su fila interior flota sobre el suelo, por debajo se ve el
+// la cordillera es una lamina en anillos. si su fila interior flota sobre el suelo, por debajo se ve el
 // horizonte lejano: una franja clara entre el primer plano y las montanas (se vio en las capturas del
-// tema claro). La fila interior tiene que estar a ras del suelo o por debajo.
+// tema claro). la fila interior tiene que estar a ras del suelo o por debajo.
 describe("cordillera", () => {
   const { mesh } = createMountains();
   const pos = mesh.geometry.getAttribute("position");

@@ -1,6 +1,6 @@
-// Tarjeta de la visita guiada: titulo, un texto corto y el avance. Es un popover manual, como la
+// tarjeta de la visita guiada: titulo, un texto corto y el avance. es un popover manual, como la
 // tarjeta de pieza (capa superior del navegador, sin fondo oscuro ni bloqueo): la escena sigue
-// manejable y se puede girar la camara con la tarjeta abierta. Esc la cierra.
+// manejable y se puede girar la camara con la tarjeta abierta. esc la cierra.
 
 import { ICONS } from "./icons.js";
 

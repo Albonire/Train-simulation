@@ -1,13 +1,13 @@
-// QA visual: mide el parpadeo (aliasing temporal y z-fighting) de la escena.
+// qa visual: mide el parpadeo (aliasing temporal y z-fighting) de la escena.
 //
 //   npm run qa:visual                      contra http://127.0.0.1:5173/ (el servidor de desarrollo)
 //   node scripts/visual-qa.mjs <url>       contra otra direccion
-//   CHROME_PATH=/ruta/a/chrome ...         navegador a usar
+//   chrome_path=/ruta/a/chrome ...         navegador a usar
 //
-// Para cada modo, tema, camara y velocidad visual toma dos fotogramas separados por un
+// para cada modo, tema, camara y velocidad visual toma dos fotogramas separados por un
 // desplazamiento de pista de 0,37 m y mide la diferencia media de luminancia en la zona de
-// suelo y via. Un contenido liso cambia poco al moverse 37 cm; un patron fino que parpadea
-// cambia mucho. Sale con codigo 1 si algun caso supera el umbral.
+// suelo y via. un contenido liso cambia poco al moverse 37 cm; un patron fino que parpadea
+// cambia mucho. sale con codigo 1 si algun caso supera el umbral.
 
 import { chromium } from "playwright-core";
 import { existsSync } from "node:fs";

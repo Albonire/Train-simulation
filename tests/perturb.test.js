@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { Train } from "../src/physics/train.js";
 
-// Perturbaciones que cambian el estado del control, con la Train real (la misma que usa la interfaz).
-// Antes de este arreglo, Train.step volvia a encender el control en el paso siguiente: "Sin control" y
-// "Sin corriente" no hacian nada. Estas pruebas fijan el comportamiento prometido.
+// perturbaciones que cambian el estado del control, con la train real (la misma que usa la interfaz).
+// antes de este arreglo, train.step volvia a encender el control en el paso siguiente: "sin control" y
+// "sin corriente" no hacian nada. estas pruebas fijan el comportamiento prometido.
 
 const cruise = (mode = "ems") => {
   const t = new Train(mode);

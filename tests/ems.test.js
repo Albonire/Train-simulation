@@ -17,7 +17,7 @@ describe("EMS levitacion", () => {
   it("sin control el equilibrio es inestable (una perturbacion lo rompe)", () => {
     const s = new EmsSection({ noise: 0 });
     s.control = false;
-    s.openLoop = true; // corriente fija en I0, sin realimentacion
+    s.openLoop = true; // corriente fija en i0, sin realimentacion
     s.kick(0.0005); // +0.5 mm
     run(s, 2);
     expect(Math.abs(s.gap - s.gap0)).toBeGreaterThan(0.005);

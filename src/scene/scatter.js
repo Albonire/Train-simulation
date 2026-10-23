@@ -1,45 +1,45 @@
-// Reparto del entorno: arboles y arbustos. Codigo puro (sin three), asi se puede probar.
+// reparto del entorno: arboles y arbustos. codigo puro (sin three), asi se puede probar.
 //
-// Todo es deterministico y sale de la coordenada de pista: la misma celda da siempre los mismos
-// arboles. Las posiciones se devuelven en coordenadas de pista (x) y del mundo (z); el mundo las
+// todo es deterministico y sale de la coordenada de pista: la misma celda da siempre los mismos
+// arboles. las posiciones se devuelven en coordenadas de pista (x) y del mundo (z); el mundo las
 // desplaza restando la coordenada del tren.
 
 export const CELL = 60; // m de pista por celda
 export const CORRIDOR = 30; // m libres a cada lado de la via
 export const CAMERA_GAP_X = 85; // m a cada lado del tren: sin arboles entre la camara y la via (ver forest.js)
 
-/** Hash entero determinista a [0, 1). */
+/** hash entero determinista a [0, 1). */
 export function hash(a, b) {
   let h = (a * 374761393 + b * 668265263) ^ 0x5bd1e995;
   h = (h ^ (h >>> 13)) * 1274126177;
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
-/** Semilla -> generador (el mismo que usan las texturas). */
+/** semilla -> generador (el mismo que usan las texturas). */
 export function rng(seed) {
   let x = seed;
   return () => ((x = (x * 16807) % 2147483647) / 2147483647);
 }
 
-/** Una posicion es valida para un arbol: fuera del corredor de la via. */
+/** una posicion es valida para un arbol: fuera del corredor de la via. */
 export function allowedTreeSpot(z) {
   if (!Number.isFinite(z)) return false;
   return Math.abs(z) >= CORRIDOR;
 }
 
-/** Especie segun un numero en [0, 1): conifera, frondoso o alamo. */
+/** especie segun un numero en [0, 1): conifera, frondoso o alamo. */
 export const kindOf = (r4) => (r4 < 0.42 ? "c" : r4 < 0.88 ? "b" : "p");
 
-/** Escala de un arbol: [horizontal, vertical]. */
+/** escala de un arbol: [horizontal, vertical]. */
 export function treeScale(r2, r3) {
   const sc = 0.75 + r3 * 0.9;
   return [sc, sc * (0.85 + r2 * 0.3)];
 }
 
 /**
- * Arboles de una celda y un lado (-1 o 1). Cada uno:
+ * arboles de una celda y un lado (-1 o 1). cada uno:
  *   { x (pista), z, ang, sx, sy, kind, tone }   tone en [0, 1): reparte el tono dentro de la paleta
- * Entran los bosquetes (grupos de arboles) y los arboles sueltos de los linderos.
+ * entran los bosquetes (grupos de arboles) y los arboles sueltos de los linderos.
  */
 export function treesForCell(cell, side) {
   const out = [];
@@ -69,7 +69,7 @@ export function treesForCell(cell, side) {
   return out;
 }
 
-/** Arbustos junto a la cerca: reparto fijo que se repite cada `period` m. */
+/** arbustos junto a la cerca: reparto fijo que se repite cada `period` m. */
 export function bushLayout(period = 600, count = 110, seed = 555) {
   const rnd = rng(seed);
   return Array.from({ length: count }, () => ({
@@ -80,7 +80,7 @@ export function bushLayout(period = 600, count = 110, seed = 555) {
   }));
 }
 
-/** Los arboles (de ambos lados) de las celdas que cubren la ventana de +-halfCells alrededor de s. */
+/** los arboles (de ambos lados) de las celdas que cubren la ventana de +-halfcells alrededor de s. */
 export function treesAround(s, halfCells = 22) {
   const base = Math.floor(s / CELL);
   const out = [];

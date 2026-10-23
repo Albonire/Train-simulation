@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
-// Lee los tokens de color de style.css y comprueba el contraste de los pares que se usan para leer.
-// WCAG 2.x: texto normal 4,5:1; elementos graficos (series, bordes de controles) 3:1.
+// lee los tokens de color de style.css y comprueba el contraste de los pares que se usan para leer.
+// wcag 2.x: texto normal 4,5:1; elementos graficos (series, bordes de controles) 3:1.
 const css = readFileSync(new URL("../src/ui/style.css", import.meta.url), "utf8");
 
 function tokens(selectorStart) {
@@ -25,7 +25,7 @@ const ratio = (a, b) => {
   const [x, y] = [L(a), L(b)].sort((p, q) => q - p);
   return (x + 0.05) / (y + 0.05);
 };
-// --tint = 20 % del acento sobre la superficie (mezcla en sRGB: una buena aproximacion de la de oklab)
+// --tint = 20 % del acento sobre la superficie (mezcla en srgb: una buena aproximacion de la de oklab)
 const mix = (a, b, k) => "#" + rgb(a).map((v, i) => Math.round((v * k + rgb(b)[i] * (1 - k)) * 255).toString(16).padStart(2, "0")).join("");
 
 const THEMES = { "oscuro": dark, "claro": light, "oscuro EDS": darkEds, "claro EDS": lightEds };

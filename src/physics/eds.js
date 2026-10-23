@@ -1,25 +1,25 @@
-// Suspension electrodinamica (EDS, estilo SCMaglev).
+// suspension electrodinamica (eds, estilo scmaglev).
 //
-// Un iman superconductor a bordo (corriente constante, persistente) se mueve
-// frente a las bobinas de la via. El movimiento induce corriente en ellas y esa
-// corriente genera un campo que REPELE al iman. Sin movimiento no hay corriente
+// un iman superconductor a bordo (corriente constante, persistente) se mueve
+// frente a las bobinas de la via. el movimiento induce corriente en ellas y esa
+// corriente genera un campo que repele al iman. sin movimiento no hay corriente
 // inducida: a velocidad cero la sustentacion es cero, por eso el tren rueda sobre
 // ruedas de goma hasta unos 150 km/h.
 //
-// Modelo cualitativo (circuito L-R de la bobina de la via, velocidad caracteristica
-// vc = R/L * longitud caracteristica):
-//     F_lift(v, g) = F0 * v^2 / (v^2 + vc^2) * exp(-(g - g_w) / lambda)
-//     F_drag       = kappa * F_lift * vc / v   (L/D = v/(kappa*vc))
-// La fuerza disminuye al subir (g aumenta), asi que el equilibrio es ESTABLE:
-// no hace falta control activo. El arrastre magnetico tiene su pico a baja
-// velocidad y cae despues. Las constantes se calibran para que el vehiculo
-// despegue a v_liftoff con las ruedas y alcance gapCruise a alta velocidad.
-// Es un modelo ilustrativo, no los datos de JR Central. En particular NO es la ley
-// de las bobinas en 8 de flujo nulo del SCMaglev real: en una patente de
-// levitacion por induccion (US 5,649,489) la fuerza restauradora vertical es
+// modelo cualitativo (circuito l-r de la bobina de la via, velocidad caracteristica
+// vc = r/l * longitud caracteristica):
+//     f_lift(v, g) = f0 * v^2 / (v^2 + vc^2) * exp(-(g - g_w) / lambda)
+//     f_drag       = kappa * f_lift * vc / v   (l/d = v/(kappa*vc))
+// la fuerza disminuye al subir (g aumenta), asi que el equilibrio es estable:
+// no hace falta control activo. el arrastre magnetico tiene su pico a baja
+// velocidad y cae despues. las constantes se calibran para que el vehiculo
+// despegue a v_liftoff con las ruedas y alcance gapcruise a alta velocidad.
+// es un modelo ilustrativo, no los datos de jr central. en particular no es la ley
+// de las bobinas en 8 de flujo nulo del scmaglev real: en una patente de
+// levitacion por induccion (us 5,649,489) la fuerza restauradora vertical es
 // proporcional al desplazamiento del iman respecto del centro de la bobina, no una
-// exponencial en el entrehierro. Aqui se usa la ley de repulsion inducida de tipo
-// Inductrack porque reproduce lo cualitativo (cero en reposo, saturacion con la
+// exponencial en el entrehierro. aqui se usa la ley de repulsion inducida de tipo
+// inductrack porque reproduce lo cualitativo (cero en reposo, saturacion con la
 // velocidad, pico de arrastre, estabilidad) con pocos parametros.
 
 import { EDS, G, WHEEL_ROLLING } from "./constants.js";
@@ -42,7 +42,7 @@ export class EdsSection {
       liftoffSpeed: this.vl, vc: this.vc, gapWheels: this.gw, gapCruise: this.gc,
     }).lambda;
     const W = this.mass * G;
-    // F0 tal que, a v = vl y g = gw, F_lift = W
+    // f0 tal que, a v = vl y g = gw, f_lift = w
     this.F0 = (W * (this.vl ** 2 + this.vc ** 2)) / this.vl ** 2;
     this.damping = EDS.dampingPerKg; // 1/s, c/m de la suspension secundaria
     this.reset();
@@ -78,16 +78,16 @@ export class EdsSection {
     this.gap += dGap;
   }
 
-  /** Sustentacion a velocidad v y separacion g, N. */
+  /** sustentacion a velocidad v y separacion g, n. */
   liftAt(v, g = this.gap) {
     const s = (v * v) / (v * v + this.vc * this.vc);
     return this.F0 * s * Math.exp(-(g - this.gw) / this.lambda);
   }
-  /** Arrastre magnetico asociado, N. */
+  /** arrastre magnetico asociado, n. */
   dragAt(v, g = this.gap) {
     return (EDS.dragFactor * this.liftAt(v, g) * this.vc) / Math.max(v, 0.1);
   }
-  /** Separacion de equilibrio a velocidad v (con el peso en vacio), m. */
+  /** separacion de equilibrio a velocidad v (con el peso en vacio), m. */
   equilibriumGap(v) {
     const W = (this.mass + this.extraMass) * G;
     const s = (v * v) / (v * v + this.vc * this.vc);
@@ -140,7 +140,7 @@ export class EdsSection {
     this.y = clamp(this.y, -lim, lim);
   }
 
-  /** Resistencia de rodadura de las ruedas (N). */
+  /** resistencia de rodadura de las ruedas (n). */
   rollingResistance() {
     return this.onWheels && this.wheelsDown
       ? WHEEL_ROLLING * Math.max(0, (this.mass + this.extraMass) * G - this.lift)

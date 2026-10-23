@@ -1,4 +1,4 @@
-// Graficas minimas en canvas 2D (sin dependencias).
+// graficas minimas en canvas 2d (sin dependencias).
 
 export class History {
   constructor(capacity = 6000, step = 0.02) {
@@ -19,7 +19,7 @@ export class History {
     this.n = 0;
     this.nextT = 0;
   }
-  /** Inserta una muestra si paso al menos `step` s de simulacion. */
+  /** inserta una muestra si paso al menos `step` s de simulacion. */
   push(t, values) {
     if (t < this.nextT) return false;
     this.nextT = t + this.step;
@@ -32,7 +32,7 @@ export class History {
     this.n++;
     return true;
   }
-  /** Indices (en orden) de las muestras dentro de los ultimos `seconds` s. */
+  /** indices (en orden) de las muestras dentro de los ultimos `seconds` s. */
   range(seconds, maxPoints = 400) {
     const count = Math.min(this.n, this.cap);
     if (!count) return [];
@@ -67,7 +67,7 @@ export function setupCanvas(canvas) {
 
 /**
  * spec: { x:[x0,x1], y:[y0,y1], series:[{xs,ys,color,width,dash}], refs:[{y,color,dash,label}],
- *         xLabel, yLabel, marker:{x,y,color}, xFmt, yFmt, bands:[{y0,y1,color}] }
+ *         xlabel, ylabel, marker:{x,y,color}, xfmt, yfmt, bands:[{y0,y1,color}] }
  */
 export function drawChart(canvas, spec) {
   const { g, w, h } = setupCanvas(canvas);

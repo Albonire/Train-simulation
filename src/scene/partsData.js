@@ -1,7 +1,7 @@
-// Catalogo de piezas del explorador: nombre, texto breve, cifras en vivo, encuadre y como se
-// separa en la vista expandida. Es solo datos (sin three), asi se puede probar.
+// catalogo de piezas del explorador: nombre, texto breve, cifras en vivo, encuadre y como se
+// separa en la vista expandida. es solo datos (sin three), asi se puede probar.
 //
-// Texto: dos frases como maximo. Lo que es dato del modelo y no de una fuente se dice asi.
+// texto: dos frases como maximo. lo que es dato del modelo y no de una fuente se dice asi.
 //
 // pose: { az, el, fit } direccion de la camara (grados; az 0 mira desde +z, el > 0 desde arriba)
 //       y holgura del encuadre. span: mitad de la longitud (m) que se encuadra a lo largo de la via.
@@ -98,7 +98,7 @@ export const PARTS = {
       name: "Imán superconductor",
       text: "Bobina de niobio-titanio enfriada con helio líquido. Su campo constante induce corrientes en la pared y la repulsión sostiene al coche.",
       live: (t) => [["Corriente inducida", f(t.induced * 100, 0), "%"], ["Elevación", f(t.gapMm, 0), "mm"]],
-      // desde arriba: la pared de la via tapa lo que hay dentro de la U
+      // desde arriba: la pared de la via tapa lo que hay dentro de la u
       pose: { az: 48, el: 42, fit: 1.25 },
       span: 4,
       explode: { dx: 0, dy: 0, dz: 2.2 },
@@ -154,14 +154,14 @@ export const PARTS = {
 export const partIds = (mode) => PARTS[mode].map((p) => p.id);
 export const partById = (mode, id) => PARTS[mode].find((p) => p.id === id);
 
-/** Direccion de la camara (vector unitario hacia donde esta la camara respecto del objetivo). */
+/** direccion de la camara (vector unitario hacia donde esta la camara respecto del objetivo). */
 export function poseDirection({ az, el }) {
   const a = (az * Math.PI) / 180;
   const e = (el * Math.PI) / 180;
   return [-Math.sin(a) * Math.cos(e), Math.sin(e), Math.cos(a) * Math.cos(e)];
 }
 
-/** Pieza siguiente o anterior, en circulo. */
+/** pieza siguiente o anterior, en circulo. */
 export function stepPart(mode, id, dir) {
   const ids = partIds(mode);
   const i = ids.indexOf(id);

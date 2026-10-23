@@ -1,4 +1,4 @@
-// Iconos de trazo (16x16, currentColor). Sin dependencias.
+// iconos de trazo (16x16, currentcolor). sin dependencias.
 
 const svg = (body, extra = "") =>
   `<svg class="ic" viewBox="0 0 16 16" aria-hidden="true" ${extra}>${body}</svg>`;

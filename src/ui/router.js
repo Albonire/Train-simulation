@@ -1,5 +1,5 @@
-// Rutas por hash: #/ (simulacion), #/guia[/seccion], #/laminas[/lamina].
-// El boton Atras del navegador y los enlaces compartidos funcionan sin servidor.
+// rutas por hash: #/ (simulacion), #/guia[/seccion], #/laminas[/lamina].
+// el boton atras del navegador y los enlaces compartidos funcionan sin servidor.
 
 export function parseRoute(hash) {
   const parts = String(hash ?? "")

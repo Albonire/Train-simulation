@@ -1,10 +1,10 @@
-// Particulas que recorren las lineas de campo. Cada particula sigue un lazo cerrado
-// (EMS: sube por el entrehierro bajo un polo norte, cruza el hierro del estator, baja por el
+// particulas que recorren las lineas de campo. cada particula sigue un lazo cerrado
+// (ems: sube por el entrehierro bajo un polo norte, cruza el hierro del estator, baja por el
 // polo sur y vuelve por el nucleo del iman) con el sentido real del flujo: sale del polo norte
-// y entra por el sur. Todo el movimiento se calcula en la GPU a partir de un solo uniforme de
+// y entra por el sur. todo el movimiento se calcula en la gpu a partir de un solo uniforme de
 // tiempo, asi que miles de particulas cuestan una llamada de dibujo.
 //
-// Colores: rojo donde el flujo sale del polo norte, blanco calido dentro del hierro y azul
+// colores: rojo donde el flujo sale del polo norte, blanco calido dentro del hierro y azul
 // donde entra al polo sur (los mismos colores de polos del resto de la escena).
 
 import * as THREE from "three";
@@ -31,14 +31,14 @@ const VERT_EMS = /* glsl */ `
     float xa = aLoop.x, z = aLoop.y;
     float xm = xa + uR, xb = xa + 2.0 * uR;
     vec3 p; vec3 c; float a = 1.0;
-    if (d < wGap) {                                  // sube por el entrehierro (polo N)
+    if (d < wGap) {                                  // sube por el entrehierro (polo n)
       float u = d / wGap;
       p = vec3(xa, uGap * u, z); c = N; a = 1.0;
     } else if (d < wGap + arc) {                     // cruza el estator
       float u = (d - wGap) / arc; float f = 3.14159265 * u;
       p = vec3(xm - uR * cos(f), uGap + ry * sin(f), z);
       c = mix(N, IRON, smoothstep(0.0, 0.3, u)); c = mix(c, S, smoothstep(0.7, 1.0, u)); a = 0.85;
-    } else if (d < 2.0 * wGap + arc) {               // baja por el entrehierro (polo S)
+    } else if (d < 2.0 * wGap + arc) {               // baja por el entrehierro (polo s)
       float u = (d - wGap - arc) / wGap;
       p = vec3(xb, uGap * (1.0 - u), z); c = S; a = 1.0;
     } else {                                         // vuelve por el nucleo del iman

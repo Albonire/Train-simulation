@@ -1,4 +1,4 @@
-// Texturas y sombreado procedurales del entorno. Todo sale de generadores
+// texturas y sombreado procedurales del entorno. todo sale de generadores
 // deterministas (la misma escena en cada carga) y no requiere archivos de imagen.
 
 import * as THREE from "three";
@@ -10,10 +10,10 @@ export function rng(seed) {
 }
 
 /**
- * Mapa de macro-variacion del terreno, como multiplicador del color (128 = x1.0).
- * Parcelas de tono propio con bordes difusos y ruido de baja frecuencia. A proposito NO hay
+ * mapa de macro-variacion del terreno, como multiplicador del color (128 = x1.0).
+ * parcelas de tono propio con bordes difusos y ruido de baja frecuencia. a proposito no hay
  * lineas finas (surcos, setos, caminos): con el suelo corriendo a cientos de metros por
- * segundo se convertian en bandas que parpadeaban (ver depth.js). Se pinta pequeno y la
+ * segundo se convertian en bandas que parpadeaban (ver depth.js). se pinta pequeno y la
  * textura lo amplia con filtro lineal: asi los bordes salen desenfocados siete u ocho metros.
  */
 export function fieldTexture(size = 256) {
@@ -119,9 +119,9 @@ float vnoise(vec3 x){
 }
 uniform float uDetail;
 vec3 concreteTone(vec3 p){
-  // Ruido procedural: no tiene mipmaps, asi que cada octava se apaga cuando su longitud de
-  // onda es menor que dos pixeles (fp = tamano de un pixel en la superficie). Sin esto, a
-  // distancia es ruido sub-pixel que parpadea con cualquier movimiento (lo detecto el QA).
+  // ruido procedural: no tiene mipmaps, asi que cada octava se apaga cuando su longitud de
+  // onda es menor que dos pixeles (fp = tamano de un pixel en la superficie). sin esto, a
+  // distancia es ruido sub-pixel que parpadea con cualquier movimiento (lo detecto el qa).
   float fp = length(fwidth(p));
   float a2 = clamp(1.0 - fp / 0.15, 0.0, 1.0);   // 0,3 m
   float a3 = clamp(1.0 - fp / 0.038, 0.0, 1.0);  // 7,7 cm

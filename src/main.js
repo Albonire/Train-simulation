@@ -29,7 +29,7 @@ import "@fontsource/barlow-semi-condensed/latin-600.css";
 import "./ui/style.css";
 
 const canvas = document.getElementById("view");
-// sin WebGL no hay escena: se dice claro en vez de dejar la pagina en blanco
+// sin webgl no hay escena: se dice claro en vez de dejar la pagina en blanco
 if (!document.createElement("canvas").getContext("webgl2") && !document.createElement("canvas").getContext("webgl")) {
   document.body.innerHTML =
     '<main style="font:16px/1.5 system-ui,sans-serif;max-width:34em;margin:12vh auto;padding:0 20px;color:#14202b"><h1 style="font-size:22px">Este navegador no puede dibujar la escena 3D</h1><p>El simulador necesita WebGL. Prueba con un navegador actualizado, activa la aceleración por hardware o abre el enlace en otro dispositivo.</p></main>';
@@ -37,7 +37,7 @@ if (!document.createElement("canvas").getContext("webgl2") && !document.createEl
 }
 const world = createWorld(canvas);
 const { renderer, scene } = world;
-// una linea de diagnostico: si algo no se ve bien en una maquina, esto dice con que GPU se dibuja
+// una linea de diagnostico: si algo no se ve bien en una maquina, esto dice con que gpu se dibuja
 try {
   const gl = renderer.getContext();
   const info = gl.getExtension("WEBGL_debug_renderer_info");
@@ -73,24 +73,24 @@ const view = {
   paused: false,
   parts: false, // explorador de piezas
   explode: false, // vista separada
-  boost: false, // la camara Campo realza las capas de campo
-  // las fuerzas se piden (capa Fuerzas): el diagrama sobre el techo y sus cifras fijas sobraban en la vista por defecto
+  boost: false, // la camara campo realza las capas de campo
+  // las fuerzas se piden (capa fuerzas): el diagrama sobre el techo y sus cifras fijas sobraban en la vista por defecto
   layers: { fields: true, wave: true, forces: false, labels: true },
 };
-// estado de la apertura (ver mas abajo): se declara aqui porque effExag y effBody lo leen
+// estado de la apertura (ver mas abajo): se declara aqui porque effexag y effbody lo leen
 const intro = { active: false, t: 0, cfg: null, saved: null, exag: 0, xray: false };
 const rigMinExag = () => active.rigs[view.rig].minExag ?? 0;
 const effExag = () => Math.max(view.exag[mode], rigMinExag(), intro.active ? intro.exag : 0);
 
-// ---- carroceria: solida, rayos X, corte, o "faldon": solida con la parte baja translucida ----
+// ---- carroceria: solida, rayos x, corte, o "faldon": solida con la parte baja translucida ----
 const SKIRT_ALPHA = 0.2;
 const planes = {
   x: new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0),
   z: new THREE.Plane(new THREE.Vector3(0, 0, -1), 0),
 };
-// Carroceria efectiva: el explorador de piezas y la vista separada necesitan ver dentro.
+// carroceria efectiva: el explorador de piezas y la vista separada necesitan ver dentro.
 function effBody() {
-  // la apertura se ve por dentro: rayos X, o la carroceria de otra camara (el corte del EDS)
+  // la apertura se ve por dentro: rayos x, o la carroceria de otra camara (el corte del eds)
   if (intro.active && intro.xray) return introRig() ? active.rigs[introRig()].body : "xray";
   const rig = active.rigs[view.rig];
   let bodyMode = view.body === "auto" ? rig.body : view.body;
@@ -122,7 +122,7 @@ function applyBody() {
     for (const m of sc.bodyMats) {
       const x = on && bodyMode === "xray";
       let a = x ? 0.18 : 1;
-      // faldon del EMS y pared cercana del EDS: translucidos en las vistas generales, para ver el mecanismo
+      // faldon del ems y pared cercana del eds: translucidos en las vistas generales, para ver el mecanismo
       // que esconden (imanes, estator y hueco; imanes superconductores y bobinas)
       if (on && !x && m.userData.skirt && bodyMode === "skirt" && (m.userData.side === undefined || m.userData.side === camSide)) a = SKIRT_ALPHA;
       m.transparent = a < 1;
@@ -133,12 +133,12 @@ function applyBody() {
   }
 }
 
-// Las lineas de flujo se dibujan sin prueba de profundidad: solo tienen sentido
-// cuando los imanes estan a la vista (vistas de detalle, rayos X o corte).
+// las lineas de flujo se dibujan sin prueba de profundidad: solo tienen sentido
+// cuando los imanes estan a la vista (vistas de detalle, rayos x o corte).
 function magnetsVisible() {
   const b = effBody();
-  // con el faldon translucido del EMS se ven desde la orbita; desde Seguir o Arriba las lineas (sin prueba de
-  // profundidad) se dibujarian sobre la carroceria, y en el EDS lo que se ve por la pared ya es la geometria
+  // con el faldon translucido del ems se ven desde la orbita; desde seguir o arriba las lineas (sin prueba de
+  // profundidad) se dibujarian sobre la carroceria, y en el eds lo que se ve por la pared ya es la geometria
   return DETAIL.includes(view.rig) || b === "xray" || b === "cut" || (b === "skirt" && view.rig === "orbit" && mode === "ems");
 }
 
@@ -148,12 +148,12 @@ controls.addEventListener("start", () => {
   tween.active = false;
   userMoved = true;
 });
-// Pantallas verticales: el campo horizontal es estrecho y el tren es largo. La orbita
+// pantallas verticales: el campo horizontal es estrecho y el tren es largo. la orbita
 // pasa a un 3/4 desde la proa (el tren se aleja en profundidad en vez de cruzar la
 // pantalla) y la vista cenital gira para que la via quede vertical.
-// La orbita se encuadra por calculo: el tren llena el 88 % del area libre de la pantalla,
+// la orbita se encuadra por calculo: el tren llena el 88 % del area libre de la pantalla,
 // centrado en ella, sea cual sea el tamano de la ventana y los paneles abiertos.
-const NOSE_LEN = 6.5; // largo de la nariz de las secciones de cabeza y cola (ems.js, edsGeo.js)
+const NOSE_LEN = 6.5; // largo de la nariz de las secciones de cabeza y cola (ems.js, edsgeo.js)
 function rigPose(name, r) {
   const target = new THREE.Vector3(...r.target);
   const off = new THREE.Vector3(...r.pos).sub(target);
@@ -206,8 +206,8 @@ function setRig(name, instant = false) {
 }
 
 // ---- explorador de piezas ----
-// Con el modo activo la carroceria se vuelve transparente, la pieza bajo el puntero se resalta
-// y un clic acerca la camara y abre su tarjeta. La via corre bajo el tren, asi que el resaltado
+// con el modo activo la carroceria se vuelve transparente, la pieza bajo el puntero se resalta
+// y un clic acerca la camara y abre su tarjeta. la via corre bajo el tren, asi que el resaltado
 // se aplica a todas las copias del pool de tramos y la seleccion no se pierde.
 let selected = null;
 let hoverId = null;

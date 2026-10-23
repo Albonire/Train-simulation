@@ -1,5 +1,5 @@
-// Tapas planas sobre el plano de corte x = 0: la seccion transversal dibujada
-// como una lamina tecnica dentro de la escena 3D.
+// tapas planas sobre el plano de corte x = 0: la seccion transversal dibujada
+// como una lamina tecnica dentro de la escena 3d.
 
 import * as THREE from "three";
 
@@ -16,5 +16,5 @@ export function capMesh(rects, color, opacity = 1) {
   return g;
 }
 
-/** Devuelve [z0, z1] para el lado `side` (+1/-1) dado el intervalo positivo. */
+/** devuelve [z0, z1] para el lado `side` (+1/-1) dado el intervalo positivo. */
 export const sideRange = (side, a, b) => (side > 0 ? [a, b] : [-b, -a]);

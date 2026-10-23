@@ -1,12 +1,12 @@
-// Arboles como mallas fusionadas, sin instancias de GPU.
+// arboles como mallas fusionadas, sin instancias de gpu.
 //
-// Cada celda de pista (60 m) y cada lado tienen su propia malla, con los arboles de esa celda ya
-// colocados dentro de sus buffers (posicion, normal y color por vertice). Un anillo de mallas cubre
+// cada celda de pista (60 m) y cada lado tienen su propia malla, con los arboles de esa celda ya
+// colocados dentro de sus buffers (posicion, normal y color por vertice). un anillo de mallas cubre
 // la ventana de +-1300 m: al avanzar el tren, la malla de la celda que sale se rellena con la de la
-// que entra. Mover el decorado es solo cambiar `position.x` de cada malla.
+// que entra. mover el decorado es solo cambiar `position.x` de cada malla.
 //
-// Por que no `InstancedMesh`: en algunas GPU y controladores la traslacion de cada instancia no
-// llega al sombreador y todos los arboles se apilan en el origen. Con geometria normal no hay
+// por que no `instancedmesh`: en algunas gpu y controladores la traslacion de cada instancia no
+// llega al sombreador y todos los arboles se apilan en el origen. con geometria normal no hay
 // ningun camino que dependa de los atributos instanciados.
 
 import * as THREE from "three";
@@ -32,13 +32,13 @@ const TRUNK_RGB = rgbOf(TRUNK);
 function nonIndexed(g) {
   return g.index ? g.toNonIndexed() : g;
 }
-/** Ruido determinista en [-1, 1] a partir de una posicion (para abollar las copas). */
+/** ruido determinista en [-1, 1] a partir de una posicion (para abollar las copas). */
 const jitter = (x, y, z, k) => {
   const v = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719 + k * 4.581) * 43758.5453;
   return (v - Math.floor(v)) * 2 - 1;
 };
 
-/** Pieza = geometria + posicion + si es tronco. Devuelve { pos, nor, shade, trunk, count }. */
+/** pieza = geometria + posicion + si es tronco. devuelve { pos, nor, shade, trunk, count }. */
 function assemble(pieces, y0, y1) {
   const arrays = pieces.map(({ geo, at = [0, 0, 0], trunk = false }) => {
     const g = nonIndexed(geo);
@@ -67,7 +67,7 @@ function assemble(pieces, y0, y1) {
   return out;
 }
 
-/** Esfera achatada y abollada con normales suaves: una copa frondosa. */
+/** esfera achatada y abollada con normales suaves: una copa frondosa. */
 function blob(radius, detail, seed, at) {
   let g = new THREE.IcosahedronGeometry(radius, detail);
   g.deleteAttribute("normal");
@@ -185,7 +185,7 @@ export function createForest(scene, { halfCells = 22, maxFillsPerFrame = 12, nea
     sight.cam.y = cam.y;
     sight.cam.z = cam.z;
   }
-  // Un arbol se oculta si esta entre la camara y la via, cerca del tren (un primer plano que se
+  // un arbol se oculta si esta entre la camara y la via, cerca del tren (un primer plano que se
   // desplaza a cientos de m/s y tapa la escena), o si tapa la linea de mira hacia el tren.
   const blockedAt = (t, s) => {
     if (!sight) return false;
@@ -256,7 +256,7 @@ export function createForest(scene, { halfCells = 22, maxFillsPerFrame = 12, nea
       for (const list of chunks) {
         for (let i = 0; i < N; i++) {
           const ch = list[i];
-          // la celda que le toca a esta malla: la unica de la ventana con su indice modulo N
+          // la celda que le toca a esta malla: la unica de la ventana con su indice modulo n
           const cell = lo + ((((i - lo) % N) + N) % N);
           const stale = ch.cell !== cell;
           if (stale && fills < maxFillsPerFrame) {

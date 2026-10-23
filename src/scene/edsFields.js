@@ -1,4 +1,4 @@
-// Capa de campos del modo EDS: flujo entre los imanes superconductores y las bobinas de la
+// capa de campos del modo eds: flujo entre los imanes superconductores y las bobinas de la
 // pared (con particulas), ondas de propulsion e induccion, y flechas de fuerza.
 
 import * as THREE from "three";
@@ -41,7 +41,7 @@ export function createEdsFields(sceneApi) {
     return f;
   });
 
-  // arcos finos y continuos (seccion central) con degradado N a S
+  // arcos finos y continuos (seccion central) con degradado n a s
   const ARC = 10;
   const arcs = arcsOf(mid);
   const geo = new LineSegmentsGeometry();
@@ -87,7 +87,7 @@ export function createEdsFields(sceneApi) {
     arrows: arrowsApi.group,
     forces: arrowsApi,
     lines,
-    /** Intensidad relativa del campo: corriente inducida (0 a 1). */
+    /** intensidad relativa del campo: corriente inducida (0 a 1). */
     fieldLevel(train, tel) {
       return tel ? tel.induced : 0;
     },
@@ -121,7 +121,7 @@ export function createEdsFields(sceneApi) {
   };
 }
 
-/** Uniformes globales de las ondas del EDS (propulsion e induccion). */
+/** uniformes globales de las ondas del eds (propulsion e induccion). */
 export function updateEdsGlow(tel, train, view) {
   const L = train.length;
   const boost = view.boost ? 1.4 : 1;
