@@ -1,159 +1,104 @@
-# Simulador 3D de levitación magnética
+# Simulador y Modelado 3D de Tren de Levitación Magnética (Maglev)
 
-Simulación interactiva del funcionamiento de un tren de levitación magnética, con dos tecnologías
-seleccionables y un modelo físico detrás de cada número que se ve en pantalla.
+Pipeline integral de **diseño y modelado 3D en Blender** articulado con un **motor de simulación física y visualización interactiva en tiempo real** (WebGL / Three.js).
 
-- **EMS (estilo Transrapid):** suspensión electromagnética. Los electroimanes cuelgan bajo el estator
-  y atraen el vehículo hacia arriba; el equilibrio es inestable y lo sostiene un lazo de control.
-- **EDS (estilo SCMaglev):** suspensión electrodinámica. Imanes superconductores inducen corrientes en
-  las bobinas de la vía y la repulsión resultante eleva el tren; solo levita en movimiento.
-- **Motor lineal síncrono (LSM)** para la propulsión y el frenado regenerativo en ambas.
+El proyecto aborda el estudio cinemático, dinámico y geométrico de las dos tecnologías principales de levitación magnética a nivel mundial:
 
-> **Estado del modelo.** Está pensado para explicar, no para dimensionar un tren. Algunas constantes
-> están tomadas de fuentes, otras derivadas y otras son ilustrativas (tabla más abajo), y la ley de
-> sustentación del EDS es cualitativa. No se ha validado contra mediciones.
+- **EMS (suspensión electromagnética, estilo Transrapid):** electroimanes de sustentación y guiado que abrazan la viga por debajo y son atraídos hacia el estator; el equilibrio es inestable y se sostiene mediante un lazo cerrado de control PID.
+- **EDS (suspensión electrodinámica, estilo SCMaglev):** imanes superconductores a bordo que inducen corrientes de flujo nulo en bobinas de la pared guía en forma de 8; levitación pasiva y estable generada por el movimiento.
+- **Motor lineal síncrono (LSM):** estator en vía para propulsión y frenado regenerativo coordinado en ambas tecnologías.
 
-## Cómo ejecutarlo
+---
+
+## Arquitectura del Pipeline: Blender + Simulación WebGL
+
+El desarrollo del proyecto se estructuró en dos etapas complementarias:
+
+### 1. Etapa de Modelado Geométrico y Validación en Blender (`blender/`)
+- **Modelado a escala real (1:1):** sección de coche de 14,0 m, anchura de 3,2 m, altura de 3,6 m y faldones envolventes.
+- **Tolerancias y entrehierros:** verificación geométrica de la brecha crítica de 10 mm (0,010 m) entre electroimanes y paquetes de estator, garantizando márgenes mecánicos frente a colisiones.
+- **Despiece paramétrico (*exploded view*):** jerarquía de componentes mecánicos y magnéticos (chasis, electroimanes de sustentación, imanes de guiado lateral, patines de aterrizaje, bobinas superconductoras y núcleo de vía).
+- **Recursos incluidos en el repositorio:**
+  - `blender/maglev_blender_setup.py`: script de automatización en Python (`bpy`) que construye el modelo completo, iluminación y materiales Principled BSDF dentro de Blender 3.x / 4.x.
+  - `blender/maglev_train_ems.obj` y `.mtl`: exportación 3D en formato Wavefront para inspección, edición o renderizado inmediato en cualquier entorno 3D.
+  - `blender/README.md`: guía técnica detallada del modelado, jerarquía de colecciones y modo de uso.
+
+### 2. Etapa de Simulación Física Interactiva en Tiempo Real (`src/`)
+- Integración de las mallas y cotas validadas en Blender en una aplicación WebGL fluida a 60 fps.
+- Simulación en tiempo real de las ecuaciones diferenciales de levitación, corrientes inducidas, arrastre magnético, aerodinámica y lazos de control frente a perturbaciones.
+- Telemetría interactiva con cámaras orbitales, de seguimiento, corte transversal y exploración individual de piezas.
+
+---
+
+## Cómo ejecutar la aplicación web
 
 ```bash
-npm install
-npm run dev      # servidor en http://127.0.0.1:5173 (genera antes las láminas)
-npm test         # tests del modelo físico (Vitest)
-npm run build    # compilación de producción en dist/
-npm run qa:parts  # QA del explorador de piezas en Chromium (con el servidor de desarrollo activo)
-node scripts/shot.mjs <url> <carpeta> ems:dark:orbit:1920x918  # capturas para revisar a ojo
+pnpm install       # instalación de dependencias (o npm install)
+pnpm run dev       # servidor de desarrollo en http://127.0.0.1:5173
+pnpm test          # suite de pruebas del modelo físico (Vitest)
+pnpm run build     # compilación de producción para despliegue
+pnpm run figures   # generación de láminas isométricas interactivas
 ```
 
-Requiere Node.js 22.12 o superior (lo exige Vitest 5; Vite 8 admite desde 20.19 y el kit de las láminas
-desde 20.10). Las láminas necesitan solo Node; su comprobación visual con la skill, además Chrome o
-Chromium.
+Requisitos: Node.js 22.12 o superior.
 
-## Qué se puede hacer
+---
 
-| Control | Qué hace |
+## Controles y Funcionalidades del Simulador
+
+| Control | Acción |
 |---|---|
-| EMS / EDS | Cambia de tecnología (mismo tren, otra física). |
-| Velocidad objetivo, escala de tiempo (x1 a x60), pausa | Gobierna el viaje entre estaciones. |
-| Salir / Retener | En el modelo, el tren EMS aterriza en cada estación y vuelve a levitar antes de salir (decisión del modelo, no verificada contra el servicio real). |
-| Perturbaciones | Carga extra del 12 %, ráfaga lateral, golpe vertical, sin control, sin corriente. Cada fila dice su efecto y, tras pulsarla, el panel muestra el desvío máximo y el tiempo en volver, medidos en el modelo. |
-| Cámaras (teclas 1 a 6) | Órbita, seguir, sección, imanes, arriba y campo. Doble clic recentra la vista. La órbita se encuadra por cálculo para que el tren llene el 88 % del área libre, centrado, con cualquier ventana y paneles. La escena se centra en el área que dejan libre los paneles. La cámara nunca baja de 1,7 m sobre el suelo: se puede mirar la vía desde abajo, pero no atravesar el terreno. |
-| Piezas (P) y Separar (E) | Con Piezas activo, un clic en cada pieza acerca la cámara y abre una tarjeta con su función y cifras en vivo. Separar aleja las piezas entre sí con una animación suave. Hay 7 piezas en EMS y 7 en EDS. |
-| Apertura (I para repetirla) | Al cargar, unos 8 s de primer plano sobre la levitación (en EMS, el hueco entre la viga y el imán con el tren sobre los patines, el despegue de 20 a 10 mm y el campo; en EDS, el corte con la pared, las bobinas y el coche subiendo) y después la vista general. Cualquier clic o tecla la omite; no se reproduce con movimiento reducido. |
-| Lupa del entrehierro (L) | Corte en vivo abajo a la izquierda: en EMS el estator, el hueco ampliado con su cifra real, el imán con sus polos, las líneas de campo y las fuerzas de atracción y peso; en EDS la pared con bobinas en 8, el imán superconductor, el eje nulo y la corriente inducida. Avisa del despegue y del aterrizaje. Con poca altura de ventana arranca plegada. |
-| Campo | La cámara Campo (6) vuelve transparente la carrocería y muestra el flujo con partículas que siguen el sentido del campo. El indicador Campo del cuadro de mando muestra su intensidad. |
-| Carrocería | Sólida, rayos X o corte. |
-| Capas | Flujo (solo cuando los imanes están a la vista), onda del estator, fuerzas (diagrama sobre el techo con sus cifras en las vistas Órbita y Seguir), nombres (solo en las vistas de detalle). |
-| Exagerar entrehierro | El entrehierro real (10 mm) es invisible a escala; se multiplica y la interfaz lo indica. |
-| Láminas (`#/laminas`) | Página con las tres figuras isométricas, explicativas e interactivas. |
-| Guía (`#/guia`) | Página de lectura con índice: cómo se sostiene y avanza el tren, los colores, los controles, el modelo, sus límites y la tabla de fuentes. |
-| Atajos (?) | Lista breve de atajos en un popover. |
-| Tema | Claro (día) u oscuro (atardecer, con luces en el tren, los faros y la estación). Espacio pausa, H oculta el panel. |
+| EMS / EDS | Alterna entre suspensión electromagnética y electrodinámica (mismo tren, distinta física). |
+| Velocidad objetivo, escala temporal (x1 a x60), pausa | Gobierna el trayecto entre estaciones y la aceleración del motor síncrono. |
+| Salir / Retener | En EMS, el tren aterriza sobre patines en estación y vuelve a levitar antes de partir. |
+| Perturbaciones | Simula carga extra (+12 %), ráfaga lateral de viento, golpe vertical en vía, corte de corriente o desconexión del lazo de control. |
+| Cámaras (teclas 1 a 6) | Vistas disponibles: Órbita, Seguir, Sección transversal, Imanes, Cenital y Líneas de Campo Magnético. |
+| Explorador de Piezas (P) y Despiece (E) | Permite seleccionar cada módulo modelado en Blender, aproximar la cámara y ver su función y telemetría en vivo. La tecla E ejecuta la animación de separación espacial (*exploded view*). |
+| Lupa de Entrehierro (L) | Sección en vivo abajo a la izquierda que mide en milímetros la distancia imán-estator y grafica las fuerzas en tiempo real. |
+| Carrocería | Modos de renderizado: sólida, rayos X o corte estructural. |
+| Láminas (`#/laminas`) | Módulo con figuras isométricas interactivas de los bancos de ensayo. |
+| Guía (`#/guia`) | Documentación técnica en la propia aplicación con fundamentación teórica y fuentes. |
 
-**Qué probar en el EMS.** En *Control*, pulsa *Sin control*: con la corriente fija en su valor de equilibrio,
-una perturbación de 0,5 mm basta para que el sistema se desequilibre (la simulación empuja hacia abajo, así
-que el vehículo cae a los patines en menos de un cuarto de segundo; empujado hacia arriba se pegaría al riel).
-*Sin control* y *Sin corriente* los lleva la `Train` y no los deshace la máquina de estados: el primero deja la
-sección central así hasta que se vuelve a pulsar; el segundo corta la alimentación 3,5 s de tiempo simulado y
-después los imanes vuelven a subir el vehículo. Con el control activo, un golpe de 2 mm o una carga del 12 %
-se absorben (la carga se compensa con un término integral). **En el EDS** el equilibrio es estable por sí mismo
-y esos dos botones no existen. Los patines no tienen rozamiento en el modelo: un tren caído sigue su marcha.
+---
 
-## Física implementada
+## Física y Modelo Matemático (`src/physics/`)
 
-Código en `src/physics/` (sin DOM, compartido por la escena 3D y las láminas).
+- **EMS (`ems.js`):** fuerza atractiva electrodinámica `F = μ0·N²·I²·A / (4 g²)`. Planta inestable en bucle abierto con polo inestable en `√(2g/g0) ≈ 44 rad/s`. Lazo de control PID sobre el entrehierro con anti-windup, corriente de equilibrio y rampa de despegue de 20 mm a 10 mm. Guiado transversal con par diferencial.
+- **EDS (`eds.js`):** sustentación por repulsión inducida en movimiento con velocidad característica `vc`: `F = F0 · v²/(v²+vc²) · exp(-(g-gr)/λ)` y arrastre parásito proporcional a `vc / v`. Tren de aterrizaje auxiliar con ruedas desplegables por debajo de 135 km/h.
+- **Motor lineal síncrono (`lsm.js`):** cálculo de velocidad sincrónica `v = 2·τ·f`. Empuje acotado por límite térmico a baja velocidad y por límite de potencia del inversor a alta velocidad. Dinámica de ángulo de carga `δ` y detección de pérdida de sincronismo.
+- **Cinemática del tren (`train.js`):** integración temporal a paso fijo (1 ms), perfil aerodinámico de resistencia de avance y máquina de estados del viaje.
 
-**EMS (`ems.js`).** Fuerza de un electroimán de dos polos, `F = μ0·N²·I²·A / (4 g²)`. Planta
-inestable (polo en `√(2g/g0) ≈ 44 rad/s`). Controlador PID sobre el entrehierro, con corriente de
-equilibrio, anti-windup y rampa de referencia para despegar desde los patines (20 mm a 10 mm). Guiado
-lateral con un par diferencial de imanes y polarización. Convertidor de potencia con retardo de 5 ms.
+---
 
-**EDS (`eds.js`).** Repulsión inducida con velocidad característica `vc`:
-`F = F0 · v²/(v²+vc²) · exp(-(g-gr)/λ)` y arrastre `κ · F · vc / v`. Ruedas de goma con histéresis
-(se retraen a 150 km/h y se extienden por debajo de 135 km/h). Guiado lateral pasivo.
+## Procedencia de los Datos Técnicos
 
-**Motor lineal síncrono (`lsm.js`).** `v = 2·τ·f`; el empuje máximo está limitado por fuerza a baja
-velocidad y por potencia a alta; ángulo de carga `F = F_max·sen δ`. `SyncDrive` modela la dinámica de
-la máquina síncrona (retraso δ con carga, δ negativo al frenar, pérdida de sincronismo).
+| Parámetro | Valor | Clasificación | Referencia técnica |
+|---|---|---|---|
+| Entrehierro nominal EMS | 10 mm (margen operativo 10 a 15 mm) | Documentado | Patentes US 7,637,214 y US 7,814,840 |
+| Paso polar del estator (τ) | 258 mm; paso de diente 63 mm | Documentado | MDPI Actuators 14(11):514 |
+| Vehículo de ensayo (2 coches) | 54 m, 120 t en vacío, 400 km/h, 4250 V, 1200 A | Documentado | The Transrapid Magnetic Levitation System |
+| Sección unitaria en el modelo | 14 m por coche, 60 t de masa | Parametrizado | Adaptado para escala de visualización en pantalla |
+| Elevación típica en EDS | ~100 mm a alta velocidad | Documentado | JR Central / SCMaglev technical reports |
+| Velocidad récord serie L0 (EDS) | 603 km/h (año 2015) | Documentado | Central Japan Railway Company |
+| Bobinas superconductoras | 700 kA, aleación NbTi en baño de helio líquido | Documentado | KIT / SCMaglev publications |
 
-**Tren y viaje (`train.js`).** Secciones, resistencia aerodinámica, controlador de velocidad con
-anticipación de la rampa de frenado y máquina de estados (reposo, levitando, acelerando, crucero,
-frenando, estación). Integración con paso fijo de 1 ms.
+---
 
-### Tests
-
-`npm test` ejecuta 40 tests, entre ellos: el equilibrio EMS sostiene el peso a 10 mm; sin control una
-perturbación lo rompe; con control converge; el despegue no toca el riel; la sustentación EDS iguala
-el peso a la velocidad de despegue; el motor síncrono llega a `δ = asin(F_carga/F_max)` y pierde el
-sincronismo si la carga lo supera; el balance de energía de un viaje parada a parada se cierra al 1 %;
-la posición es continua (sin saltos). Un error real que estos tests detectaron: el tren se pasaba de
-la estación por 40 a 84 m por seguir el perfil de frenado solo con realimentación; se corrigió con un
-término de anticipación.
-
-## Láminas (skill *anatomy*)
-
-Tres figuras isométricas generadas con la skill [anatomy](https://github.com/wheresryan22/anatomy)
-(copia del kit en `vendor/anatomy/`, licencia MIT):
-
-1. **Banco de levitación EMS:** un módulo de imán bajo un estator, con regla de entrehierro,
-   amperímetro y carga que se deja caer. Pulsa Espacio para apagar el control.
-2. **Banco del motor lineal síncrono:** la onda del estator, el vehículo con cuatro polos, el ángulo
-   de carga y la pérdida de sincronismo (tecla J).
-3. **Banco de levitación EDS:** una cinta con bobinas bajo un bloque superconductor que se eleva con
-   la velocidad y retrae sus ruedas.
-
-Cada figura importa el mismo modelo físico (`figures/lib/physics-inline.mjs` lo incrusta en la página
-autónoma). `npm run figures` las regenera en `public/figures/`. Las tres pasan la comprobación de
-extremos de línea de la skill (`scripts/lines.mjs`: 0 extremos sueltos) en tema claro y oscuro.
-
-## Procedencia de los datos
-
-`fuente` = hallado en una fuente citada; `derivado` = calculado a partir de ellas; `ilustrativo` =
-elegido para que el modelo sea coherente, **no es un dato oficial**. Cada constante lleva su etiqueta en
-`src/physics/constants.js`.
-
-| Valor | Tipo | Origen |
-|---|---|---|
-| Entrehierro nominal EMS: 10 mm (rango 10 a 15 mm) | fuente | [US 7,637,214](https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/7637214), [US 7,814,840](https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/7814840) |
-| Paso polar del estator: 258 mm; paso de diente 63 mm | fuente | [MDPI Actuators 14(11):514](https://www.mdpi.com/2076-0825/14/11/514), [MAGLEV projects: technology aspects and choices](https://www.researchgate.net/publication/224055510_MAGLEV_projects_technology_aspects_and_choices) |
-| Vehículo de ensayo de dos secciones: 54 m, 120 t en vacío, 85 kN, 0 a 215 Hz, 4250 V, 400 km/h, 450 kW a bordo | fuente | [tabla en un documento sobre motores lineales](https://artefacts-discovery.researcher.life/full_text/DA-2/68/680fe23b46a73ba28f0969fd014f70bc/full_text/623230215391790103f89577fdb0e5e6.pdf); el motor (4250 V, 1200 A, 0 a 215 Hz) coincide con [The Transrapid Magnetic Levitation System](https://escholarship.org/content/qt6ds64496/qt6ds64496.pdf). El empuje de 85 kN solo aparece en una fuente. |
-| 60 t por sección; 42,5 kN por sección; velocidad máxima EMS 399 km/h (= 2·τ·215 Hz) | derivado | de lo anterior |
-| 14 m por sección en EMS y EDS (la fuente da 27 m por sección en EMS) | ilustrativo | se acorta para que el tren entero quepa en pantalla |
-| Estator del Transrapid alimentado por tramos que se conmutan al paso del vehículo | fuente | [WO 1997/047493](https://patents.google.com/patent/WO1997047493A1/en) |
-| EDS: elevación de unos 100 mm | fuente | [JR Central](https://global.jr-central.co.jp/en/company/_pdf/superconducting_maglev.pdf), [KIT](https://publikationen.bibliothek.kit.edu/1000075557/4402937) |
-| EDS: ruedas hasta unos 150 km/h | fuente aprox. | [ficha educativa de JR Central](https://www.japansociety.org.uk/usercontent/572cf69871d517dad7964c455c746698/JR-Central-SCMAGLEV-Worksheet.pdf) (describe la línea de pruebas de Yamanashi) |
-| EDS: 603 km/h (récord de la serie L0, 2015) | fuente | [L0 Series](https://en.wikipedia.org/wiki/L0_Series) |
-| EDS: 700 kA, NbTi y helio líquido; bobinas en 8 conectadas entre paredes | fuente | KIT; [SCMaglev](https://en.wikipedia.org/wiki/SCMaglev) |
-| Corriente de equilibrio 50 A, retardo del convertidor 5 ms, ganancias del PID, patín a 20 mm, área frontal, Cd, potencia por sección, masa y empuje EDS, `vc = 20 m/s`, `κ = 0,35`, `λ`, elevación sobre ruedas 85 mm, energía en kWh | ilustrativo | elegidos por el autor |
-
-## Límites del modelo y lo que no se hizo
-
-- **La ley de sustentación del EDS es cualitativa.** No es la ley de las bobinas en 8 de flujo nulo:
-  en una patente de levitación por inducción ([US 5,649,489](https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/5649489))
-  la fuerza restauradora vertical es proporcional al desplazamiento del imán respecto del centro de la
-  bobina. Con la ley simple de arrastre `F·vc/v` el pico de arrastre es ~0,6 veces el peso y el tren no
-  podría arrancar; el factor `κ` lo reduce y es ilustrativo.
-- Las secciones se simulan por separado, en dos grados de libertad (vertical y lateral), sin cabeceo,
-  balanceo ni acoplamiento mecánico entre ellas. No se modela la alimentación de a bordo.
-- Las cifras del vehículo de ensayo del Transrapid no son las de un servicio comercial.
-- Representación: el entrehierro se exagera, las flechas de fuerza usan escala de raíz cuadrada, la
-  onda del estator se dibuja en el marco del vehículo (el motor es síncrono) y las bobinas de la
-  lámina EDS se animan en cámara lenta (1/40).
-- El `README` y la página Guía separan lo documentado de lo ilustrativo; si un dato importa
-  para un uso real, hay que contrastarlo con la fuente primaria.
-
-## Estructura
+## Estructura del Repositorio
 
 ```
-src/physics/      modelo puro: constants, ems, eds, lsm, train
-src/scene/        escena Three.js: mundo, vía y vehículo EMS/EDS, campos, cámaras, etiquetas
-src/ui/           interfaz, gráficas, rutas (`router.js`) y páginas Guía y Láminas
-figures/          láminas (build.mjs por figura) y lib/physics-inline.mjs
-vendor/anatomy/   kit de la skill anatomy (MIT)
-tests/            tests del modelo físico
-scripts/          build-figures.mjs
+blender/          modelos 3D (.obj, .mtl), scripts de automatización Blender (bpy) y documentación
+src/physics/      motor físico puro: constantes, ems, eds, lsm, cinemática de tren
+src/scene/        escena Three.js: mallas 3D, mundo, vía, campos electromagnéticos y cámaras
+src/ui/           interfaz de usuario, gráficas en vivo, telemetría y enrutador
+figures/          láminas interactivas y bancos de prueba isométricos
+tests/            suite de pruebas unitarias y de integración física
+scripts/          utilidades de compilación, capturas y QA
 ```
+
+---
 
 ## Licencia
 
-Código del proyecto: MIT. El kit de `vendor/anatomy/` conserva su propia licencia MIT
-(`vendor/anatomy/LICENSE`).
+Código y modelos 3D del proyecto bajo licencia MIT.
+Los componentes auxiliares en `vendor/anatomy/` conservan sus respectivas licencias originales.

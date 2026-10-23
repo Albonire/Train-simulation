@@ -1,0 +1,46 @@
+# Material Library for Maglev 3D Model
+# Designed for Blender 3.x / 4.x
+
+newmtl Mat_Carroceria
+Ka 0.2 0.2 0.2
+Kd 0.92 0.93 0.95
+Ks 0.8 0.8 0.8
+Ns 60.0
+illum 2
+
+newmtl Mat_Vidrio
+Ka 0.05 0.05 0.05
+Kd 0.1 0.15 0.2
+Ks 0.95 0.95 0.95
+Ns 100.0
+d 0.6
+illum 2
+
+newmtl Mat_Faldones
+Ka 0.1 0.1 0.1
+Kd 0.25 0.27 0.3
+Ks 0.5 0.5 0.5
+Ns 30.0
+illum 2
+
+newmtl Mat_Electroimanes
+Ka 0.1 0.1 0.2
+Kd 0.15 0.35 0.75
+Ks 0.6 0.6 0.7
+Ns 40.0
+illum 2
+
+newmtl Mat_Viga_Guia
+Ka 0.3 0.3 0.3
+Kd 0.6 0.62 0.65
+Ks 0.1 0.1 0.1
+Ns 10.0
+illum 2
+
+newmtl Mat_Estator
+Ka 0.1 0.1 0.1
+Kd 0.35 0.38 0.4
+Ks 0.7 0.7 0.7
+Ns 50.0
+illum 2
+
