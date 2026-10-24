@@ -3,10 +3,10 @@
 // navegador; el estado vive en main.js.
 //
 // ems: se ve desde fuera, de costado y casi a ras, el hueco entre la cara inferior de la viga
-//      (estator) y las caras polares del iman, con el coche aun sobre los patines; el tren
+//      (estator) y las caras polares del iman, con el tren aun sobre los patines; el tren
 //      despega (el hueco baja de 20 a 10 mm) y la camara se aleja hasta la orbita.
 // eds: corte transversal (como la camara imanes) con la pared y sus bobinas en 8, el iman
-//      superconductor y el coche, que sube al recogerse las ruedas; despues la orbita.
+//      superconductor y el tren, que sube al recogerse las ruedas; despues la orbita.
 //
 // todas las poses son { pos, tgt, fov } en coordenadas del mundo.
 
@@ -41,7 +41,7 @@ export const INTRO = {
     tsClose: 4,
     tsAt: 4.4,
     closeUntil: 4.4,
-    bodyRig: "gap", // se ve en corte transversal, como la camara imanes: pared con bobinas, iman y coche
+    bodyRig: "gap", // se ve en corte transversal, como la camara imanes: pared con bobinas, iman y tren
     exag: 12,
     exagRamp: [4.4, 5.8],
     keys: [
@@ -82,8 +82,8 @@ export const introXray = (cfg, t) => t < cfg.closeUntil;
 export function introCaption(mode, t, cfg, tel) {
   if (t >= cfg.closeUntil) return "";
   if (mode === "ems") {
-    if (tel.gapMm > 15) return "Parado: el coche descansa sobre patines, a 20 mm de la viga";
-    if (!tel.levitated) return "El imán atrae hacia arriba y el coche despega";
+    if (tel.gapMm > 15) return "Parado: el tren descansa sobre patines, a 20 mm de la viga";
+    if (!tel.levitated) return "El imán atrae hacia arriba y el tren despega";
     return "Levita a 10 mm sin tocar la viga. Aquí el hueco está ampliado";
   }
   if (tel.wheelsDown) return "Sobre ruedas: todavía no levita";

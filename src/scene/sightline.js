@@ -2,7 +2,7 @@
 // de la camara hacia el tren. es codigo puro, asi se prueba sin three.
 //
 // un arbol que tapa el tren se oculta en ese fotograma: ninguna orientacion de la camara deja
-// una copa delante de un coche. se comprueban varios puntos del tren y varias alturas del arbol.
+// una copa delante del tren. se comprueban varios puntos del tren y varias alturas del arbol.
 
 /** distancia minima (m) entre el segmento a-b y el punto c. a, b, c: { x, y, z }. */
 export function segmentPointDistance(a, b, c) {

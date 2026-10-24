@@ -1,12 +1,12 @@
-// piezas sueltas del coche que no caben en la textura: equipos de techo, antenas y
+// piezas sueltas del tren que no caben en la textura: equipos de techo, antenas y
 // faros con luz propia. los materiales que devuelve se registran en `bodymats` y
-// `clipmats` del coche para que sigan los modos rayos x y corte.
+// `clipmats` del tren para que sigan los modos rayos x y corte.
 
 import * as THREE from "three";
 
 /**
  * equipos de techo: unidades de climatizacion, una antena y un pequeno carenado.
- * roofy: altura de la cresta del techo (local); len: tramo recto del coche.
+ * roofy: altura de la cresta del techo (local); len: tramo recto del vagon.
  */
 export function roofEquipment({ len, role, roofY }) {
   const group = new THREE.Group();

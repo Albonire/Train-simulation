@@ -6,10 +6,10 @@ describe("catalogo de piezas", () => {
   for (const mode of ["ems", "eds"]) {
     describe(mode, () => {
       const parts = PARTS[mode];
-      it("ids unicos y con coche, pilar y al menos un iman", () => {
+      it("ids unicos y con tren, pilar y al menos un iman", () => {
         const ids = partIds(mode);
         expect(new Set(ids).size).toBe(ids.length);
-        expect(ids).toContain("coche");
+        expect(ids).toContain("tren");
         expect(ids).toContain("pier");
         expect(ids.length).toBeGreaterThanOrEqual(6);
       });

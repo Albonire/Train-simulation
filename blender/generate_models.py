@@ -73,7 +73,7 @@ def create_obj_model():
     # 2. escribe archivo obj
     with open(obj_path, "w", encoding="utf-8") as obj:
         obj.write("# modelo 3d del tren maglev\n")
-        obj.write("# escala 1:1 (metros) - coche: 14 m, ancho: 3.2 m, altura: 3.6 m\n")
+        obj.write("# escala 1:1 (metros) - tren: 14 m, ancho: 3.2 m, altura: 3.6 m\n")
         obj.write("# diseno para blender y visualizacion webgl\n")
         obj.write("mtllib maglev_train_ems.mtl\n\n")
         
@@ -131,10 +131,10 @@ def create_obj_model():
         write_box("Estator_LSM_Izquierdo", "Mat_Estator", -1.35, -0.95, 2.45, 2.5, -9.0, 9.0)
         write_box("Estator_LSM_Derecho", "Mat_Estator", 0.95, 1.35, 2.45, 2.5, -9.0, 9.0)
         
-        # vehiculo maglev (coche de 14 m)
-        write_box("Coche_Carroceria_Principal", "Mat_Carroceria", -1.6, 1.6, 2.85, 5.05, -6.5, 6.5)
-        write_box("Coche_Frontal_Aerodinamico", "Mat_Carroceria", -1.5, 1.5, 2.85, 4.8, 6.5, 7.5)
-        write_box("Coche_Trasera_Aerodinamica", "Mat_Carroceria", -1.5, 1.5, 2.85, 4.8, -7.5, -6.5)
+        # vehiculo maglev (seccion de tren de 14 m)
+        write_box("Tren_Carroceria_Principal", "Mat_Carroceria", -1.6, 1.6, 2.85, 5.05, -6.5, 6.5)
+        write_box("Tren_Frontal_Aerodinamico", "Mat_Carroceria", -1.5, 1.5, 2.85, 4.8, 6.5, 7.5)
+        write_box("Tren_Trasera_Aerodinamica", "Mat_Carroceria", -1.5, 1.5, 2.85, 4.8, -7.5, -6.5)
         
         # franjas de ventanas y parabrisas
         write_box("Ventanas_Laterales_Izq", "Mat_Vidrio", -1.62, -1.59, 3.8, 4.4, -5.5, 5.5)
@@ -163,7 +163,7 @@ def create_blender_script():
     
     content = '''# script de automatizacion y armado de escena maglev en blender
 # medidas reales a escala 1:1 (metros):
-# coche: 14 m, ancho: 3.2 m, altura: 3.6 m
+# tren: 14 m, ancho: 3.2 m, altura: 3.6 m
 # entrehierro nominal ems: 10 mm (0.010 m)
 # paso polar estator lsm: 258 mm (0.258 m)
 
@@ -243,8 +243,8 @@ def build_maglev_scene():
     add_box("Estator_LSM_Izquierdo", (-1.15, 0, 2.475), (0.4, 20.0, 0.05), mat_estator, col_track)
     add_box("Estator_LSM_Derecho", (1.15, 0, 2.475), (0.4, 20.0, 0.05), mat_estator, col_track)
 
-    # 2. vehiculo maglev (coche de 14 m)
-    body = add_box("Coche_Carroceria", (0, 0, 3.95), (3.2, 13.0, 2.2), mat_carroceria, col_train)
+    # 2. vehiculo maglev (seccion de tren de 14 m)
+    body = add_box("Tren_Carroceria", (0, 0, 3.95), (3.2, 13.0, 2.2), mat_carroceria, col_train)
     add_box("Frontal_Aerodinamico", (0, 6.9, 3.825), (3.0, 0.8, 1.95), mat_carroceria, col_train)
     add_box("Trasera_Aerodinamica", (0, -6.9, 3.825), (3.0, 0.8, 1.95), mat_carroceria, col_train)
     add_box("Franja_Ventanas_Izq", (-1.61, 0, 4.1), (0.02, 11.0, 0.6), mat_vidrio, col_train)

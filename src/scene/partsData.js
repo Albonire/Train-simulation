@@ -20,8 +20,8 @@ export const MAX_TEXT = 230; // caracteres por texto
 export const PARTS = {
   ems: [
     {
-      id: "coche",
-      name: "Coche",
+      id: "tren",
+      name: "Tren",
       text: "Cada sección abraza la viga por debajo y por los lados. De su faldón cuelgan los imanes. En el modelo mide 14 m y pesa 60 t.",
       live: (t, tr) => [["Velocidad", f(t.speedKmh, 0), "km/h"], ["Masa", f(tr.sections[1].mass / 1e3, 0), "t"]],
       pose: { az: 28, el: 14, fit: 1.05 },
@@ -40,7 +40,7 @@ export const PARTS = {
     {
       id: "guide",
       name: "Imán de guiado",
-      text: "Mira al riel lateral de la viga y evita que el coche se desplace de lado. Trabaja con el mismo principio que el de sustentación.",
+      text: "Mira al riel lateral de la viga y evita que el tren se desplace de lado. Trabaja con el mismo principio que el de sustentación.",
       live: (t, tr) => [["Fuerza lateral", f(tr.sections[1].lateralForce / 1e3, 1), "kN"], ["Desvío lateral", f(tr.sections[1].y * 1000, 2), "mm"]],
       pose: { az: 40, el: 6, fit: 1.3 },
       span: 4,
@@ -85,8 +85,8 @@ export const PARTS = {
   ],
   eds: [
     {
-      id: "coche",
-      name: "Coche",
+      id: "tren",
+      name: "Tren",
       text: "Rueda sobre neumáticos hasta unos 150 km/h y después levita sobre sus imanes. En el modelo cada sección mide 14 m y pesa 25 t.",
       live: (t) => [["Velocidad", f(t.speedKmh, 0), "km/h"], ["Elevación", f(t.gapMm, 0), "mm"]],
       pose: { az: 30, el: 12, fit: 1.05 },
@@ -96,7 +96,7 @@ export const PARTS = {
     {
       id: "cryo",
       name: "Imán superconductor",
-      text: "Bobina de niobio-titanio enfriada con helio líquido. Su campo constante induce corrientes en la pared y la repulsión sostiene al coche.",
+      text: "Bobina de niobio-titanio enfriada con helio líquido. Su campo constante induce corrientes en la pared y la repulsión sostiene al tren.",
       live: (t) => [["Corriente inducida", f(t.induced * 100, 0), "%"], ["Elevación", f(t.gapMm, 0), "mm"]],
       // desde arriba: la pared de la via tapa lo que hay dentro de la u
       pose: { az: 48, el: 42, fit: 1.25 },
@@ -133,7 +133,7 @@ export const PARTS = {
     {
       id: "wheels",
       name: "Neumáticos retráctiles",
-      text: "Soportan al coche en parado y hasta unos 150 km/h. Después se recogen: la sustentación magnética ya iguala el peso.",
+      text: "Soportan al tren en parado y hasta unos 150 km/h. Después se recogen: la sustentación magnética ya iguala el peso.",
       live: (t) => [["Estado", t.wheelsDown ? "fuera" : "recogidos", ""]],
       pose: { az: 30, el: 46, fit: 1.35 },
       span: 5,

@@ -39,7 +39,7 @@ describe("loft con faldon", () => {
     expect(a.count).toBeGreaterThan(b.count); // el cuerpo pesa mas que el faldon
   });
 
-  it("los triangulos del faldon estan todos por debajo del suelo del coche (y <= 0) y los otros no son faldon", () => {
+  it("los triangulos del faldon estan todos por debajo del suelo del tren (y <= 0) y los otros no son faldon", () => {
     const g = loft(outline, stations, { skirtBelow: -0.01 });
     const pos = g.getAttribute("position");
     const idx = g.index;

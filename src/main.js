@@ -337,7 +337,7 @@ canvas.addEventListener("pointerleave", () => {
 let labels;
 const DETAIL = ["gap", "section"];
 // la cifra de un rotulo es la real; si el dibujo esta ampliado, se dice cuanto. En el EMS la exageracion
-// multiplica el hueco; en el EDS, lo que el coche sube sobre la altura de las ruedas.
+// multiplica el hueco; en el EDS, lo que el tren sube sobre la altura de las ruedas.
 function drawnTag() {
   const ex = effExag();
   if (ex <= 1) return "";
@@ -458,7 +458,7 @@ function slowForPerturbation() {
 }
 
 // ---- eventos visibles ----
-// Lo que cambia el estado del tren (cae, se pega, lo golpean) dura una fraccion de segundo: el coche cae
+// Lo que cambia el estado del tren (cae, se pega, lo golpean) dura una fraccion de segundo: el tren cae
 // en 0,1 s. Se mira en camara lenta y, si la camara no es de detalle, desde la de los imanes; pasados unos
 // segundos todo vuelve a como estaba, salvo lo que el usuario haya tocado entretanto.
 const ev = { active: false, end: 0, prevRig: null, movedTo: null, prevTs: 0, slowTs: 0 };
@@ -868,7 +868,7 @@ function step(now) {
   }
   // al inspeccionar una pieza de la via (riel, viga, pilar...) el decorado se detiene: a la
   // velocidad del tren la pieza elegida pasaria de largo antes de poder mirarla
-  const inspecting = !!selected && selected !== "coche";
+  const inspecting = !!selected && selected !== "tren";
   if (inspecting) scFrozen ??= train.x - train.length / 2;
   else scFrozen = null;
   const sc = scFrozen ?? train.x - train.length / 2;

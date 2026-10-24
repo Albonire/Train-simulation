@@ -1,5 +1,5 @@
 // libreria pintada sobre la carroceria (u = a lo largo de x, v = perimetro del
-// contorno, ver loft.js). cada coche lleva cuatro texturas sobre las mismas uv:
+// contorno, ver loft.js). cada vagon lleva cuatro texturas sobre las mismas uv:
 //   map        color (ventanas, puertas, franja, rotulo, parabrisas, faros)
 //   emissive   faros, pilotos y luz tenue de las ventanas (se nota al atardecer)
 //   bump       relieve: juntas de paneles, marcos de puerta y de ventana
@@ -40,7 +40,7 @@ function layer(w, h, base) {
 
 /**
  * points: contorno [z, y]; x0, x1: extremos del loft; len: tramo recto (centrado en 0);
- * role: "front" | "mid" | "rear"; noselen: largo de la nariz; carno: numero de coche.
+ * role: "front" | "mid" | "rear"; noselen: largo de la nariz; carno: numero de vagon.
  * style: { base, lower, lowery, accent, stripey: [a, b], windowy: [a, b], winw, winpitch, name }
  */
 export function liveryTextures({ points, x0, x1, len, role, noseLen = 9, carNo = 1, style }) {
@@ -180,7 +180,7 @@ export function liveryTextures({ points, x0, x1, len, role, noseLen = 9, carNo =
       M.g.fillRect(X(x), py, 1.5, ph);
     }
 
-    // rotulo y numero de coche, bajo la franja de ventanas
+    // rotulo y numero de vagon, bajo la franja de ventanas
     const mid = (pxa + pxb) / 2;
     const ty = style.signY;
     text(M, s, style.name, mid, ty, 0.34, style.accent, 700);

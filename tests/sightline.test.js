@@ -14,7 +14,7 @@ describe("segmentPointDistance", () => {
 describe("occludes: un arbol que tapa el tren se oculta", () => {
   const pts = trainSightPoints(42);
   const cam = P(-36, 14, 88);
-  it("un arbol justo en la linea de mira al coche central tapa", () => {
+  it("un arbol justo en la linea de mira al vagon central tapa", () => {
     // sobre la recta camara-centro, a 65 m de la camara
     const t = 65 / Math.hypot(36, 8, 88);
     const x = cam.x + (0 - cam.x) * t;

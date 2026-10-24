@@ -8,7 +8,7 @@ Este directorio contiene los recursos, scripts y modelos 3D que conforman la eta
 
 El tren y la infraestructura de vía se diseñaron a escala real (1:1) respetando las cotas físicas del sistema de levitación magnética:
 
-- **Sección del Coche:** Longitud de 14,0 m, anchura de 3,2 m y altura de 3,6 m.
+- **Sección del Tren:** Longitud de 14,0 m, anchura de 3,2 m y altura de 3,6 m.
 - **Entrehierro de Levitación EMS:** 10 mm nominales (0,010 m) entre la superficie superior de los electroimanes del tren y la cara inferior del estator LSM.
 - **Estructura Envolvente:** Faldones laterales y brazos inferiores de soporte que abrazan la viga guía de hormigón.
 - **Sistema de Guiado Lateral:** Imanes de guiado enfrentados a las caras laterales de la viga para absorber esfuerzos transversales y viento cruzado.

@@ -37,7 +37,7 @@ Qué se revisó, qué se encontró y cómo se evita que vuelva. La comprobación
 | Hilos de la cerca (1,5 cm) y su longitud | Raya brillante en el horizonte | Longitud limitada a 520 m y color mate |
 | Nubes en el borde del plano | Banda blanca a ras de horizonte | Desvanecimiento hacia el borde |
 | Sombra del sol | Acné y "peter panning" con el sol bajo | `normalBias` y sesgo revisados; sin hallazgos |
-| Librea del coche (UV) | Costura en el centro inferior | Queda fuera de la vista |
+| Librea del tren (UV) | Costura en el centro inferior | Queda fuera de la vista |
 
 ## Reglas para el futuro
 
@@ -67,7 +67,7 @@ liso (el de la niebla). No se reprodujo con Chromium por software (`npm run qa:p
 ## Segunda revision: tren, entorno e interfaz
 
 - **Arboles delante del tren.** `plant()` solo dejaba libres 22 m a cada lado y un hueco del lado de la
-  camara orbital; con otra orientacion de camara una copa podia cubrir un coche entero. Ahora el
+  camara orbital; con otra orientacion de camara una copa podia cubrir un vagon entero. Ahora el
   corredor libre es de 30 m y, ademas, cada arbol cuya silueta (tres esferas a lo largo de su eje) corta
   la linea entre la camara y alguno de diez puntos del tren se oculta en ese fotograma
   (`src/scene/sightline.js`, probado en `tests/sightline.test.js`). Vale para cualquier giro de camara.
@@ -88,7 +88,7 @@ liso (el de la niebla). No se reprodujo con Chromium por software (`npm run qa:p
 
 ## Tercera revision: el entorno no depende de instancias de GPU
 
-Reporte: un unico arbol enorme y oscuro sobre el coche central y ningun arbol a los lados. En la
+Reporte: un unico arbol enorme y oscuro sobre el vagon central y ningun arbol a los lados. En la
 captura tampoco se veian arbustos, postes de luz, hitos ni postes de la cerca. Todo eso era
 `InstancedMesh`; lo unico dibujado era una pila de una copa, un chopo (22,6 m: el maximo, con su propia
 escala) y un tronco en el origen, es decir, cada instancia con su escala pero sin su traslacion.
@@ -111,7 +111,7 @@ Otras correcciones de esta pasada:
   cortado.
 - Texturas: arboles con degradado de color y copas abolladas con normales suaves; el terreno gana un
   margen de tierra y hierba seca que solo dependen de la distancia a la via (no parpadean); el hormigon,
-  suciedad por altura del mundo (zocalo salpicado); la pintura del coche, menos metalica y con suciedad
+  suciedad por altura del mundo (zocalo salpicado); la pintura del tren, menos metalica y con suciedad
   en el faldon; las montanas, roca por pendiente y nieve solo en lo alto y plano; postes con zocalo.
 
 
@@ -120,7 +120,7 @@ Otras correcciones de esta pasada:
 Un roast honesto de la simulacion (estetica, uso, texturas, que tan visible y entendible es) puntuo la
 visibilidad de la levitacion en 2 sobre 10: en la vista por defecto el hueco medido era de 1,8 px y todo
 el mecanismo (imanes, estator, guia) quedaba tras el faldon opaco; en el EDS la pared tapaba el 56 % del
-coche. Lo que se corrigio, y como se comprueba:
+tren. Lo que se corrigio, y como se comprueba:
 
 - **Sin control y Sin corriente eran placebos** (`Train.step` los deshacia en 1 ms). Ahora los lleva la
   `Train` (`tests/perturb.test.js`, con la `Train` real).
@@ -132,7 +132,7 @@ coche. Lo que se corrigio, y como se comprueba:
 - **Faldon translucido** (EMS): el contorno lleva un vertice a y = 0 y `loft(skirtBelow)` separa el
   faldon en un segundo grupo con su propio material; en las vistas generales se ve a traves de el el
   estator con su onda roja y azul, los imanes y su bobinado. **Banda de aire**: una caja por modulo entre
-  la cara polar y el estator, cian en el hueco nominal, ambar fuera de el y roja si el coche cayo en marcha.
+  la cara polar y el estator, cian en el hueco nominal, ambar fuera de el y roja si el tren cayo en marcha.
 - **EDS**: la pared cercana a la camara es translucida (la que cambia con el lado) y la orbita sube a unos
   26 grados.
 - **Honestidad**: los rotulos dicen cuanto se amplia el dibujo ("dibujo x24" en EMS, la altura dibujada en

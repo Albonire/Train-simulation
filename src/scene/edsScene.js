@@ -7,7 +7,7 @@ import { capMesh, sideRange } from "./caps.js";
 import { EDS } from "../physics/constants.js";
 
 export const RIGS = {
-  // elevacion de unos 26 grados: por encima de la pared de la via se ve el coche y sus imanes
+  // elevacion de unos 26 grados: por encima de la pared de la via se ve el tren y sus imanes
   orbit: { pos: [-20.3, 33.2, 49.9], target: [0, 6.9, 0], fov: 40, body: "skirt", fit: { y: [5.0, 9.6], fill: 0.88 } },
   chase: { pos: [-45, 9, 13.5], target: [6, 7.0, 0], fov: 50, body: "skirt" },
   section: { pos: [10, 7.0, 0.01], target: [0, 6.75, 0], fov: 44, body: "cut", cut: { axis: "x", c: 0 } },

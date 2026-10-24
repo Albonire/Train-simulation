@@ -15,7 +15,7 @@ El proyecto aborda el estudio cinemático, dinámico y geométrico de las dos te
 El desarrollo del proyecto se estructuró en dos etapas complementarias:
 
 ### 1. Etapa de Modelado Geométrico y Validación en Blender (`blender/`)
-- **Modelado a escala real (1:1):** sección de coche de 14,0 m, anchura de 3,2 m, altura de 3,6 m y faldones envolventes.
+- **Modelado a escala real (1:1):** sección del tren de 14,0 m, anchura de 3,2 m, altura de 3,6 m y faldones envolventes.
 - **Tolerancias y entrehierros:** verificación geométrica de la brecha crítica de 10 mm (0,010 m) entre electroimanes y paquetes de estator, garantizando márgenes mecánicos frente a colisiones.
 - **Despiece paramétrico (*exploded view*):** jerarquía de componentes mecánicos y magnéticos (chasis, electroimanes de sustentación, imanes de guiado lateral, patines de aterrizaje, bobinas superconductoras y núcleo de vía).
 - **Recursos incluidos en el repositorio:**
@@ -76,8 +76,8 @@ Requisitos: Node.js 22.12 o superior.
 |---|---|---|---|
 | Entrehierro nominal EMS | 10 mm (margen operativo 10 a 15 mm) | Documentado | Patentes US 7,637,214 y US 7,814,840 |
 | Paso polar del estator (τ) | 258 mm; paso de diente 63 mm | Documentado | MDPI Actuators 14(11):514 |
-| Vehículo de ensayo (2 coches) | 54 m, 120 t en vacío, 400 km/h, 4250 V, 1200 A | Documentado | The Transrapid Magnetic Levitation System |
-| Sección unitaria en el modelo | 14 m por coche, 60 t de masa | Parametrizado | Adaptado para escala de visualización en pantalla |
+| Vehículo de ensayo (2 secciones) | 54 m, 120 t en vacío, 400 km/h, 4250 V, 1200 A | Documentado | The Transrapid Magnetic Levitation System |
+| Sección unitaria en el modelo | 14 m por sección del tren, 60 t de masa | Parametrizado | Adaptado para escala de visualización en pantalla |
 | Elevación típica en EDS | ~100 mm a alta velocidad | Documentado | JR Central / SCMaglev technical reports |
 | Velocidad récord serie L0 (EDS) | 603 km/h (año 2015) | Documentado | Central Japan Railway Company |
 | Bobinas superconductoras | 700 kA, aleación NbTi en baño de helio líquido | Documentado | KIT / SCMaglev publications |

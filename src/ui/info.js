@@ -15,7 +15,7 @@ const COLORES = `
 <ul>
   <li><span class="sw n"></span><b>Rojo</b> es polo norte y <span class="sw s"></span><b>azul</b> polo sur. En el estator, las franjas muestran el polo opuesto al del imán que tienen enfrente, porque se atraen.</li>
   <li><b>Apertura</b>: al cargar, unos 8 s de primer plano sobre el mecanismo y después la vista general. Cualquier clic o tecla la omite y <kbd>I</kbd> la repite.</li>
-  <li><b>Lupa del entrehierro</b> (abajo a la izquierda, tecla <kbd>L</kbd>): un corte en vivo del sistema. En el EMS se ve el estator arriba, el imán del coche debajo y el hueco entre ambos, ampliado en el dibujo y con su cifra real al lado; las líneas de campo van del polo norte al sur y las flechas son la atracción (verde) y el peso (blanco). En el EDS se ve la pared con sus bobinas en 8, el imán superconductor del coche y el eje nulo de las bobinas: el coche se eleva cuando su imán queda por encima de ese eje. Avisa del despegue y del aterrizaje.</li>
+  <li><b>Lupa del entrehierro</b> (abajo a la izquierda, tecla <kbd>L</kbd>): un corte en vivo del sistema. En el EMS se ve el estator arriba, el imán del tren debajo y el hueco entre ambos, ampliado en el dibujo y con su cifra real al lado; las líneas de campo van del polo norte al sur y las flechas son la atracción (verde) y el peso (blanco). En el EDS se ve la pared con sus bobinas en 8, el imán superconductor del tren y el eje nulo de las bobinas: el tren se eleva cuando su imán queda por encima de ese eje. Avisa del despegue y del aterrizaje.</li>
   <li><b>Partículas y líneas de flujo</b>: recorren el circuito magnético con el sentido real del campo, del polo norte (rojo) al sur (azul). Se dibujan cuando los imanes están a la vista: cámaras Campo, Sección e Imanes, o carrocería en rayos X o corte. El indicador <b>Campo</b> del cuadro de mando muestra su intensidad y abre la cámara Campo.</li>
   <li>Flechas sobre el techo, en escala de raíz cuadrada para que se vean fuerzas de órdenes distintos: <span class="sw lift"></span>sustentación, <span class="sw weight"></span>peso, <span class="sw thrust"></span>empuje, <span class="sw drag"></span>resistencia y <span class="sw side"></span>fuerza lateral.</li>
 </ul>`;
@@ -138,7 +138,7 @@ export const FIGURES = [
 // los dos indicadores del cuadro de mando.
 export const GLOSARIO = {
   ems: {
-    cur: "Corriente que circula por el electroimán que sostiene al coche. El control la sube y la baja para mantener el hueco.",
+    cur: "Corriente que circula por el electroimán que sostiene al tren. El control la sube y la baja para mantener el hueco.",
     freq: "Frecuencia de la corriente que alimenta la vía. Más frecuencia, más velocidad: el tren sigue a la onda.",
     thr: "Fuerza con la que el motor de la vía empuja al tren hacia delante.",
     ang: "Cuánto se retrasa el tren respecto de la onda de la vía (ángulo de carga). Con más desfase empuja más; pasado cierto punto pierde el sincronismo.",
@@ -146,11 +146,11 @@ export const GLOSARIO = {
     aero: "Fuerza con la que el aire frena al tren. Crece con el cuadrado de la velocidad.",
     pow: "Potencia que toma de la red eléctrica. Negativa si el tren frena y devuelve energía.",
     en: "Energía que el tren ha tomado de la red y la que ha devuelto al frenar.",
-    gap: "Entrehierro: el hueco de aire entre el imán del coche y el riel de hierro de la vía. Es de 10 mm y nada se toca.",
+    gap: "Entrehierro: el hueco de aire entre el imán del tren y el riel de hierro de la vía. Es de 10 mm y nada se toca.",
     field: "Intensidad del campo magnético en el hueco, respecto de la nominal. Pulsa para verlo.",
   },
   eds: {
-    ind: "Corriente que el imán del coche genera en las bobinas de la pared al pasar. Sin movimiento no hay corriente.",
+    ind: "Corriente que el imán del tren genera en las bobinas de la pared al pasar. Sin movimiento no hay corriente.",
     freq: "Frecuencia de la corriente que alimenta las bobinas de propulsión. Más frecuencia, más velocidad.",
     thr: "Fuerza con la que las bobinas de la pared empujan al tren hacia delante.",
     lift: "Fuerza hacia arriba que nace de las corrientes inducidas frente al peso del tren. Iguales cuando flota.",
@@ -158,7 +158,7 @@ export const GLOSARIO = {
     whl: "Hasta unos 150 km/h el tren rueda sobre neumáticos; después se retraen y flota.",
     pow: "Potencia que toma de la red eléctrica. Negativa si el tren frena y devuelve energía.",
     en: "Energía que el tren ha tomado de la red y la que ha devuelto al frenar.",
-    gap: "Elevación: la altura a la que flota el coche sobre la losa de la vía, unos 100 mm.",
+    gap: "Elevación: la altura a la que flota el tren sobre la losa de la vía, unos 100 mm.",
     field: "Intensidad de las corrientes inducidas, respecto de las máximas. Pulsa para ver el campo.",
   },
 };

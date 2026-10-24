@@ -1,9 +1,9 @@
 // lupa del entrehierro: un corte transversal en vivo del sistema de levitacion, dibujado en 2d.
 //
-// ems: viga y estator arriba, el iman del coche debajo; el hueco entre ambos es el entrehierro, a
+// ems: viga y estator arriba, el iman del tren debajo; el hueco entre ambos es el entrehierro, a
 //      una escala ampliada y a escala 1:1 en la cifra. las lineas de campo salen del polo norte,
 //      cruzan el hueco y entran por el sur. la flecha verde es la atraccion; la blanca, el peso.
-// eds: pared de la via con bobinas en 8 a la derecha, iman superconductor del coche a la izquierda;
+// eds: pared de la via con bobinas en 8 a la derecha, iman superconductor del tren a la izquierda;
 //      la levitacion sale de que el iman quede por encima del eje nulo de las bobinas.
 //
 // todo sale de la telemetria del modelo: no hay nada dibujado "a mano" que no se mueva con ella.
@@ -235,11 +235,11 @@ export function createLoupe(root, { setRig, toast, onFail = () => {} }) {
     text(c, "N", 71, yM + 7, { size: 10, weight: 700, color: "#fff", align: "center" });
     text(c, "S", 173, yM + 7, { size: 10, weight: 700, color: "#fff", align: "center" });
     text(c, "Imán", 122, yM + 18, { size: 10, color: c.text, align: "center", weight: 600 });
-    // coche: el piso y la caja sobre el iman
+    // tren: el piso y la caja sobre el iman
     rrect(24, yM + 36, 196, 26, 4, c.body);
     ctx.fillStyle = c.bg2;
     for (let x = 40; x < 200; x += 28) ctx.fillRect(x, yM + 40, 16, 6);
-    text(c, "Coche", 122, yM + 59, { size: 9.5, align: "center", color: c.iron, weight: 600 });
+    text(c, "Tren", 122, yM + 59, { size: 9.5, align: "center", color: c.iron, weight: 600 });
     // cota del entrehierro, a escala del dibujo
     const dx = 224;
     ctx.strokeStyle = c.text;
@@ -252,7 +252,7 @@ export function createLoupe(root, { setRig, toast, onFail = () => {} }) {
     ctx.moveTo(dx, yS);
     ctx.lineTo(dx, yM);
     ctx.stroke();
-    // fuerzas junto al coche
+    // fuerzas junto al tren
     forces(c, 266, 138, s.lift, (s.mass + s.extraMass) * 9.81, "Atracción");
     // la cifra real del hueco, junto a la cota
     text(c, `${fmt(gapMm, 1)} mm`, dx + 8, yS + g / 2 + 4, { size: 13, weight: 700, color: c.text, mono: true });
@@ -264,7 +264,7 @@ export function createLoupe(root, { setRig, toast, onFail = () => {} }) {
     const s = train.sections[Math.floor(train.sections.length / 2)];
     const elev = clamp(tel.gapMm * EDS_PX, 8, 70);
     const ground = 168;
-    const floorY = ground - elev; // piso del coche
+    const floorY = ground - elev; // piso del tren
     // losa y pared con sus bobinas
     rrect(8, ground, 226, 14, 2, c.concrete);
     rrect(176, 26, 46, ground - 26, 2, c.concrete);
@@ -300,7 +300,7 @@ export function createLoupe(root, { setRig, toast, onFail = () => {} }) {
     ctx.stroke();
     ctx.setLineDash([]);
     text(c, "eje nulo", 205, nullY + 3, { size: 9, align: "center", color: c.bg, weight: 600 });
-    // coche: cuerpo, iman superconductor frente a la pared y ruedas
+    // tren: cuerpo, iman superconductor frente a la pared y ruedas
     const bodyTop = floorY - 74;
     rrect(30, bodyTop, 122, 74, 6, c.body);
     ctx.fillStyle = c.bg2;

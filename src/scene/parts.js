@@ -1,8 +1,8 @@
 // registro de piezas, explosion, seleccion y resaltado.
 //
-// los constructores de la via y de los coches etiquetan cada malla con `tag(modo, id, malla, dir)`.
+// los constructores de la via y del tren etiquetan cada malla con `tag(modo, id, malla, dir)`.
 // `dir` es el desplazamiento (m) de esa malla con la vista expandida al maximo. con eso:
-//  - `pick` lanza un rayo y devuelve la pieza bajo el puntero (el coche solo si no hay otra)
+//  - `pick` lanza un rayo y devuelve la pieza bajo el puntero (el tren solo si no hay otra)
 //  - `setexplode(k)` separa las piezas (k de 0 a 1)
 //  - `sethighlight` superpone una copia translucida de las mallas de una pieza
 //  - `focusbox` da la caja que encuadra una pieza cerca del centro del tren
@@ -67,14 +67,14 @@ export function pick(mode, camera, clientX, clientY, w, h) {
   ndc.set((clientX / w) * 2 - 1, -(clientY / h) * 2 + 1);
   ray.setFromCamera(ndc, camera);
   const hits = ray.intersectObjects(lists[mode], false);
-  let coche = null;
+  let tren = null;
   for (const hit of hits) {
     if (!hit.object.visible) continue;
     const id = hit.object.userData.part;
-    if (id === "coche") coche ??= { id, point: hit.point };
+    if (id === "tren") tren ??= { id, point: hit.point };
     else return { id, point: hit.point };
   }
-  return coche;
+  return tren;
 }
 
 // ---- resaltado ----
@@ -140,7 +140,7 @@ export function focusBox(mode, id, span) {
   const p = new THREE.Vector3();
   for (const { mesh } of reg[mode].get(id) ?? []) {
     if (!mesh.visible) continue;
-    // mallas de otros coches o tramos lejanos no cuentan
+    // mallas de otros vagones o tramos lejanos no cuentan
     mesh.getWorldPosition(p);
     if (!Number.isFinite(p.x) || Math.abs(p.x) > span + 14) continue;
     const geo = mesh.geometry;

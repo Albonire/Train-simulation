@@ -145,7 +145,7 @@ async function run([w, h], mode, theme) {
   const where = (name) => ev((n) => {
     const a = window.__app, T = window.__THREE;
     // puntos del mundo que pertenecen a cada pieza (a la altura de la via)
-    const P = { rail: [0, 6.85, 1.56], stator: [0, 6.5, 1.15], pier: [0, 3, 0], beam: [0, 6.9, 0], coche: [0, 3.2, 2.04] };
+    const P = { rail: [0, 6.85, 1.56], stator: [0, 6.5, 1.15], pier: [0, 3, 0], beam: [0, 6.9, 0], tren: [0, 3.2, 2.04] };
     const q = P[n] ?? P.beam;
     const v = new T.Vector3(...q).project(a.camera);
     return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight];

@@ -199,7 +199,7 @@ export function buildEdsSection({ length = EDS.sectionLength, role = "mid", base
     bodyMats.push(bel.material);
     clipMats.push(bel.material);
     group.add(bel);
-    tagPart("eds", "coche", bel);
+    tagPart("eds", "tren", bel);
   }
 
   const Lb = length - 0.6 - (role === "mid" ? 0 : 3);
@@ -278,11 +278,11 @@ export function buildEdsSection({ length = EDS.sectionLength, role = "mid", base
     }
   }
 
-  // piezas del explorador: el coche (carroceria, techo, interior)
-  tagPart("eds", "coche", body);
-  tagPartTree("eds", "coche", roof.group);
-  tagPart("eds", "coche", fl);
-  group.children.forEach((c) => c.isMesh && c.geometry?.type === "BoxGeometry" && c.userData.part === undefined && tagPart("eds", "coche", c)); // asientos
+  // piezas del explorador: el tren (carroceria, techo, interior)
+  tagPart("eds", "tren", body);
+  tagPartTree("eds", "tren", roof.group);
+  tagPart("eds", "tren", fl);
+  group.children.forEach((c) => c.isMesh && c.geometry?.type === "BoxGeometry" && c.userData.part === undefined && tagPart("eds", "tren", c)); // asientos
 
   return {
     group, bodyMats, clipMats, modules, poleM, wheels, length,

@@ -222,7 +222,7 @@ async function exaggeration() {
       check(S, "ems: la camara de imanes fija x24 y el deslizador lo dice", st.off && /×24/.test(st.out) && /camara|cámara/.test(st.out), JSON.stringify(st));
       check(S, "ems: el rotulo del hueco dice cuanto se amplia el dibujo", /dibujo ×24/.test(st.label), st.label);
     } else {
-      // en el EDS la exageracion amplia lo que el coche sube sobre las ruedas: el rotulo dice la altura dibujada
+      // en el EDS la exageracion amplia lo que el tren sube sobre las ruedas: el rotulo dice la altura dibujada
       check(S, "eds: el rotulo no finge una ampliacion que no hay o dice la altura dibujada", !/dibujo/.test(st.label) || /dibujo \d+ mm/.test(st.label), st.label);
     }
     await page.evaluate(() => window.__app.setRig("orbit", true));

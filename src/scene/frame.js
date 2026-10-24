@@ -13,7 +13,7 @@ export const FRAME_LIMITS = { minDist: 3.2, maxDist: 80, minY: 1.7, maxRadius: 6
 /**
  * caja de una pieza de la via (periodica): se recorta en x a +-span alrededor de su propio
  * centro, de modo que nunca queda invertida aunque la pieza este lejos del centro del tren.
- * para piezas del coche (cerca de x = 0) el resultado es el mismo que recortar a +-span.
+ * para piezas del tren (cerca de x = 0) el resultado es el mismo que recortar a +-span.
  */
 export function windowBox(box, span, center = 0) {
   if (!box || !vec3(box.min) || !vec3(box.max) || !fin(span) || span <= 0) return null;

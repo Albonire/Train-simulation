@@ -22,8 +22,8 @@ export const TOUR = {
   ems: [
     {
       id: "hueco",
-      title: "El coche no toca la vía",
-      text: "Entre el imán del coche y el riel de hierro de la vía (el estator) quedan solo 10 mm de aire. Nada roza.",
+      title: "El tren no toca la vía",
+      text: "Entre el imán del tren y el riel de hierro de la vía (el estator) quedan solo 10 mm de aire. Nada roza.",
       rig: "gap",
       layers: LAYERS_OFF,
       timeScale: 1,
@@ -74,7 +74,7 @@ export const TOUR = {
     {
       id: "ruedas",
       title: "Despacio, rueda",
-      text: "Parado, el coche descansa sobre neumáticos. Sin movimiento no hay levitación: hacen falta unos 150 km/h.",
+      text: "Parado, el tren descansa sobre neumáticos. Sin movimiento no hay levitación: hacen falta unos 150 km/h.",
       rig: "gap",
       layers: LAYERS_OFF,
       timeScale: 1,
@@ -84,7 +84,7 @@ export const TOUR = {
     {
       id: "campo",
       title: "El imán induce corrientes",
-      text: "Al pasar, el imán superconductor del coche induce corrientes en las bobinas de la pared. Esas corrientes lo empujan hacia arriba.",
+      text: "Al pasar, el imán superconductor del tren induce corrientes en las bobinas de la pared. Esas corrientes lo empujan hacia arriba.",
       rig: "gap",
       layers: { fields: true, wave: false, forces: true },
       timeScale: 20,
@@ -94,7 +94,7 @@ export const TOUR = {
     {
       id: "despega",
       title: "Despega y recoge las ruedas",
-      text: "Pasados unos 150 km/h la fuerza supera al peso: las ruedas se recogen y el coche queda flotando a unos 10 cm.",
+      text: "Pasados unos 150 km/h la fuerza supera al peso: las ruedas se recogen y el tren queda flotando a unos 10 cm.",
       rig: "gap",
       layers: { fields: true, wave: false, forces: true },
       timeScale: 5,
@@ -104,7 +104,7 @@ export const TOUR = {
     {
       id: "estable",
       title: "Se corrige solo",
-      text: "Si el coche se desplaza o lo golpean, las bobinas en 8 lo devuelven al centro. No hace falta ningún control.",
+      text: "Si el tren se desplaza o lo golpean, las bobinas en 8 lo devuelven al centro. No hace falta ningún control.",
       rig: "gap",
       layers: { fields: true, wave: false, forces: true },
       timeScale: 1,

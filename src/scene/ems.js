@@ -184,7 +184,7 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
     },
   });
   const bodyM = paintMaterial(livery);
-  // el faldon (lo que cuelga bajo el suelo del coche) lleva la misma pintura pero puede volverse
+  // el faldon (lo que cuelga bajo el suelo del tren) lleva la misma pintura pero puede volverse
   // translucido: detras estan los imanes, el estator y el hueco, que es lo que hay que ver.
   const skirtM = paintMaterial(livery);
   skirtM.userData.skirt = true;
@@ -212,7 +212,7 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
     bodyMats.push(bel.material);
     clipMats.push(bel.material);
     group.add(bel);
-    tagPart("ems", "coche", bel);
+    tagPart("ems", "tren", bel);
   }
 
   const Lb = length - 0.6 - (role === "mid" ? 0 : 3);
@@ -306,10 +306,10 @@ export function buildEmsSection({ length = EMS.sectionLength, role = "mid", shar
     });
   }
 
-  // piezas del explorador: el coche (carroceria, techo, fuelle, interior) y los imanes
-  tagPart("ems", "coche", body);
-  tagPartTree("ems", "coche", roof.group);
-  tagPartTree("ems", "coche", interior);
+  // piezas del explorador: el tren (carroceria, techo, fuelle, interior) y los imanes
+  tagPart("ems", "tren", body);
+  tagPartTree("ems", "tren", roof.group);
+  tagPartTree("ems", "tren", interior);
   levGroup.children.forEach((c) => c.isMesh && tagPart("ems", "lev", c, Math.sign(c.position.z) || 1));
   guideGroup.children.forEach((h) => h.children.forEach((c) => tagPart("ems", "guide", c, h.userData.side)));
 

@@ -1,5 +1,5 @@
 # modelo 3d del tren maglev
-# escala 1:1 (metros) - coche: 14 m, ancho: 3.2 m, altura: 3.6 m
+# escala 1:1 (metros) - tren: 14 m, ancho: 3.2 m, altura: 3.6 m
 # diseno para blender y visualizacion webgl
 mtllib maglev_train_ems.mtl
 
@@ -99,7 +99,7 @@ f 29 30 31 32
 f 25 29 32 28
 f 26 27 31 30
 
-o Coche_Carroceria_Principal
+o Tren_Carroceria_Principal
 usemtl Mat_Carroceria
 s 1
 v -1.6000 2.8500 -6.5000
@@ -123,7 +123,7 @@ f 37 38 39 40
 f 33 37 40 36
 f 34 35 39 38
 
-o Coche_Frontal_Aerodinamico
+o Tren_Frontal_Aerodinamico
 usemtl Mat_Carroceria
 s 1
 v -1.5000 2.8500 6.5000
@@ -147,7 +147,7 @@ f 45 46 47 48
 f 41 45 48 44
 f 42 43 47 46
 
-o Coche_Trasera_Aerodinamica
+o Tren_Trasera_Aerodinamica
 usemtl Mat_Carroceria
 s 1
 v -1.5000 2.8500 -7.5000
