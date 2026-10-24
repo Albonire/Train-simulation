@@ -25,6 +25,10 @@ export function createLabels(container) {
         const show = enabled && it.spec.rigs.includes(rig) && (!it.spec.when || it.spec.when());
         if (!show) {
           it.el.style.display = "none";
+          if (it.el.textContent) {
+            it.el.textContent = "";
+            it.last = "";
+          }
           continue;
         }
         v.copy(it.spec.pos()).project(camera);

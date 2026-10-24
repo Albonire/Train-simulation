@@ -16,18 +16,29 @@ function signTexture(text, sub) {
   c.width = 1024;
   c.height = 256;
   const g = c.getContext("2d");
-  g.fillStyle = "#0f2a44";
-  g.fillRect(0, 0, c.width, c.height);
-  g.fillStyle = "#ffffff";
-  g.font = "700 110px system-ui, sans-serif";
-  g.textAlign = "center";
-  g.fillText(text, 512, 140);
-  g.fillStyle = "#8fd3ff";
-  g.font = "500 54px system-ui, sans-serif";
-  g.fillText(sub, 512, 215);
+  const render = () => {
+    g.fillStyle = "#0f2a44";
+    g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = "#ffffff";
+    g.font = '700 110px "Barlow", system-ui, sans-serif';
+    g.textAlign = "center";
+    g.fillText(text, 512, 140);
+    g.fillStyle = "#8fd3ff";
+    g.font = '500 54px "Barlow", system-ui, sans-serif';
+    g.fillText(sub, 512, 215);
+  };
+  render();
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
+  t.needsUpdate = true;
+  // cuando las fuentes asincronas cargan se redibuja el rotulo
+  if (typeof document !== "undefined" && document.fonts?.ready) {
+    document.fonts.ready.then(() => {
+      render();
+      t.needsUpdate = true;
+    });
+  }
   return t;
 }
 

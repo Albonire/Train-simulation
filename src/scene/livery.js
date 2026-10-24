@@ -27,15 +27,21 @@ function roundRect(g, x, y, w, h, r) {
   g.closePath();
 }
 
+function clearLayer(L) {
+  L.g.setTransform(1, 0, 0, 1, 0, 0);
+  L.g.fillStyle = L.base;
+  L.g.fillRect(0, 0, L.w, L.h);
+  L.g.scale(L.w / W, L.h / H); // se pinta siempre en coordenadas del mapa de color
+}
+
 function layer(w, h, base) {
   const c = document.createElement("canvas");
   c.width = w;
   c.height = h;
   const g = c.getContext("2d");
-  g.fillStyle = base;
-  g.fillRect(0, 0, w, h);
-  g.scale(w / W, h / H); // se pinta siempre en coordenadas del mapa de color
-  return { c, g };
+  const L = { c, g, w, h, base };
+  clearLayer(L);
+  return L;
 }
 
 /**
@@ -61,63 +67,69 @@ export function liveryTextures({ points, x0, x1, len, role, noseLen = 9, carNo =
   const O = layer(W / 2, H / 2, "rgb(255,100,14)"); // ao, rugosidad, metalicidad (pintura, poco metalica)
   const all = [M, E, B, O];
 
-  // faldon inferior
-  if (style.lower) {
-    const vp = V(vAt(points, 1, style.lowerY));
-    const vn = V(vAt(points, -1, style.lowerY));
-    M.g.fillStyle = style.lower;
-    M.g.fillRect(0, 0, W, vp);
-    M.g.fillRect(0, vn, W, H - vn);
-    O.g.fillStyle = "rgb(255,160,20)";
-    O.g.fillRect(0, 0, W, vp);
-    O.g.fillRect(0, vn, W, H - vn);
-    // suciedad del faldon: se oscurece suavemente hacia el borde inferior de cada flanco
-    const dirt = (y0, y1, yEdge) => {
-      const gr = M.g.createLinearGradient(0, y0, 0, y1);
-      gr.addColorStop(0, "rgba(46,38,30,0)");
-      gr.addColorStop(1, "rgba(46,38,30,0.30)");
-      M.g.fillStyle = gr;
-      M.g.fillRect(0, Math.min(y0, yEdge), W, Math.abs(yEdge - y0));
+  const render = () => {
+    clearLayer(M);
+    clearLayer(E);
+    clearLayer(B);
+    clearLayer(O);
+
+    // faldon inferior
+    if (style.lower) {
+      const vp = V(vAt(points, 1, style.lowerY));
+      const vn = V(vAt(points, -1, style.lowerY));
+      M.g.fillStyle = style.lower;
+      M.g.fillRect(0, 0, W, vp);
+      M.g.fillRect(0, vn, W, H - vn);
+      O.g.fillStyle = "rgb(255,160,20)";
+      O.g.fillRect(0, 0, W, vp);
+      O.g.fillRect(0, vn, W, H - vn);
+      // suciedad del faldon: se oscurece suavemente hacia el borde inferior de cada flanco
+      const dirt = (y0, y1, yEdge) => {
+        const gr = M.g.createLinearGradient(0, y0, 0, y1);
+        gr.addColorStop(0, "rgba(46,38,30,0)");
+        gr.addColorStop(1, "rgba(46,38,30,0.30)");
+        M.g.fillStyle = gr;
+        M.g.fillRect(0, Math.min(y0, yEdge), W, Math.abs(yEdge - y0));
+      };
+      dirt(vp, 0, 0);
+      dirt(vn, H, H);
+    }
+
+    const half = len / 2;
+    const hasFront = role === "front";
+    const hasRear = role === "rear";
+    const cab = 2.4; // tramo de cabina (sin ventanas de pasajeros) en los extremos con nariz
+    const pxa = -half + (hasRear ? cab : 0.9);
+    const pxb = half - (hasFront ? cab : 0.9);
+    const doorW = 1.1;
+    const doors = [pxa + 0.4 + doorW / 2, pxb - 0.4 - doorW / 2];
+    const [w0, w1] = style.windowY;
+
+    const fillRR = (L, color, x, y, w, h, r) => {
+      L.g.fillStyle = color;
+      roundRect(L.g, x, y, w, h, r);
+      L.g.fill();
     };
-    dirt(vp, 0, 0);
-    dirt(vn, H, H);
-  }
+    const strokeRR = (L, color, lw, x, y, w, h, r) => {
+      L.g.strokeStyle = color;
+      L.g.lineWidth = lw;
+      roundRect(L.g, x, y, w, h, r);
+      L.g.stroke();
+    };
 
-  const half = len / 2;
-  const hasFront = role === "front";
-  const hasRear = role === "rear";
-  const cab = 2.4; // tramo de cabina (sin ventanas de pasajeros) en los extremos con nariz
-  const pxa = -half + (hasRear ? cab : 0.9);
-  const pxb = half - (hasFront ? cab : 0.9);
-  const doorW = 1.1;
-  const doors = [pxa + 0.4 + doorW / 2, pxb - 0.4 - doorW / 2];
-  const [w0, w1] = style.windowY;
-
-  const fillRR = (L, color, x, y, w, h, r) => {
-    L.g.fillStyle = color;
-    roundRect(L.g, x, y, w, h, r);
-    L.g.fill();
-  };
-  const strokeRR = (L, color, lw, x, y, w, h, r) => {
-    L.g.strokeStyle = color;
-    L.g.lineWidth = lw;
-    roundRect(L.g, x, y, w, h, r);
-    L.g.stroke();
-  };
-
-  // texto en metros del vehiculo, ya corregido para el flanco `s`
-  const text = (L, s, str, xm, ym, hm, color, weight = 700) => {
-    const vy = vTop(s, ym);
-    L.g.save();
-    L.g.translate(X(xm), vy);
-    L.g.scale(pu * (s < 0 ? -1 : 1), pv * (s > 0 ? -1 : 1));
-    L.g.fillStyle = color;
-    L.g.font = `${weight} ${hm * 1.45}px system-ui, "Helvetica Neue", Arial, sans-serif`;
-    L.g.textAlign = "center";
-    L.g.textBaseline = "middle";
-    L.g.fillText(str, 0, 0);
-    L.g.restore();
-  };
+    // texto en metros del vehiculo, ya corregido para el flanco `s`
+    const text = (L, s, str, xm, ym, hm, color, weight = 700) => {
+      const vy = vTop(s, ym);
+      L.g.save();
+      L.g.translate(X(xm), vy);
+      L.g.scale(pu * (s < 0 ? -1 : 1), pv * (s > 0 ? -1 : 1));
+      L.g.fillStyle = color;
+      L.g.font = `${weight} ${hm * 1.45}px "Barlow", system-ui, "Helvetica Neue", Arial, sans-serif`;
+      L.g.textAlign = "center";
+      L.g.textBaseline = "middle";
+      L.g.fillText(str, 0, 0);
+      L.g.restore();
+    };
 
   for (const s of [1, -1]) {
     // franja de acento y filete
@@ -273,16 +285,30 @@ export function liveryTextures({ points, x0, x1, len, role, noseLen = 9, carNo =
   };
   if (hasFront) nose(1);
   if (hasRear) nose(-1);
+};
+render();
 
   const mk = (cv, srgb) => {
     const t = new THREE.CanvasTexture(cv);
     t.flipY = false;
     if (srgb) t.colorSpace = THREE.SRGBColorSpace;
     t.anisotropy = 8;
+    t.needsUpdate = true;
     return t;
   };
   void all;
-  return { map: mk(M.c, true), emissiveMap: mk(E.c, true), bumpMap: mk(B.c, false), ormMap: mk(O.c, false) };
+  const texs = { map: mk(M.c, true), emissiveMap: mk(E.c, true), bumpMap: mk(B.c, false), ormMap: mk(O.c, false) };
+  // cuando las fuentes asincronas cargan se redibuja la librea para asegurar la tipografia
+  if (typeof document !== "undefined" && document.fonts?.ready) {
+    document.fonts.ready.then(() => {
+      render();
+      texs.map.needsUpdate = true;
+      texs.emissiveMap.needsUpdate = true;
+      texs.bumpMap.needsUpdate = true;
+      texs.ormMap.needsUpdate = true;
+    });
+  }
+  return texs;
 }
 
 /** Pintura con barniz: los reflejos del cielo (entorno) marcan la forma de la carroceria. */

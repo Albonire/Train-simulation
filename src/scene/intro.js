@@ -25,6 +25,7 @@ export const INTRO = {
     tsClose: 1, // escala de tiempo durante el primer plano (el despegue dura 3,3 s)
     tsAt: 4.6, // y a partir de aqui, la habitual
     closeUntil: 6.0, // hasta aqui: rayos x, campo realzado, rotulos del hueco
+    bodyRig: "orbit", // carroceria solida con faldon translucido
     exag: 24, // exageracion del entrehierro en el primer plano
     exagRamp: [6.0, 7.6], // y como vuelve a la normal
     keys: [
