@@ -20,7 +20,7 @@ import { existsSync } from "node:fs";
 const URL_BASE = process.argv.find((a) => a.startsWith("http")) ?? "http://127.0.0.1:5173/";
 const CHROME =
   process.env.CHROME_PATH ??
-  ["/opt/pw-browsers/chromium-1194/chrome-linux/chrome", "/usr/bin/chromium", "/usr/bin/google-chrome"].find((p) => existsSync(p));
+  ["/opt/pw-browsers/chromium", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", "/usr/bin/chromium", "/usr/bin/google-chrome"].find((p) => existsSync(p));
 if (!CHROME) {
   console.error("No encuentro Chrome: define CHROME_PATH.");
   process.exit(2);

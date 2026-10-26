@@ -15,7 +15,7 @@ const STEPS = nums[1] ?? 120;
 const [W, H] = (process.env.QA_SIZE ?? "1920x918").split("x").map(Number);
 const CHROME =
   process.env.CHROME_PATH ??
-  ["/opt/pw-browsers/chromium-1194/chrome-linux/chrome", "/usr/bin/chromium", "/usr/bin/google-chrome"].find((p) => existsSync(p));
+  ["/opt/pw-browsers/chromium", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", "/usr/bin/chromium", "/usr/bin/google-chrome"].find((p) => existsSync(p));
 const rnd = () => ((seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296);
 const pick = (a) => a[Math.floor(rnd() * a.length)];
 

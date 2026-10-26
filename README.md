@@ -24,7 +24,7 @@ El desarrollo del proyecto se estructuró en dos etapas complementarias:
   - `blender/README.md`: guía técnica detallada del modelado, jerarquía de colecciones y modo de uso.
 
 ### 2. Etapa de Simulación Física Interactiva en Tiempo Real (`src/`)
-- Integración de las mallas y cotas validadas en Blender en una aplicación WebGL fluida a 60 fps.
+- La aplicación WebGL reconstruye la geometría con las mismas cotas validadas en Blender (sección de 14 m, entrehierro de 10 mm, paso polar de 258 mm) y la anima a 60 fps.
 - Simulación en tiempo real de las ecuaciones diferenciales de levitación, corrientes inducidas, arrastre magnético, aerodinámica y lazos de control frente a perturbaciones.
 - Telemetría interactiva con cámaras orbitales, de seguimiento, corte transversal y exploración individual de piezas.
 
@@ -33,14 +33,16 @@ El desarrollo del proyecto se estructuró en dos etapas complementarias:
 ## Cómo ejecutar la aplicación web
 
 ```bash
-pnpm install       # instalación de dependencias (o npm install)
-pnpm run dev       # servidor de desarrollo en http://127.0.0.1:5173
-pnpm test          # suite de pruebas del modelo físico (Vitest)
-pnpm run build     # compilación de producción para despliegue
-pnpm run figures   # generación de láminas isométricas interactivas
+npm install       # instalación de dependencias
+npm run dev       # servidor de desarrollo en http://127.0.0.1:5173
+npm test          # suite de pruebas del modelo físico (Vitest)
+npm run build     # compilación de producción para despliegue
+npm run figures   # generación de láminas isométricas interactivas
 ```
 
 Requisitos: Node.js 22.12 o superior.
+
+El documento de metodología, en lenguaje sencillo y con la identidad de la Universidad de Pamplona, está en `docs/metodologia/metodologia.pdf`.
 
 ---
 
@@ -49,15 +51,17 @@ Requisitos: Node.js 22.12 o superior.
 | Control | Acción |
 |---|---|
 | EMS / EDS | Alterna entre suspensión electromagnética y electrodinámica (mismo tren, distinta física). |
-| Velocidad objetivo, escala temporal (x1 a x60), pausa | Gobierna el trayecto entre estaciones y la aceleración del motor síncrono. |
+| Viaje (pestaña Control) | Escribe la distancia (0,2 a 200 km) y la velocidad máxima: el tren sale, frena solo y se detiene en ese punto. Al llegar muestra el tiempo, la velocidad máxima y el ajuste final. |
+| Velocidad máxima, escala temporal (x¼ a x60), pausa | Gobierna el trayecto y la velocidad con que se ve la simulación (x¼ es cámara lenta). |
 | Salir / Retener | En EMS, el tren aterriza sobre patines en estación y vuelve a levitar antes de partir. |
 | Perturbaciones | Simula carga extra (+12 %), ráfaga lateral de viento, golpe vertical en vía, corte de corriente o desconexión del lazo de control. |
 | Cámaras (teclas 1 a 6) | Vistas disponibles: Órbita, Seguir, Sección transversal, Imanes, Cenital y Líneas de Campo Magnético. |
 | Explorador de Piezas (P) y Despiece (E) | Permite seleccionar cada módulo modelado en Blender, aproximar la cámara y ver su función y telemetría en vivo. La tecla E ejecuta la animación de separación espacial (*exploded view*). |
 | Lupa de Entrehierro (L) | Sección en vivo abajo a la izquierda que mide en milímetros la distancia imán-estator y grafica las fuerzas en tiempo real. |
 | Carrocería | Modos de renderizado: sólida, rayos X o corte estructural. |
-| Láminas (`#/laminas`) | Módulo con figuras isométricas interactivas de los bancos de ensayo. |
-| Guía (`#/guia`) | Documentación técnica en la propia aplicación con fundamentación teórica y fuentes. |
+| Aprender: Láminas (`#/laminas`) | Módulo con figuras isométricas interactivas de los bancos de ensayo. |
+| Aprender: Guía (`#/guia`) | Documentación técnica en la propia aplicación con fundamentación teórica y fuentes. |
+| Menú `⋯` | Tema claro u oscuro, atajos, copiar enlace, guardar imagen y repetir la apertura. |
 
 ---
 
@@ -92,6 +96,7 @@ src/physics/      motor físico puro: constantes, ems, eds, lsm, cinemática de 
 src/scene/        escena Three.js: mallas 3D, mundo, vía, campos electromagnéticos y cámaras
 src/ui/           interfaz de usuario, gráficas en vivo, telemetría y enrutador
 figures/          láminas interactivas y bancos de prueba isométricos
+docs/metodologia/ documento de metodología (HTML y PDF; se regenera con node scripts/build-metodologia.mjs)
 tests/            suite de pruebas unitarias y de integración física
 scripts/          utilidades de compilación, capturas y QA
 ```

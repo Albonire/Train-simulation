@@ -30,6 +30,7 @@ El tren y la infraestructura de vía se diseñaron a escala real (1:1) respetand
 
 3. **`generate_models.py`**:
    Generador procedural en Python que sincroniza las medidas del modelo con las constantes físicas del simulador.
+   Genera `maglev_train_ems.obj`, `maglev_train_ems.mtl` y `maglev_blender_setup.py`: para cambiar el modelo se edita este archivo y se vuelve a ejecutar (`python3 blender/generate_models.py`), no los archivos generados.
 
 ---
 
