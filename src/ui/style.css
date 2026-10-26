@@ -124,17 +124,31 @@ a { color: var(--accent); text-underline-offset: 2px; }
 .nav a:hover { background: var(--surface-2); color: var(--text); }
 .nav a[aria-current="page"] { color: var(--text); background: var(--surface-2); }
 .tools { display: flex; align-items: center; gap: 2px; padding-left: 4px; }
+body[data-view="sim"] .nav a[data-page="sim"] { display: none; }
+.nav .ib[aria-current="page"] { color: var(--text); background: var(--surface-2); }
+
+/* ---- menus de la barra (popover nativo) ---- */
+.menu { position: fixed; inset: calc(var(--bar) + 4px) 12px auto auto; margin: 0; min-width: 250px; padding: 6px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--surface); color: var(--text); }
+#learn { right: 96px; }
+.menu > a, .menu > button { display: grid; grid-template-columns: 16px 1fr; align-items: start; gap: 12px; width: 100%; padding: 9px 10px; border-radius: var(--r-s); color: var(--text); text-decoration: none; text-align: left; }
+.menu > a:hover, .menu > button:hover { background: var(--surface-2); }
+.menu > a[aria-current="page"] { background: var(--tint); }
+.menu .ic { margin-top: 2px; color: var(--muted); }
+.menu b { display: block; font-weight: 600; }
+.menu small { display: block; color: var(--muted); font-size: var(--t-s); margin-top: 1px; }
 
 /* ---- camaras ---- */
 #cams { position: absolute; left: 12px; top: calc(var(--bar) + 12px); display: flex; flex-direction: column; gap: 2px; padding: 4px; z-index: 1; }
-#cams button { display: grid; grid-template-columns: 16px 1fr auto; align-items: center; gap: 10px; min-width: 128px; min-height: 40px; padding: 0 10px; border-radius: var(--r-s); color: var(--muted); font-weight: 500; text-align: left; transition: background-color 0.15s, color 0.15s; }
+#cams button { display: flex; align-items: center; justify-content: center; width: 40px; min-height: 40px; padding: 0; border-radius: var(--r-s); color: var(--muted); font-weight: 500; transition: background-color 0.15s, color 0.15s; }
+#cams button > span { display: none; }
 #cams button:hover { background: var(--surface-2); color: var(--text); }
 #cams button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 #cams .k { font-family: var(--num); font-size: var(--t-s); opacity: 0.75; }
+#cams button .ic { width: 18px; height: 18px; }
 
 /* ---- cuadro de mando ---- */
-#hud { position: absolute; bottom: 12px; left: 160px; right: 366px; margin: 0 auto; width: max-content; max-width: calc(100% - 540px); display: flex; align-items: center; gap: 20px; padding: 10px 16px; transition: right 0.3s var(--ease); z-index: 1; }
-body:has(#side.closed) #hud { right: 12px; max-width: calc(100% - 190px); }
+#hud { position: absolute; bottom: 12px; left: 72px; right: 366px; margin: 0 auto; width: max-content; max-width: calc(100% - 452px); display: flex; align-items: center; gap: 20px; padding: 10px 16px; transition: right 0.3s var(--ease); z-index: 1; }
+body:has(#side.closed) #hud { right: 12px; max-width: calc(100% - 96px); }
 .h-speed { display: flex; align-items: baseline; gap: 6px; min-width: 104px; }
 .h-speed output { font-size: var(--t-xl); font-weight: 600; line-height: 1; letter-spacing: -0.01em; }
 .h-speed span { color: var(--muted); font-size: var(--t-b); }
@@ -160,8 +174,8 @@ body:has(#side.closed) #hud { right: 12px; max-width: calc(100% - 190px); }
 .h-time { display: flex; align-items: center; gap: 6px; padding-left: 8px; }
 
 /* ---- pista de primera visita ---- */
-#hint { position: absolute; left: 160px; right: 366px; bottom: 88px; margin: 0 auto; width: max-content; max-width: calc(100% - 540px); padding: 7px 14px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); font-size: var(--t-b); text-align: center; opacity: 1; transition: opacity 0.4s, transform 0.4s var(--ease); z-index: 1; }
-body:has(#side.closed) #hint { right: 12px; }
+#hint { position: absolute; left: 364px; right: 366px; bottom: 88px; margin: 0 auto; width: max-content; max-width: calc(100% - 730px); padding: 7px 14px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); font-size: var(--t-b); text-align: center; opacity: 1; transition: opacity 0.4s, transform 0.4s var(--ease); z-index: 1; }
+body:has(#side.closed) #hint { right: 12px; max-width: calc(100% - 376px); }
 #hint.gone { opacity: 0; transform: translateY(6px); }
 
 /* ---- panel lateral ---- */
@@ -205,6 +219,19 @@ input[type="range"]:disabled { opacity: 0.45; cursor: not-allowed; }
 .resp { margin: 12px 0 0; padding: 10px 12px; border-radius: var(--r-s); background: var(--surface-2); color: var(--text); min-height: 44px; }
 .resp:empty::before { content: "Aquí aparece cuánto se desvía y en cuánto tiempo se recupera."; color: var(--faint); }
 
+.hint-s { margin: -2px 0 12px; color: var(--muted); font-size: var(--t-s); line-height: 1.45; }
+.trip-row { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 10px; margin-bottom: 4px; }
+.trip-row .field { margin-bottom: 0; }
+.field small { color: var(--faint); font-size: var(--t-s); }
+.num-in { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.num-in input { width: 100%; min-height: 40px; padding: 6px 10px; border: 1px solid var(--edge); border-radius: var(--r-s); background: var(--surface-2); font-family: var(--num); font-size: var(--t-m); font-variant-numeric: tabular-nums; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; margin-bottom: 20px; }
+.btn.primary:hover { background: color-mix(in oklab, var(--accent) 85%, var(--text)); }
+.trip-res { margin: 0 0 4px; }
+.trip-res:empty::before { content: "Aquí aparece el tiempo que tardó y cuánto tuvo que ajustar al final."; }
+#pane-data .h-field { width: 100%; margin: 0 0 12px; padding: 8px 10px; border: 1px solid var(--line); }
+.legend-box { margin-top: 22px; }
+.legend-box summary { cursor: pointer; font-size: var(--t-m); font-weight: 600; margin-bottom: 10px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chips button { min-height: 32px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); color: var(--faint); text-decoration: line-through; text-decoration-color: var(--faint); }
 .chips button[aria-pressed="true"] { color: var(--text); border-color: var(--line-strong); background: var(--surface-2); text-decoration: none; }
@@ -273,11 +300,13 @@ body:not([data-view="sim"]) #view { visibility: hidden; }
   /* la pista no pisa a la lupa, que ocupa la esquina inferior izquierda */
   #hint { left: 364px; right: 372px; width: auto; max-width: none; white-space: normal; border-radius: var(--r); }
   body:has(#side.closed) #hint { right: 12px; }
-  /* el cuadro de mando no cabe entre el carril y el panel: se prescinde del progreso del tramo */
-  .h-trip { display: none; }
+}
+@media (max-width: 1100px) {
+  /* el cuadro de mando no cabe con el panel abierto: se prescinde del progreso del tramo */
+  body:not(:has(#side.closed)) .h-trip { display: none; }
 }
 @media (max-width: 1180px) {
-  #hud { max-width: none; width: auto; left: 160px; right: 360px; justify-content: space-between; gap: 12px; }
+  #hud { max-width: none; width: auto; left: 72px; right: 360px; justify-content: space-between; gap: 12px; }
   body:has(#side.closed) #hud { right: 12px; max-width: none; }
   #hint { max-width: none; right: 360px; }
   #hud .h-field { display: none; }
@@ -296,13 +325,13 @@ body:not([data-view="sim"]) #view { visibility: hidden; }
   #topbar { gap: 8px; padding: 0 8px; }
   .brand span:last-child { display: none; }
   .nav { gap: 0; }
-  .nav a span, #keysBtn { display: none; }
+  .nav a span, .nav .ib span { display: none; }
   .nav a[data-page="sim"] { display: none; }
   .nav a { padding: 0 10px; }
   .tools { padding-left: 4px; }
   /* en el movil el carril cabe entero: dos filas, sin desplazamiento lateral */
   #cams { top: calc(var(--bar) + 8px); left: 8px; right: 8px; flex-direction: row; flex-wrap: wrap; }
-  #cams button { min-width: 0; grid-template-columns: 16px auto; padding: 0 12px; flex: 1 1 calc(25% - 4px); justify-content: center; }
+  #cams button { width: auto; flex: 1 1 calc(12.5% - 4px); }
   #cams button:not([aria-pressed="true"]) span:not(.k) { font-size: var(--t-s); }
   #cams .rule { display: none; }
   #cams .k { display: none; }
@@ -338,7 +367,7 @@ body:not([data-view="sim"]) #view { visibility: hidden; }
 body[data-parts="on"] #view { cursor: pointer; }
 
 #partCard {
-  position: fixed; inset: auto; margin: 0; left: 160px; top: calc(var(--bar) + 12px); width: 300px; max-height: calc(100vh - var(--bar) - 24px); overflow: auto;
+  position: fixed; inset: auto; margin: 0; left: 72px; top: calc(var(--bar) + 12px); width: 300px; max-height: calc(100vh - var(--bar) - 24px); overflow: auto;
   padding: 14px 16px 12px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--surface); color: var(--text);
 }
 #partCard .pc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin: -4px -8px 4px 0; }
@@ -386,9 +415,7 @@ body[data-parts="on"] #view { cursor: pointer; }
 .lp-go { min-height: 32px; padding: 4px 10px; font-size: var(--t-b); }
 body[data-card="open"] #loupe { display: none; }
 body:not([data-view="sim"]) #loupe { display: none; }
-@media (max-width: 1500px), (max-height: 860px) {
-  #loupe { bottom: 96px; }
-}
+#loupe { bottom: 96px; }
 @media (max-width: 760px) {
   #loupe { left: 8px; right: 8px; width: auto; bottom: 8px; display: none; }
 }

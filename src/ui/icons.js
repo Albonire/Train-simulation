@@ -37,5 +37,8 @@ export const ICONS = {
   field: svg('<path d="M2 8c2-5 10-5 12 0M2 8c2 5 10 5 12 0"/><circle cx="8" cy="8" r="1.4" class="f"/>'),
   parts: svg('<rect x="2.5" y="6.5" width="11" height="4" rx="1"/><path d="M5 4.5V2.5M11 4.5V2.5M5 13.5v-1.5M11 13.5v-1.5"/>'),
   explode: svg('<path d="M8 2v3M5.5 4L8 1.5 10.5 4"/><rect x="3.5" y="6.5" width="9" height="3" rx=".8"/><path d="M8 11v3M5.5 12L8 14.5 10.5 12"/>'),
+  more: svg('<circle cx="3" cy="8" r="1.3" class="f"/><circle cx="8" cy="8" r="1.3" class="f"/><circle cx="13" cy="8" r="1.3" class="f"/>'),
+  link: svg('<path d="M6.8 9.2a2.6 2.6 0 0 0 3.7 0l2.2-2.2a2.6 2.6 0 0 0-3.7-3.7l-.9.9"/><path d="M9.2 6.8a2.6 2.6 0 0 0-3.7 0L3.3 9a2.6 2.6 0 0 0 3.7 3.7l.9-.9"/>'),
+  camera: svg('<path d="M2.5 5.5h2.2l1.1-1.8h4.4l1.1 1.8h2.2v7h-11z"/><circle cx="8" cy="8.8" r="2.1"/>'),
   sliders: svg('<path d="M2.5 5h11M2.5 11h11"/><circle cx="6" cy="5" r="1.6" class="w"/><circle cx="10.5" cy="11" r="1.6" class="w"/>'),
 };

@@ -63,8 +63,7 @@ export function createLoupe(root, { setRig, toast, onFail = () => {} }) {
     state: root.querySelector("#lpState"),
     note: root.querySelector("#lpNote"),
   };
-  // con poca altura arranca plegada para no tapar el carril de camaras
-  let open = window.innerHeight >= 800;
+  let open = false; // plegada de entrada: la cabecera ya dice el entrehierro y el estado; se abre con un clic o L
   try {
     const saved = localStorage.getItem("lupa");
     if (saved !== null) open = saved === "1";
@@ -87,7 +86,7 @@ export function createLoupe(root, { setRig, toast, onFail = () => {} }) {
       /* ignorado */
     }
   }
-  setOpen(open);
+  setOpen(open, false);
   head.addEventListener("click", () => setOpen(!open));
   root.querySelector("#lpGo").addEventListener("click", () => setRig("gap"));
   const failBox = root.querySelector("#lpFail");
