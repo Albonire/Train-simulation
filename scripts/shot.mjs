@@ -19,7 +19,7 @@ const rest = args.filter((a) => !a.startsWith("http"));
 const OUT = rest.shift();
 const CHROME =
   process.env.CHROME_PATH ??
-  ["/opt/pw-browsers/chromium-1194/chrome-linux/chrome", "/usr/bin/chromium", "/usr/bin/google-chrome"].find((p) => existsSync(p));
+  ["/opt/pw-browsers/chromium", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", "/usr/bin/chromium", "/usr/bin/google-chrome"].find((p) => existsSync(p));
 if (!CHROME || !OUT || !rest.length) {
   console.error("uso: node scripts/shot.mjs <url> <carpeta> modo:tema:camara:AnchoxAlto[:clave=valor...] ...");
   process.exit(2);

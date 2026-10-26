@@ -394,6 +394,16 @@ const ui = createUI({
   setSpacing: (m) => train.setSpacing(m),
   setHold: (on) => (train.hold = on),
   depart,
+  startTrip: (meters, kmh) => {
+    if (intro.active) endIntro();
+    if (tour.active) tourEnd();
+    if (selected) closePart();
+    if (ev.active) endEvent();
+    const used = train.startTrip(meters, kmh);
+    if (view.paused) ui.setPaused(false);
+    ui.toast(`Viaje de ${(used / 1000).toLocaleString("es", { maximumFractionDigits: 1 })} km`);
+    return used;
+  },
   reset: () => {
     train.reset();
     ui.resetControls();

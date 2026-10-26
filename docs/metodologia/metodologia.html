@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Metodología del Simulador Maglev</title>
+<style>
+  @page { size: A4; margin: 26mm 18mm 20mm; }
+  :root {
+    --navy: #0f1f3d;
+    --red: #8b0000;
+    --ink: #1c2430;
+    --muted: #5a6573;
+    --line: #c9d0d8;
+    --soft: #f3f5f8;
+    --ems: #0b6b5e;
+    --eds: #1d5fae;
+  }
+  * { box-sizing: border-box; }
+  html { font-family: "Barlow", "Calibri", "Segoe UI", Arial, sans-serif; color: var(--ink); font-size: 11pt; line-height: 1.5; }
+  body { margin: 0; counter-reset: tabla figura; }
+  /* marca de agua: el escudo al 7 %, como en el formato de la universidad */
+  .wm { position: fixed; top: 50%; left: 50%; width: 60%; transform: translate(-50%, -50%); opacity: 0.07; z-index: -1; }
+  h1, h2, h3 { line-height: 1.2; }
+  p { margin: 0 0 8pt; text-align: justify; hyphens: auto; }
+  ul { margin: 0 0 8pt; padding-left: 16pt; }
+  li { margin-bottom: 3pt; }
+  b { color: var(--navy); }
+
+  /* ---- portada ---- */
+  .cover { height: 232mm; display: flex; flex-direction: column; align-items: center; text-align: center; break-after: page; }
+  .cover .esc { width: 34mm; margin-top: 4mm; }
+  .cover .uni { margin-top: 5mm; font-size: 17pt; font-weight: 700; letter-spacing: 0.04em; color: var(--red); text-transform: uppercase; }
+  .cover .fac { color: var(--muted); font-size: 11pt; }
+  .cover .rule { width: 60%; height: 3px; background: var(--navy); margin: 9mm 0 7mm; }
+  .cover h1 { font-size: 26pt; margin: 0 0 4mm; color: var(--navy); }
+  .cover .sub { font-size: 13pt; color: var(--muted); max-width: 140mm; }
+  .cover .hero { width: 125mm; margin: 8mm 0 0; border: 1px solid var(--line); border-radius: 3mm; }
+  .cover .meta { margin-top: auto; font-size: 11pt; line-height: 1.7; }
+  .cover .meta .fill { display: inline-block; min-width: 60mm; border-bottom: 1px solid var(--muted); }
+  .cover .addr { margin-top: 6mm; color: var(--muted); font-size: 9pt; }
+
+  /* ---- bloques con encabezado azul, como la plantilla ---- */
+  .block { border: 1px solid var(--line); margin: 0 0 7mm; break-inside: auto; }
+  .block > h2 { margin: 0; padding: 2.2mm 4mm; background: var(--navy); color: #fff; font-size: 13pt; font-weight: 700; break-after: avoid; }
+  .block > .in { padding: 4mm 5mm 2mm; }
+  .block .lead { color: var(--muted); font-style: italic; margin-bottom: 4mm; }
+  h3 { font-size: 11.5pt; color: var(--red); margin: 5mm 0 2mm; break-after: avoid; }
+
+  /* ---- tablas y figuras numeradas automaticamente ---- */
+  table { width: 100%; border-collapse: collapse; margin: 2mm 0 5mm; font-size: 9.5pt; break-inside: avoid; }
+  caption { counter-increment: tabla; caption-side: top; text-align: center; font-style: italic; font-size: 9pt; color: var(--muted); padding-bottom: 2mm; }
+  caption::before { content: "Tabla " counter(tabla) ". "; font-weight: 700; font-style: normal; color: var(--ink); }
+  th { background: #dfe5ee; color: var(--navy); font-weight: 700; }
+  th, td { border: 1px solid #9aa6b4; padding: 1.6mm 2.2mm; text-align: center; vertical-align: middle; }
+  td.l, th.l { text-align: left; }
+  figure { margin: 3mm 0 5mm; text-align: center; break-inside: avoid; }
+  figure img { max-width: 100%; border: 1px solid var(--line); border-radius: 2mm; }
+  figcaption { counter-increment: figura; font-size: 9pt; color: var(--muted); font-style: italic; margin-top: 1.5mm; }
+  figcaption::before { content: "Figura " counter(figura) ". "; font-weight: 700; font-style: normal; color: var(--ink); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+  .two figure { margin: 0; }
+
+  /* ---- recursos visuales ---- */
+  .tag { display: inline-block; padding: 0 2mm; border-radius: 1mm; font-size: 8.5pt; font-weight: 700; }
+  .tag.src { background: #dcefe4; color: #1f6b3e; }
+  .tag.ilu { background: #fdeccc; color: #8a5300; }
+  .tag.der { background: #dde8f7; color: #1d4f8f; }
+  .note { background: var(--soft); border-left: 3px solid var(--red); padding: 2.5mm 4mm; margin: 2mm 0 5mm; font-size: 10pt; }
+  .note p:last-child { margin: 0; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin: 2mm 0 5mm; }
+  .card { border: 1px solid var(--line); border-top: 3px solid var(--navy); padding: 2.5mm 3mm; font-size: 9.5pt; break-inside: avoid; }
+  .card b { display: block; font-size: 10pt; margin-bottom: 1mm; }
+  .card .n { font-size: 18pt; font-weight: 700; color: var(--red); line-height: 1; }
+  .gl { display: grid; grid-template-columns: 34mm 1fr; gap: 2mm 4mm; font-size: 10pt; margin: 0; }
+  .gl dt { font-weight: 700; color: var(--navy); }
+  .gl dd { margin: 0; }
+  .src-list { font-size: 9.5pt; }
+  .pb { break-before: page; }
+  svg text { font-family: "Barlow", "Calibri", Arial, sans-serif; }
+</style>
+</head>
+<body>
+<img class="wm" src="img/escudo.png" alt="" />
+
+<!-- ===================================================== portada -->
+<section class="cover">
+  <img class="esc" src="img/escudo.png" alt="Escudo de la Universidad de Pamplona" />
+  <div class="uni">Universidad de Pamplona</div>
+  <div class="fac">Programa: <span style="display:inline-block;min-width:60mm;border-bottom:1px solid #5a6573">&nbsp;</span></div>
+  <div class="rule"></div>
+  <h1>Simulador 3D de un tren de levitación magnética</h1>
+  <div class="sub">Metodología seguida para diseñar el modelo en Blender, programar su física y convertirlo en una simulación interactiva que se usa desde el navegador</div>
+  <img class="hero" src="img/ems-light-orbit.png" alt="El tren del simulador sobre su viga guía" />
+  <div class="meta">
+    <div><b>Autor:</b> Fabian Gonzalez</div>
+    <div><b>Curso:</b> <span class="fill">&nbsp;</span></div>
+    <div><b>Docente:</b> <span class="fill">&nbsp;</span></div>
+    <div><b>Fecha:</b> octubre de 2026</div>
+  </div>
+  <div class="addr">Universidad de Pamplona · Pamplona y Villa del Rosario, Norte de Santander, Colombia</div>
+</section>
+
+<!-- ===================================================== descripcion -->
+<section class="block">
+  <h2>Descripción del experimento / sistema</h2>
+  <div class="in">
+    <p class="lead">Montaje, materiales, herramientas y modelo analizado.</p>
+
+    <h3>¿Qué es un tren maglev?</h3>
+    <p>Un tren <b>maglev</b> (de <i>magnetic levitation</i>, levitación magnética) no tiene ruedas que toquen la vía cuando va rápido. Unos imanes lo mantienen <b>flotando</b> a pocos milímetros o centímetros del riel y otros lo <b>empujan</b> hacia adelante. Sin rozamiento de ruedas puede superar los 500 km/h con poco ruido y poco desgaste. Hay dos maneras de lograrlo, y el proyecto simula las dos con el mismo tren para poder compararlas:</p>
+
+    <figure>
+      <svg viewBox="0 0 680 250" width="100%" role="img" aria-label="Comparación EMS y EDS">
+        <!-- ems -->
+        <rect x="10" y="10" width="320" height="230" rx="8" fill="#eef6f4" stroke="#0b6b5e"/>
+        <text x="170" y="34" text-anchor="middle" font-size="16" font-weight="700" fill="#0b6b5e">EMS · atracción (Transrapid)</text>
+        <rect x="95" y="60" width="150" height="40" fill="#8a96a3"/><text x="170" y="85" text-anchor="middle" font-size="12" fill="#fff">Viga y estator</text>
+        <rect x="80" y="112" width="180" height="22" fill="#d9822b"/><text x="170" y="128" text-anchor="middle" font-size="11" fill="#fff">Electroimán del tren</text>
+        <line x1="270" y1="100" x2="270" y2="112" stroke="#8b0000" stroke-width="2"/><text x="276" y="110" font-size="11" fill="#8b0000">10 mm</text>
+        <path d="M60 134 v-34 h20 M280 134 v-34 h-20" stroke="#0f1f3d" stroke-width="5" fill="none"/>
+        <rect x="40" y="134" width="260" height="30" rx="6" fill="#fff" stroke="#0f1f3d"/><text x="170" y="154" text-anchor="middle" font-size="12">Tren (abraza la viga por debajo)</text>
+        <path d="M170 196 v-28" stroke="#1f8a4c" stroke-width="3" marker-end="url(#ar)"/>
+        <text x="170" y="216" text-anchor="middle" font-size="11.5">El imán <tspan font-weight="700">atrae</tspan> el tren hacia arriba.</text>
+        <text x="170" y="232" text-anchor="middle" font-size="11.5">Un control corrige la corriente sin parar.</text>
+        <!-- eds -->
+        <rect x="350" y="10" width="320" height="230" rx="8" fill="#eef3fb" stroke="#1d5fae"/>
+        <text x="510" y="34" text-anchor="middle" font-size="16" font-weight="700" fill="#1d5fae">EDS · repulsión (SCMaglev)</text>
+        <rect x="380" y="50" width="22" height="120" fill="#8a96a3"/><rect x="618" y="50" width="22" height="120" fill="#8a96a3"/>
+        <text x="391" y="186" text-anchor="middle" font-size="10">pared</text><text x="629" y="186" text-anchor="middle" font-size="10">pared</text>
+        <circle cx="412" cy="110" r="9" fill="none" stroke="#1d5fae" stroke-width="2"/><circle cx="608" cy="110" r="9" fill="none" stroke="#1d5fae" stroke-width="2"/>
+        <rect x="430" y="70" width="160" height="70" rx="10" fill="#fff" stroke="#0f1f3d"/><text x="510" y="100" text-anchor="middle" font-size="12">Tren con imanes</text><text x="510" y="116" text-anchor="middle" font-size="12">superconductores</text>
+        <rect x="380" y="170" width="260" height="12" fill="#b9c2cc"/>
+        <text x="510" y="216" text-anchor="middle" font-size="11.5">Al moverse, el tren <tspan font-weight="700">induce</tspan> corrientes en</text>
+        <text x="510" y="232" text-anchor="middle" font-size="11.5">bobinas de la pared que lo repelen. Unos 100 mm.</text>
+        <defs><marker id="ar" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#1f8a4c"/></marker></defs>
+      </svg>
+      <figcaption>Las dos tecnologías que compara el simulador.</figcaption>
+    </figure>
+
+    <p>En los dos casos el empuje lo da un <b>motor lineal síncrono</b>: es como un motor eléctrico común "desenrollado" a lo largo de la vía. Una onda magnética viaja por el riel y arrastra al tren a su misma velocidad.</p>
+
+    <h3>¿Qué se construyó?</h3>
+    <p>No hay un montaje físico de laboratorio: el "banco de ensayo" es un <b>modelo digital</b>. Consta de tres piezas que trabajan juntas:</p>
+    <div class="cards">
+      <div class="card"><span class="n">1</span><b>Modelo 3D en Blender</b>Tren, viga, imanes y estator dibujados a tamaño real para fijar y comprobar las medidas.</div>
+      <div class="card"><span class="n">2</span><b>Motor físico</b>Programa que calcula, mil veces por segundo, las fuerzas, la altura de levitación y la velocidad.</div>
+      <div class="card"><span class="n">3</span><b>Simulación 3D</b>Página web donde el tren se ve moverse, se cambian las cámaras, se provocan fallas y se leen los datos.</div>
+    </div>
+
+    <table>
+      <caption>Herramientas y materiales digitales empleados</caption>
+      <tr><th class="l">Herramienta</th><th class="l">Para qué se usó</th></tr>
+      <tr><td class="l">Blender (3.x / 4.x) y Python</td><td class="l">Modelado del tren y la vía a escala 1:1, revisión de holguras y exportación del modelo (.obj).</td></tr>
+      <tr><td class="l">JavaScript y Three.js (WebGL)</td><td class="l">Dibujo en 3D dentro del navegador, a unos 60 imágenes por segundo.</td></tr>
+      <tr><td class="l">Vite</td><td class="l">Servidor de desarrollo y empaquetado final de la aplicación.</td></tr>
+      <tr><td class="l">Vitest</td><td class="l">Pruebas automáticas que verifican que la física se comporta como se espera.</td></tr>
+      <tr><td class="l">Playwright y Chromium</td><td class="l">Capturas y revisiones automáticas de la interfaz y de la imagen.</td></tr>
+      <tr><td class="l">Git y GitHub</td><td class="l">Control de versiones: cada cambio queda registrado y se puede revisar.</td></tr>
+    </table>
+
+    <div class="two">
+      <figure><img src="img/ems-light-section.png" alt="Corte del EMS" /><figcaption>Corte transversal del EMS: viga, estator e imanes.</figcaption></figure>
+      <figure><img src="img/eds-light-section.png" alt="Corte del EDS" /><figcaption>Corte transversal del EDS: canal en U y bobinas.</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<!-- ===================================================== metodologia -->
+<section class="block pb">
+  <h2>Metodología</h2>
+  <div class="in">
+    <p class="lead">Procedimientos, parámetros, procesamiento de datos y métricas de evaluación.</p>
+
+    <h3>Procedimiento seguido</h3>
+    <p>El trabajo avanzó en cinco etapas. Cada una entrega algo que usa la siguiente, y las pruebas devuelven al principio cuando algo no cuadra:</p>
+    <figure>
+      <svg viewBox="0 0 680 150" width="100%" role="img" aria-label="Etapas del proyecto">
+        <defs><marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#0f1f3d"/></marker></defs>
+        <g font-size="11.5" text-anchor="middle">
+          <rect x="5" y="20" width="118" height="70" rx="8" fill="#0f1f3d"/><text x="64" y="47" fill="#fff" font-weight="700">1. Investigar</text><text x="64" y="66" fill="#dfe5ee">fuentes y datos</text>
+          <rect x="143" y="20" width="118" height="70" rx="8" fill="#8b0000"/><text x="202" y="47" fill="#fff" font-weight="700">2. Diseñar</text><text x="202" y="66" fill="#f4dede">modelo en Blender</text>
+          <rect x="281" y="20" width="118" height="70" rx="8" fill="#0f1f3d"/><text x="340" y="47" fill="#fff" font-weight="700">3. Programar</text><text x="340" y="66" fill="#dfe5ee">la física</text>
+          <rect x="419" y="20" width="118" height="70" rx="8" fill="#0f1f3d"/><text x="478" y="47" fill="#fff" font-weight="700">4. Visualizar</text><text x="478" y="66" fill="#dfe5ee">escena 3D web</text>
+          <rect x="557" y="20" width="118" height="70" rx="8" fill="#1f6b3e"/><text x="616" y="47" fill="#fff" font-weight="700">5. Probar</text><text x="616" y="66" fill="#dcefe4">y corregir</text>
+        </g>
+        <g stroke="#0f1f3d" stroke-width="2" marker-end="url(#a2)">
+          <line x1="123" y1="55" x2="141" y2="55"/><line x1="261" y1="55" x2="279" y2="55"/><line x1="399" y1="55" x2="417" y2="55"/><line x1="537" y1="55" x2="555" y2="55"/>
+        </g>
+        <path d="M616 92 v30 H64 v-30" fill="none" stroke="#8b0000" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#a2)"/>
+        <text x="340" y="140" text-anchor="middle" font-size="11" fill="#8b0000">si una prueba falla, se vuelve a la etapa que corresponde</text>
+      </svg>
+      <figcaption>Flujo de trabajo del proyecto.</figcaption>
+    </figure>
+    <ul>
+      <li><b>Investigar.</b> Se reunieron datos publicados del Transrapid (Alemania) y del SCMaglev (Japón): separación entre imán y riel, masa, velocidad récord, paso de las bobinas. Cada dato se anotó con su fuente.</li>
+      <li><b>Diseñar en Blender.</b> Con esas medidas se dibujó una sección del tren de 14 m de largo, 3,2 m de ancho y 3,6 m de alto, junto con la viga, el estator y los imanes. Ver el modelo a escala real permitió comprobar que el hueco de 10 mm entre imán y estator y las holguras laterales eran posibles sin choques. Un programa en Python genera el modelo, así que cualquier cambio de medida se rehace de forma exacta.</li>
+      <li><b>Programar la física.</b> Las leyes que gobiernan el tren se escribieron como un programa independiente de los gráficos. Así se puede probar sin abrir la escena.</li>
+      <li><b>Visualizar.</b> La aplicación web reconstruye el tren con las mismas medidas validadas en Blender y lo mueve según lo que calcula la física. Se añadieron cámaras, una lupa del hueco, gráficas, una visita guiada y un explorador de piezas.</li>
+      <li><b>Probar y corregir.</b> Pruebas automáticas y revisiones visuales con capturas detectaron errores, que se corrigieron antes de publicar cada cambio.</li>
+    </ul>
+
+    <figure>
+      <img src="img/ems-light-field.png" alt="Vista de campo" style="width:82%" />
+      <figcaption>Vista "Campo": la carrocería se vuelve transparente para ver los imanes y las líneas de campo.</figcaption>
+    </figure>
+
+    <h3>Parámetros empleados</h3>
+    <p>No todos los números salen de un documento. Para ser honestos, cada valor lleva una etiqueta: <span class="tag src">fuente</span> es un dato publicado, <span class="tag der">derivado</span> se calculó a partir de datos publicados e <span class="tag ilu">elegido</span> lo fijamos nosotros para que el modelo funcione o para que se vea bien en pantalla.</p>
+    <table>
+      <caption>Parámetros principales del modelo</caption>
+      <tr><th class="l">Parámetro</th><th>EMS</th><th>EDS</th><th>Origen</th></tr>
+      <tr><td class="l">Separación imán y riel en marcha</td><td>10 mm</td><td>100 mm</td><td><span class="tag src">fuente</span></td></tr>
+      <tr><td class="l">Velocidad máxima</td><td>399 km/h</td><td>603 km/h (récord 2015)</td><td><span class="tag der">derivado</span> / <span class="tag src">fuente</span></td></tr>
+      <tr><td class="l">Paso de las bobinas del motor</td><td>258 mm</td><td>0,9 m</td><td><span class="tag src">fuente</span> / <span class="tag ilu">elegido</span></td></tr>
+      <tr><td class="l">Masa por sección</td><td>60 t</td><td>25 t</td><td><span class="tag der">derivado</span> / <span class="tag ilu">elegido</span></td></tr>
+      <tr><td class="l">Largo por sección (3 secciones)</td><td>14 m</td><td>14 m</td><td><span class="tag ilu">elegido</span></td></tr>
+      <tr><td class="l">Velocidad para dejar las ruedas</td><td>no usa ruedas</td><td>150 km/h</td><td><span class="tag src">fuente</span></td></tr>
+      <tr><td class="l">Corriente de los imanes</td><td>50 A (control)</td><td>700 kA (superconductor)</td><td><span class="tag ilu">elegido</span> / <span class="tag src">fuente</span></td></tr>
+    </table>
+    <div class="note"><p>El largo real de una sección del Transrapid es de unos 27 m. Se acortó a 14 m para que el tren completo quepa en la pantalla, sin cambiar su masa.</p></div>
+
+    <h3>Cómo se obtienen y procesan los datos</h3>
+    <p>Los datos no se miden con sensores: los <b>genera el simulador</b>. El ciclo es el mismo todo el tiempo:</p>
+    <figure>
+      <svg viewBox="0 0 680 120" width="100%" role="img" aria-label="Ciclo de datos">
+        <defs><marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8b0000"/></marker></defs>
+        <g font-size="11.5" text-anchor="middle">
+          <rect x="10" y="20" width="150" height="56" rx="28" fill="#fff" stroke="#0f1f3d" stroke-width="1.5"/><text x="85" y="44" font-weight="700">Calcular fuerzas</text><text x="85" y="61">imanes, peso, aire</text>
+          <rect x="183" y="20" width="150" height="56" rx="28" fill="#fff" stroke="#0f1f3d" stroke-width="1.5"/><text x="258" y="44" font-weight="700">Mover el tren</text><text x="258" y="61">paso de 1 ms</text>
+          <rect x="356" y="20" width="150" height="56" rx="28" fill="#fff" stroke="#0f1f3d" stroke-width="1.5"/><text x="431" y="44" font-weight="700">Guardar telemetría</text><text x="431" y="61">cada 20 ms</text>
+          <rect x="529" y="20" width="140" height="56" rx="28" fill="#0f1f3d"/><text x="599" y="44" font-weight="700" fill="#fff">Mostrar</text><text x="599" y="61" fill="#dfe5ee">3D, cifras, gráficas</text>
+        </g>
+        <g stroke="#8b0000" stroke-width="2" marker-end="url(#a3)"><line x1="160" y1="48" x2="181" y2="48"/><line x1="333" y1="48" x2="354" y2="48"/><line x1="506" y1="48" x2="527" y2="48"/></g>
+        <path d="M258 78 v22 H85 v-22" fill="none" stroke="#8b0000" stroke-width="1.6" marker-end="url(#a3)"/>
+        <text x="171" y="114" text-anchor="middle" font-size="10.5" fill="#8b0000">se repite mil veces por segundo simulado</text>
+      </svg>
+      <figcaption>Ciclo de cálculo y presentación de los datos.</figcaption>
+    </figure>
+    <ul>
+      <li>La física avanza en <b>pasos de un milisegundo</b>. Un paso tan corto hace que el resultado no dependa de la velocidad del computador.</li>
+      <li>Cada 20 ms se guarda la <b>telemetría</b>: velocidad, separación de cada sección, corriente, empuje, potencia y energía. Con ella se dibujan las gráficas del panel "Datos" y la lupa del hueco.</li>
+      <li>El usuario puede <b>perturbar</b> el sistema (carga extra, ráfaga de viento, golpe, quitar el control o cortar la corriente). El programa mide <b>cuánto se desvía</b> el tren y <b>cuánto tarda</b> en volver a su valor.</li>
+      <li>En el modo <b>Viaje</b> se escribe una distancia y una velocidad máxima. El programa calcula en cada instante a qué velocidad debe ir para poder frenar a tiempo, y al llegar informa el tiempo total y el ajuste final.</li>
+    </ul>
+
+    <h3>Criterios de evaluación</h3>
+    <p>Para decidir si el simulador "funciona bien" se fijaron criterios medibles, que se revisan solos cada vez que se cambia el código:</p>
+    <table>
+      <caption>Métricas de evaluación y resultado obtenido</caption>
+      <tr><th class="l">Criterio</th><th class="l">Cómo se comprueba</th><th>Resultado</th></tr>
+      <tr><td class="l">El EMS mantiene 10 mm en marcha</td><td class="l">Prueba automática de un viaje completo</td><td>dentro de ±0,5 mm</td></tr>
+      <tr><td class="l">Sin control, el EMS cae (inestable)</td><td class="l">Se quita el control y se da un pequeño empujón</td><td>pierde el equilibrio, como el real</td></tr>
+      <tr><td class="l">El EDS despega solo por encima de ~150 km/h</td><td class="l">Prueba de velocidad de despegue</td><td>cumple</td></tr>
+      <tr><td class="l">El tren se detiene donde se pidió</td><td class="l">Viajes de 0,5 a 40 km en los dos modos</td><td>a menos de 1,5 m</td></tr>
+      <tr><td class="l">La energía cuadra</td><td class="l">Trabajo del motor frente a pérdidas</td><td>cumple</td></tr>
+      <tr><td class="l">La imagen no parpadea ni se corta</td><td class="l">Revisión visual automática con capturas</td><td>cumple</td></tr>
+      <tr><td class="l">Total de pruebas automáticas</td><td class="l">Vitest, en cada cambio</td><td>216 de 216 aprobadas</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ===================================================== resultados -->
+<section class="block pb">
+  <h2>Resultados</h2>
+  <div class="in">
+    <p class="lead">Lo que muestra la simulación terminada.</p>
+    <div class="two">
+      <figure><img src="img/ems-light-orbit.png" alt="EMS" /><figcaption>Modo EMS: el tren abraza la viga.</figcaption></figure>
+      <figure><img src="img/eds-light-orbit.png" alt="EDS" /><figcaption>Modo EDS: el tren va dentro del canal.</figcaption></figure>
+    </div>
+    <h3>Ejemplo: modo Viaje</h3>
+    <p>La docente sugirió poder indicar la distancia y que el tren se detenga ahí. La Tabla 4 resume varios viajes hechos con el simulador. La velocidad máxima pedida es un límite: en trayectos cortos el tren no alcanza a llegar a ella porque debe empezar a frenar antes.</p>
+    <table>
+      <caption>Viajes de ejemplo calculados por el simulador</caption>
+      <tr><th>Modo</th><th>Distancia</th><th>Velocidad pedida</th><th>Tiempo</th><th>Velocidad alcanzada</th><th>Ajuste final</th></tr>
+      <tr><td>EMS</td><td>1 km</td><td>400 km/h (máx. 399)</td><td>1 min 35 s</td><td>75 km/h</td><td>5 cm</td></tr>
+      <tr><td>EMS</td><td>5 km</td><td>250 km/h</td><td>3 min 21 s</td><td>178 km/h</td><td>5 cm</td></tr>
+      <tr><td>EMS</td><td>20 km</td><td>400 km/h (máx. 399)</td><td>6 min 52 s</td><td>343 km/h</td><td>5 cm</td></tr>
+      <tr><td>EMS</td><td>60 km</td><td>600 km/h (máx. 399)</td><td>12 min 57 s</td><td>399 km/h</td><td>5 cm</td></tr>
+      <tr><td>EDS</td><td>1 km</td><td>400 km/h</td><td>1 min 11 s</td><td>96 km/h</td><td>5 cm</td></tr>
+      <tr><td>EDS</td><td>5 km</td><td>250 km/h</td><td>2 min 38 s</td><td>222 km/h</td><td>5 cm</td></tr>
+      <tr><td>EDS</td><td>20 km</td><td>400 km/h</td><td>5 min 19 s</td><td>400 km/h</td><td>5 cm</td></tr>
+      <tr><td>EDS</td><td>60 km</td><td>600 km/h</td><td>9 min 29 s</td><td>600 km/h</td><td>5 cm</td></tr>
+    </table>
+    <figure>
+      <img src="img/viaje.png" alt="Viaje terminado" style="width:92%" />
+      <figcaption>Viaje de 2 km terminado: el tren se detuvo en la estación 2 y el panel muestra el resumen.</figcaption>
+    </figure>
+    <div class="note"><p>Los tiempos son de tiempo simulado. En la aplicación se pueden ver más rápido (x5, x20, x60) o en cámara lenta (x¼).</p></div>
+  </div>
+</section>
+
+<!-- ===================================================== glosario y fuentes -->
+<section class="block">
+  <h2>Glosario</h2>
+  <div class="in">
+    <dl class="gl">
+      <dt>Entrehierro</dt><dd>El espacio de aire entre el imán del tren y el riel. En el EMS mide 10 mm.</dd>
+      <dt>Estator</dt><dd>La parte fija del motor, montada en la vía, por donde circula la corriente que empuja al tren.</dd>
+      <dt>Lazo de control</dt><dd>Un sistema que mide la separación muchas veces por segundo y corrige la corriente del imán para mantenerla constante.</dd>
+      <dt>Superconductor</dt><dd>Material que, muy frío, conduce la electricidad sin pérdidas y permite imanes muy potentes.</dd>
+      <dt>Telemetría</dt><dd>El conjunto de medidas que el simulador registra mientras corre.</dd>
+      <dt>Perturbación</dt><dd>Un cambio brusco (viento, golpe, carga) que se provoca para ver cómo responde el sistema.</dd>
+      <dt>Escala 1:1</dt><dd>Dibujo con las medidas reales, sin agrandar ni achicar.</dd>
+    </dl>
+  </div>
+</section>
+
+<section class="block">
+  <h2>Fuentes</h2>
+  <div class="in src-list">
+    <ul>
+      <li>Patentes US 7,637,214 y US 7,814,840: entrehierro nominal del sistema Transrapid.</li>
+      <li>MDPI <i>Actuators</i> 14(11):514: paso polar del estator del Transrapid.</li>
+      <li><i>The Transrapid Magnetic Levitation System</i>: datos del vehículo de ensayo (54 m, 120 t, 400 km/h).</li>
+      <li>Central Japan Railway Company (JR Central): récord de 603 km/h de la serie L0 (2015) y elevación de unos 100 mm.</li>
+      <li>Publicaciones del KIT sobre el SCMaglev: bobinas superconductoras de NbTi y 700 kA.</li>
+      <li>Plantilla "Formato Carta Universidad de Pamplona" (Overleaf, S. Díaz Vivas, CC BY 4.0): referencia de identidad visual de este documento.</li>
+    </ul>
+  </div>
+</section>
+</body>
+</html>
