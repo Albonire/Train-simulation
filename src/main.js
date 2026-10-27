@@ -572,7 +572,8 @@ function freeArea() {
   const open = !side.classList.contains("closed");
   const card = ui.card.open ? ui.card.el : null;
   if (w > 760) {
-    let l = cams.offsetLeft + cams.offsetWidth + 8;
+    // el ancho plegado: al pasar el cursor el carril se despliega sobre la escena y no debe mover el encuadre
+    let l = cams.offsetLeft + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--rail-w")) || cams.offsetWidth) + 8;
     if (card) l = Math.max(l, card.offsetLeft + card.offsetWidth + 8);
     const r = open ? w - side.offsetLeft + 8 : 0;
     const t = topbar.offsetTop + topbar.offsetHeight;
