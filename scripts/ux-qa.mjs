@@ -491,33 +491,71 @@ async function trip() {
   await frames(page, 3);
   const vis = await page.evaluate(() => {
     const inView = (id) => { const r = document.getElementById(id).getBoundingClientRect(); return r.width > 0 && r.left >= 0 && r.right <= innerWidth && r.bottom <= innerHeight; };
-    return { dist: inView("tripDist"), btn: inView("tripBtn"), side: document.getElementById("side").classList.contains("closed") };
+    return { dist: inView("tripDist"), btn: inView("tripBtn"), ts: inView("tsBtn"), side: document.getElementById("side").classList.contains("closed") };
   });
-  check(S, "con el panel cerrado, la distancia y el boton estan a la vista", vis.dist && vis.btn && vis.side, JSON.stringify(vis));
+  check(S, "con el panel cerrado, la distancia, el boton y la escala estan a la vista", vis.dist && vis.btn && vis.ts && vis.side, JSON.stringify(vis));
+  const gone = await page.evaluate(() => ["hGap", "hGapBar", "hTarget", "timeBtns"].filter((id) => document.getElementById(id)));
+  check(S, "el cuadro de mando ya no trae entrehierro, objetivo ni cinco botones de escala", gone.length === 0, gone.join(","));
   await page.fill("#tripDist", "");
   await page.click("#tripBtn");
   check(S, "sin distancia no arranca ningun viaje", await page.evaluate(() => window.__app.train.trip === null));
   await page.fill("#tripDist", "1");
+  await frames(page, 2);
+  const hint = await page.evaluate(() => ({ t: document.getElementById("tripHint").textContent, k: document.getElementById("tripHint").dataset.k }));
+  check(S, "la estimacion avisa de que 1 km no llega a la velocidad maxima", /^Con 1 km solo llega a unos \d+ km\/h\. Para 399 hacen falta \d+ km$/.test(hint.t) && hint.k === "warn", JSON.stringify(hint));
+  await page.fill("#tripDist", "60");
+  await frames(page, 2);
+  const hint2 = await page.evaluate(() => document.getElementById("tripHint").textContent);
+  check(S, "con 60 km la estimacion dice que llega a 399", hint2 === "Llegará a 399 km/h", hint2);
+  await page.fill("#tripDist", "1");
   await page.click("#tripBtn");
   await page.evaluate(() => { const a = window.__app; a.ui.setPaused(true); a.train.advance(40); });
   await frames(page, 3);
-  const mid = await page.evaluate(() => ({ trip: !!window.__app.train.trip, done: window.__app.train.trip?.done, sub: document.getElementById("hTarget").textContent, noteHidden: document.getElementById("tripNote").hidden }));
-  check(S, "durante el viaje el cuadro de mando lo dice", mid.trip && !mid.done && /viaje de 1,0 km/.test(mid.sub) && mid.noteHidden, JSON.stringify(mid));
+  const mid = await page.evaluate(() => ({ trip: !!window.__app.train.trip, done: window.__app.train.trip?.done, noteHidden: document.getElementById("tripNote").hidden, pill: document.getElementById("hState").hidden }));
+  check(S, "durante el viaje no hay aviso de llegada y no se rotula 'acelerando'", mid.trip && !mid.done && mid.noteHidden && mid.pill, JSON.stringify(mid));
   await page.evaluate(() => window.__app.train.advance(400));
   await frames(page, 4);
   const end = await page.evaluate(() => {
     const t = window.__app.train;
     const n = document.getElementById("tripNote");
-    return { x: t.x, v: t.v, done: t.trip?.done, hold: t.hold, sub: document.getElementById("hTarget").textContent, noteShown: !n.hidden && n.getBoundingClientRect().width > 0, note: document.getElementById("tripNoteTxt").textContent };
+    const pill = document.getElementById("hState");
+    return { x: t.x, v: t.v, done: t.trip?.done, hold: t.hold, pill: pill.hidden ? "" : pill.textContent, noteShown: !n.hidden && n.getBoundingClientRect().width > 0, note: document.getElementById("tripNoteTxt").textContent };
   });
   check(S, "se detiene a 1 km (error < 1,5 m)", end.done && end.v === 0 && Math.abs(end.x - 1000) < 1.5, JSON.stringify(end));
-  check(S, "al llegar aparece el resumen aunque el panel este cerrado", end.noteShown && /^Llegó: 1,0 km en/.test(end.note) && end.sub === "viaje terminado", JSON.stringify(end));
+  check(S, "al llegar aparece el resumen aunque el panel este cerrado", end.noteShown && /^Llegó: 1 km en/.test(end.note) && end.pill === "Viaje terminado", JSON.stringify(end));
+  check(S, "el resumen dice que la distancia no dio para la velocidad pedida", /La distancia no dio para llegar a 399 km\/h/.test(end.note), end.note);
   await page.click("#tripNoteX");
   check(S, "el aviso se cierra", await page.evaluate(() => document.getElementById("tripNote").hidden));
+  // Salir repite el viaje (no pasa a recorrido continuo)
+  await page.evaluate(() => { const a = window.__app; a.depart(); a.train.advance(5); });
+  await frames(page, 3);
+  const leg2 = await page.evaluate(() => { const t = window.__app.train; return { trip: !!t.trip, done: t.trip?.done, next: t.nextStation, tgt: Math.round(t.targetSpeed * 3.6), hid: document.getElementById("tripNote").hidden }; });
+  check(S, "Salir repite el viaje con la misma distancia y velocidad", leg2.trip && leg2.done === false && leg2.next === 2000 && leg2.tgt === 399 && leg2.hid, JSON.stringify(leg2));
+  await page.evaluate(() => window.__app.train.advance(400));
+  await frames(page, 4);
+  const end2 = await page.evaluate(() => { const t = window.__app.train; return { x: t.x, done: t.trip?.done, note: document.getElementById("tripNoteTxt").textContent }; });
+  check(S, "el segundo tramo termina a 2 km y su tiempo es el del tramo", end2.done && Math.abs(end2.x - 2000) < 1.5 && /^Llegó: 1 km en 1 min 3\d s|^Llegó: 1 km en 1 min 4\d s|^Llegó: 1 km en 1 min 2\d s/.test(end2.note), JSON.stringify(end2));
   await page.click("#tripBtn");
   await frames(page, 2);
   const again = await page.evaluate(() => ({ x: window.__app.train.x, done: window.__app.train.trip?.done, noteHidden: document.getElementById("tripNote").hidden }));
   check(S, "pulsar de nuevo repite el viaje desde el origen", again.x < 5 && again.done === false && again.noteHidden, JSON.stringify(again));
+  // cambiar de modo en pleno viaje no deja texto de un viaje que ya no existe
+  await page.evaluate(() => window.__app.ui.selectTab("ctrl"));
+  await page.click("#panelBtn");
+  await page.click('[data-mode="eds"]');
+  await page.evaluate(() => window.__app.train.advance(0.1));
+  await frames(page, 3);
+  const stale = await page.evaluate(() => document.getElementById("tripRes").textContent);
+  check(S, "al cambiar de modo se borra el texto del viaje", stale === "", stale);
+  await page.click('[data-mode="ems"]');
+  // un solo boton de escala que cicla
+  const ts = await page.evaluate(() => {
+    const b = document.getElementById("tsBtn");
+    const out = [b.textContent];
+    for (let i = 0; i < 5; i++) { b.click(); out.push(b.textContent + "=" + window.__app.view.timeScale); }
+    return out;
+  });
+  check(S, "el boton de escala cicla x5, x20, x60, x¼, x1, x5", JSON.stringify(ts) === JSON.stringify(["x5", "x20=20", "x60=60", "x¼=0.25", "x1=1", "x5=5"]), JSON.stringify(ts));
   await page.focus("#tripDist");
   await page.keyboard.press("p"); // escribir en el campo no dispara atajos
   check(S, "las teclas dentro del campo no activan atajos", await page.evaluate(() => !window.__app.view.parts));

@@ -155,7 +155,6 @@ body:has(#side.closed) #hud { right: 12px; max-width: calc(100% - 96px); }
 .h-speed { display: flex; align-items: baseline; gap: 6px; min-width: 104px; }
 .h-speed output { font-size: var(--t-xl); font-weight: 600; line-height: 1; letter-spacing: -0.01em; }
 .h-speed span { color: var(--muted); font-size: var(--t-b); }
-.h-state { display: flex; flex-direction: column; gap: 3px; min-width: 112px; }
 .pill { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: var(--t-b); white-space: nowrap; }
 .pill::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--faint); }
 .pill[data-k="ok"]::before { background: var(--ok); }
@@ -163,12 +162,13 @@ body:has(#side.closed) #hud { right: 12px; max-width: calc(100% - 96px); }
 .pill[data-k="bad"]::before { background: var(--bad); }
 .pill[data-k="info"]::before { background: var(--accent); }
 .h-sub, .h-lbl { color: var(--muted); font-size: var(--t-s); white-space: nowrap; }
-.h-gap, .h-trip, .h-tripin { display: flex; flex-direction: column; gap: 4px; }
+.h-trip, .h-tripin { display: flex; flex-direction: column; gap: 4px; }
 .tripin-row { display: flex; align-items: center; gap: 8px; }
 .h-tripin .num-in input { width: 84px; min-height: 36px; }
 .h-tripin .btn.primary { min-height: 36px; padding: 4px 12px; margin-bottom: 0; white-space: nowrap; }
-.h-gap { min-width: 104px; }
-.h-gap output { font-size: var(--t-m); font-weight: 600; }
+.h-hint { color: var(--muted); font-size: var(--t-s); line-height: 1.3; max-width: 330px; min-height: 2.6em; text-wrap: balance; }
+.h-hint[data-k="warn"] { color: var(--warn); }
+.btn.ts { min-height: 36px; min-width: 56px; padding: 4px 10px; font-family: var(--num); font-variant-numeric: tabular-nums; font-weight: 600; }
 .bar { position: relative; height: 6px; border-radius: 3px; background: var(--surface-2); border: 1px solid var(--line); }
 .bar i { position: absolute; top: 0; bottom: 0; background: var(--ok); opacity: 0.5; border-radius: 3px; }
 .bar b { position: absolute; top: -3px; width: 2px; height: 10px; margin-left: -1px; background: var(--text); border-radius: 1px; transition: left 0.08s linear; }
@@ -318,7 +318,6 @@ body:not([data-view="sim"]) #view { visibility: hidden; }
   #hud { max-width: none; width: auto; left: 72px; right: 360px; justify-content: space-between; gap: 12px; }
   body:has(#side.closed) #hud { right: 12px; max-width: none; }
   #hint, #tripNote { max-width: none; right: 360px; }
-  #hud .h-field { display: none; }
   .doc { grid-template-columns: 180px minmax(0, 1fr); gap: 40px; }
 }
 @media (max-width: 900px) {
@@ -354,7 +353,6 @@ body:not([data-view="sim"]) #view { visibility: hidden; }
   .h-tripin .btn.primary { flex: 1; justify-content: center; }
   .h-speed output { font-size: 28px; }
   .h-speed { min-width: 92px; }
-  .h-state { min-width: 0; }
   .h-trip { flex: 1 1 100%; order: 5; }
   .h-time { padding-left: 0; margin-left: auto; }
   #side { top: auto; left: 8px; right: 8px; width: auto; bottom: var(--hud-top, 166px); max-height: 46vh; }

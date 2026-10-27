@@ -6,6 +6,7 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { stationFootprint, PLATFORM_WIDTH } from "./clearance.js";
+import { fmtKm } from "../physics/constants.js";
 
 const LEN = 110; // longitud del anden, m
 const WIDTH = PLATFORM_WIDTH; // ancho del anden, m
@@ -206,7 +207,12 @@ export function createStations() {
           it.k = k;
           it.spacing = spacing;
           const key = `${k}|${spacing}`;
-          if (!textures.has(key)) textures.set(key, signTexture(`ESTACIÓN ${k + 1}`, `km ${((k * spacing) / 1000).toFixed(0)}`));
+          if (textures.size > 40) {
+            // cada distancia distinta de viaje crea otro cartel: se sueltan los que ya no se usan
+            const inUse = new Set(items.map((i) => i.obj.userData.sign.material.map));
+            for (const [kk, tx] of textures) if (!inUse.has(tx)) (tx.dispose(), textures.delete(kk));
+          }
+          if (!textures.has(key)) textures.set(key, signTexture(`ESTACIÓN ${k + 1}`, `km ${fmtKm(k * spacing)}`));
           it.obj.userData.sign.material.map = textures.get(key);
           it.obj.userData.sign.material.needsUpdate = true;
         }
