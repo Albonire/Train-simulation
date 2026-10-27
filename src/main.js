@@ -1018,6 +1018,27 @@ function screenshot() {
   }, "image/png");
 }
 
+// Refuerzo de la primera carga (experimental): si en algun equipo la GPU recibio los lienzos de texturas o el
+// mapa de entorno antes de tiempo, se vuelven a subir una vez que la escena ya dibujo. Cuesta un tironcito de
+// una sola vez y deja una linea en la consola para diagnosticar.
+function refreshGpuResources(label) {
+  let canvases = 0;
+  scene.traverse((o) => {
+    for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : []) {
+      for (const k in m) {
+        const t = m[k];
+        if (t && t.isTexture && t.image instanceof HTMLCanvasElement) {
+          t.needsUpdate = true;
+          canvases++;
+        }
+      }
+    }
+  });
+  world.setTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark");
+  console.info("[recarga gpu]", label, canvases, "lienzos y entorno");
+}
+setTimeout(() => refreshGpuResources("a los 2,5 s"), 2500);
+
 requestAnimationFrame(frame);
 if (playIntro) startIntro();
 else ui.startHint();
