@@ -51,7 +51,7 @@ El documento de metodología, en lenguaje sencillo y con la identidad de la Univ
 | Control | Acción |
 |---|---|
 | EMS / EDS | Alterna entre suspensión electromagnética y electrodinámica (mismo tren, distinta física). |
-| Viaje (pestaña Control) | Escribe la distancia (0,2 a 200 km) y la velocidad máxima: el tren sale, frena solo y se detiene en ese punto. Al llegar muestra el tiempo, la velocidad máxima y el ajuste final. |
+| Viaje (cuadro de mando inferior) | Escribe la distancia en km (0,2 a 200) y pulsa Iniciar viaje; la velocidad máxima se elige en la pestaña Control. El tren sale, frena solo y se detiene en ese punto. Al llegar muestra el tiempo, la velocidad máxima y el ajuste final. |
 | Velocidad máxima, escala temporal (x¼ a x60), pausa | Gobierna el trayecto y la velocidad con que se ve la simulación (x¼ es cámara lenta). |
 | Salir / Retener | En EMS, el tren aterriza sobre patines en estación y vuelve a levitar antes de partir. |
 | Perturbaciones | Simula carga extra (+12 %), ráfaga lateral de viento, golpe vertical en vía, corte de corriente o desconexión del lazo de control. |

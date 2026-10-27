@@ -13,6 +13,7 @@
 //   4  "reiniciar" deja velocidad, estaciones, perturbaciones y respuesta como al principio
 //   5  la exageracion que fija la camara se dice (rotulo y deslizador) y no se finge
 //   6  con la camara seguir ninguna farola parpadea al pasar el decorado
+//   (viaje) con el panel cerrado, la distancia se pide desde el cuadro de mando y el tren se detiene ahi
 
 import { chromium } from "playwright-core";
 import { existsSync } from "node:fs";
@@ -482,7 +483,49 @@ async function loupeFails() {
 }
 
 const only = process.env.QA_ONLY?.split(",");
-const scenarios = { hints, ctrlOff, cutPower, reset, exaggeration, lamps, visibility, events, tour, tabs, state, loupeFails };
+// ---- viaje con distancia fija, desde el cuadro de mando (con el panel cerrado) ----
+async function trip() {
+  const S = "viaje";
+  const { page, errors } = await open({ advance: 0 });
+  await page.click("#panelBtn"); // el panel cerrado es el caso normal: el viaje se pide desde el cuadro de mando
+  await frames(page, 3);
+  const vis = await page.evaluate(() => {
+    const inView = (id) => { const r = document.getElementById(id).getBoundingClientRect(); return r.width > 0 && r.left >= 0 && r.right <= innerWidth && r.bottom <= innerHeight; };
+    return { dist: inView("tripDist"), btn: inView("tripBtn"), side: document.getElementById("side").classList.contains("closed") };
+  });
+  check(S, "con el panel cerrado, la distancia y el boton estan a la vista", vis.dist && vis.btn && vis.side, JSON.stringify(vis));
+  await page.fill("#tripDist", "");
+  await page.click("#tripBtn");
+  check(S, "sin distancia no arranca ningun viaje", await page.evaluate(() => window.__app.train.trip === null));
+  await page.fill("#tripDist", "1");
+  await page.click("#tripBtn");
+  await page.evaluate(() => { const a = window.__app; a.ui.setPaused(true); a.train.advance(40); });
+  await frames(page, 3);
+  const mid = await page.evaluate(() => ({ trip: !!window.__app.train.trip, done: window.__app.train.trip?.done, sub: document.getElementById("hTarget").textContent, noteHidden: document.getElementById("tripNote").hidden }));
+  check(S, "durante el viaje el cuadro de mando lo dice", mid.trip && !mid.done && /viaje de 1,0 km/.test(mid.sub) && mid.noteHidden, JSON.stringify(mid));
+  await page.evaluate(() => window.__app.train.advance(400));
+  await frames(page, 4);
+  const end = await page.evaluate(() => {
+    const t = window.__app.train;
+    const n = document.getElementById("tripNote");
+    return { x: t.x, v: t.v, done: t.trip?.done, hold: t.hold, sub: document.getElementById("hTarget").textContent, noteShown: !n.hidden && n.getBoundingClientRect().width > 0, note: document.getElementById("tripNoteTxt").textContent };
+  });
+  check(S, "se detiene a 1 km (error < 1,5 m)", end.done && end.v === 0 && Math.abs(end.x - 1000) < 1.5, JSON.stringify(end));
+  check(S, "al llegar aparece el resumen aunque el panel este cerrado", end.noteShown && /^Llegó: 1,0 km en/.test(end.note) && end.sub === "viaje terminado", JSON.stringify(end));
+  await page.click("#tripNoteX");
+  check(S, "el aviso se cierra", await page.evaluate(() => document.getElementById("tripNote").hidden));
+  await page.click("#tripBtn");
+  await frames(page, 2);
+  const again = await page.evaluate(() => ({ x: window.__app.train.x, done: window.__app.train.trip?.done, noteHidden: document.getElementById("tripNote").hidden }));
+  check(S, "pulsar de nuevo repite el viaje desde el origen", again.x < 5 && again.done === false && again.noteHidden, JSON.stringify(again));
+  await page.focus("#tripDist");
+  await page.keyboard.press("p"); // escribir en el campo no dispara atajos
+  check(S, "las teclas dentro del campo no activan atajos", await page.evaluate(() => !window.__app.view.parts));
+  check(S, "sin errores", errors.length === 0, errors.join(" | "));
+  await page.close();
+}
+
+const scenarios = { hints, ctrlOff, cutPower, reset, exaggeration, lamps, visibility, events, tour, tabs, state, loupeFails, trip };
 for (const [name, fn] of Object.entries(scenarios)) {
   if (only && !only.includes(name)) continue;
   try {
