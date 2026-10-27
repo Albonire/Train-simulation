@@ -60,12 +60,13 @@ export function createProps(scene) {
   for (const side of [-1, 1]) {
     const rotY = (-side * Math.PI) / 2; // el brazo (hacia -x local) apunta a la via, no a lo largo de ella
     const at = [0, 0, side * 7.2];
-    lampPole.push({ geo: new THREE.CylinderGeometry(0.07, 0.1, 7.2, 8).translate(0, 3.6, 0), at, rotY });
+    lampPole.push({ geo: new THREE.CylinderGeometry(0.1, 0.14, 7.2, 8).translate(0, 3.6, 0), at, rotY });
     lampPole.push({ geo: new THREE.BoxGeometry(1.5, 0.07, 0.07).translate(-0.7, 7.15, 0), at, rotY });
     lampHead.push({ geo: new THREE.BoxGeometry(0.55, 0.1, 0.26).translate(-1.35, 7.08, 0), at, rotY });
     lampPole.push({ geo: new THREE.BoxGeometry(0.34, 0.5, 0.34).translate(0, 0.25, 0), at, rotY }); // zocalo
   }
-  const poleMat = new THREE.MeshStandardMaterial({ color: "#5b636c", roughness: 0.6, metalness: 0.6 });
+  // gris claro y poco metalico: con mucho metal reflejaba el entorno oscuro y de lejos se veia como una raya negra
+  const poleMat = new THREE.MeshStandardMaterial({ color: "#8d959e", roughness: 0.6, metalness: 0.15 });
   const headMat = new THREE.MeshStandardMaterial({ color: "#e8e6dc", roughness: 0.4, emissive: new THREE.Color("#ffe6b0"), emissiveIntensity: 0 });
   ring({
     tile: LAMP,
