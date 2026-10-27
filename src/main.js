@@ -394,6 +394,16 @@ const ui = createUI({
   setSpacing: (m) => train.setSpacing(m),
   setHold: (on) => (train.hold = on),
   depart,
+  startTrip: (meters, kmh) => {
+    if (intro.active) endIntro();
+    if (tour.active) tourEnd();
+    if (selected) closePart();
+    if (ev.active) endEvent();
+    const used = train.startTrip(meters, kmh);
+    if (view.paused) ui.setPaused(false);
+    ui.toast(`Viaje de ${(used / 1000).toLocaleString("es", { maximumFractionDigits: 1 })} km`);
+    return used;
+  },
   reset: () => {
     train.reset();
     ui.resetControls();
@@ -562,7 +572,8 @@ function freeArea() {
   const open = !side.classList.contains("closed");
   const card = ui.card.open ? ui.card.el : null;
   if (w > 760) {
-    let l = cams.offsetLeft + cams.offsetWidth + 8;
+    // el ancho plegado: al pasar el cursor el carril se despliega sobre la escena y no debe mover el encuadre
+    let l = cams.offsetLeft + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--rail-w")) || cams.offsetWidth) + 8;
     if (card) l = Math.max(l, card.offsetLeft + card.offsetWidth + 8);
     const r = open ? w - side.offsetLeft + 8 : 0;
     const t = topbar.offsetTop + topbar.offsetHeight;

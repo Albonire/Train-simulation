@@ -105,26 +105,37 @@ export function createUI(h) {
     <button class="btn tour-btn" id="tourBtn" aria-pressed="false" title="Visita guiada: unos pasos cortos que explican qué pasa. Reinicia el viaje (V)">${ICONS.tour}<span>Visita</span></button>
     <nav class="nav" aria-label="Secciones">
       <a href="${routeHref("sim")}" data-page="sim">${ICONS.train}<span>Simulación</span></a>
-      <a href="${routeHref("guia")}" data-page="guia" aria-label="Guía">${ICONS.book}<span>Guía</span></a>
-      <a href="${routeHref("laminas")}" data-page="laminas" aria-label="Láminas">${ICONS.cube}<span>Láminas</span></a>
+      <button class="ib" id="learnBtn" popovertarget="learn" title="Guía y láminas para estudiar el sistema">${ICONS.book}<span>Aprender</span></button>
     </nav>
     <div class="tools">
-      <button class="ib" id="keysBtn" popovertarget="keys" title="Atajos de teclado (?)" aria-label="Atajos de teclado">${ICONS.keys}</button>
-      <button class="ib" id="themeBtn" title="Tema claro u oscuro" aria-label="Cambiar tema">${ICONS.moon}</button>
       <button class="ib" id="panelBtn" aria-pressed="true" title="Mostrar u ocultar el panel (H)" aria-label="Panel lateral">${ICONS.panel}</button>
+      <button class="ib" id="moreBtn" popovertarget="more" title="Más opciones" aria-label="Más opciones">${ICONS.more}</button>
     </div>
   </header>
+  <div id="learn" class="menu" popover>
+    <a href="${routeHref("guia")}" data-page="guia">${ICONS.book}<span><b>Guía</b><small>Cómo funciona cada tecnología, con fuentes</small></span></a>
+    <a href="${routeHref("laminas")}" data-page="laminas">${ICONS.cube}<span><b>Láminas</b><small>Figuras isométricas interactivas</small></span></a>
+  </div>
+  <div id="more" class="menu" popover>
+    <button id="themeBtn">${ICONS.moon}<span><b>Tema</b></span></button>
+    <button id="keysBtn" popovertarget="keys">${ICONS.keys}<span><b>Atajos de teclado</b><small>Tecla ?</small></span></button>
+    <button id="linkBtn">${ICONS.link}<span><b>Copiar enlace</b><small>Abre esta misma vista</small></span></button>
+    <button id="shotBtn">${ICONS.camera}<span><b>Guardar imagen</b><small>Tecla K</small></span></button>
+    <button id="introBtn">${ICONS.tour}<span><b>Repetir la apertura</b><small>Reinicia el viaje (I)</small></span></button>
+  </div>
 
   <nav id="cams" class="panel" aria-label="Cámaras">
-    ${RIGS.map(([id, label, tip], i) => `<button data-rig="${id}" aria-pressed="${id === "orbit"}" title="${tip}">${ICONS[["orbit", "chase", "section", "magnet", "top", "field"][i]]}<span>${label}</span><span class="k" aria-hidden="true">${i + 1}</span></button>`).join("")}
+    ${RIGS.map(([id, label, tip], i) => `<button data-rig="${id}" aria-pressed="${id === "orbit"}" title="${label} (${i + 1}). ${tip}" aria-label="${label}">${ICONS[["orbit", "chase", "section", "magnet", "top", "field"][i]]}<span>${label}</span><span class="k" aria-hidden="true">${i + 1}</span></button>`).join("")}
     <div class="rule" role="separator"></div>
-    <button class="tool" data-tool="parts" aria-pressed="false" title="Haz clic en una pieza para acercarte y leer qué hace">${ICONS.parts}<span>Piezas</span><span class="k" aria-hidden="true">P</span></button>
-    <button class="tool" data-tool="explode" aria-pressed="false" title="Separa las piezas para verlas por dentro">${ICONS.explode}<span>Separar</span><span class="k" aria-hidden="true">E</span></button>
+    <button class="tool" data-tool="parts" aria-pressed="false" title="Piezas (P). Haz clic en una pieza para acercarte y leer qué hace" aria-label="Piezas">${ICONS.parts}<span>Piezas</span><span class="k" aria-hidden="true">P</span></button>
+    <button class="tool" data-tool="explode" aria-pressed="false" title="Separar (E). Separa las piezas para verlas por dentro" aria-label="Separar">${ICONS.explode}<span>Separar</span><span class="k" aria-hidden="true">E</span></button>
   </nav>
 
   <aside id="loupe" class="panel" aria-label="Entrehierro en vivo"></aside>
 
   <p id="hint" role="note"></p>
+
+  <div id="tripNote" class="panel" hidden><p id="tripNoteTxt" role="status" aria-live="polite"></p><button class="ib" id="tripNoteX" aria-label="Cerrar aviso">${ICONS.close}</button></div>
 
   <div id="intro" hidden><p id="introCap" role="status"></p><button class="btn" id="introSkip" title="Salta la apertura (cualquier tecla o clic)">Omitir</button></div>
 
@@ -136,11 +147,13 @@ export function createUI(h) {
       <output id="hGap">–</output>
       <div class="bar" id="hGapBar" aria-hidden="true"><i></i><b></b><b></b><b></b></div>
     </div>
-    <button class="h-field" id="hField" title="Intensidad del campo magnético. Pulsa para verlo (6)">
-      <span class="h-lbl">Campo</span>
-      <output id="hFieldV">–</output>
-      <div class="bar" id="hFieldBar" aria-hidden="true"><i></i><b></b></div>
-    </button>
+    <div class="h-tripin" role="group" aria-label="Viaje con distancia fija">
+      <span class="h-lbl">Viaje</span>
+      <div class="tripin-row">
+        <span class="num-in"><input id="tripDist" type="number" min="0.2" max="200" step="0.1" value="5" inputmode="decimal" aria-label="Distancia del viaje en kilómetros" title="Distancia a recorrer, de 0,2 a 200 km. El tren se detiene al llegar."><span>km</span></span>
+        <button class="btn primary" id="tripBtn" title="El tren sale, frena solo y se detiene tras recorrer esa distancia">${ICONS.go}<span>Iniciar viaje</span></button>
+      </div>
+    </div>
     <div class="h-trip" title="Progreso hacia la próxima estación">
       <span class="h-lbl"><span id="hFrom">E1</span><span id="hRem">–</span><span id="hTo">E2</span></span>
       <div class="track" aria-hidden="true"><i id="hFill"></i><b id="hDot"></b></div>
@@ -148,7 +161,7 @@ export function createUI(h) {
     <div class="h-time">
       <button class="ib" id="pauseBtn" aria-pressed="false" title="Pausa (Espacio)" aria-label="Pausa">${ICONS.pause}</button>
       <div class="seg sm" id="timeBtns" role="group" aria-label="Velocidad de simulación">
-        ${[1, 5, 20, 60].map((t) => `<button data-ts="${t}" aria-pressed="${t === 5}" title="Simula ${t} s por cada segundo real">x${t}</button>`).join("")}
+        ${[0.25, 1, 5, 20, 60].map((t) => `<button data-ts="${t}" aria-pressed="${t === 5}" title="${t < 1 ? "Cámara lenta: un cuarto de segundo simulado por cada segundo real" : `Simula ${t} s por cada segundo real`}">${t < 1 ? "x¼" : "x" + t}</button>`).join("")}
       </div>
     </div>
   </section>
@@ -161,6 +174,11 @@ export function createUI(h) {
     </div>
 
     <div class="tab" id="pane-data" role="tabpanel" aria-labelledby="tab-data" data-pane="data">
+      <button class="h-field" id="hField" title="Intensidad del campo magnético. Pulsa para verlo (6)">
+        <span class="h-lbl">Campo magnético</span>
+        <output id="hFieldV">–</output>
+        <div class="bar" id="hFieldBar" aria-hidden="true"><i></i><b></b></div>
+      </button>
       <dl class="rows" id="rows"></dl>
       <figure class="chart"><figcaption><span id="capA"></span><span id="valA"></span></figcaption><canvas id="chartA"></canvas></figure>
       <figure class="chart"><figcaption><span id="capB"></span><span id="valB"></span></figcaption><canvas id="chartB"></canvas></figure>
@@ -168,8 +186,12 @@ export function createUI(h) {
     </div>
 
     <div class="tab" id="pane-ctrl" role="tabpanel" aria-labelledby="tab-ctrl" data-pane="ctrl" hidden>
-      <label class="field"><span>Velocidad objetivo <output id="targetOut"></output></span>
+      <h3>Viaje</h3>
+      <p class="hint-s">La distancia se escribe en el cuadro de mando de abajo (de 0,2 a 200 km). Aquí se elige la velocidad máxima del viaje: el tren sale, frena solo y se detiene al llegar.</p>
+      <label class="field"><span>Velocidad máxima <output id="targetOut"></output></span>
         <input id="target" type="range" min="0" max="400" step="1" value="400"></label>
+      <p class="resp trip-res" id="tripRes" role="status" aria-live="polite"></p>
+      <h3>Recorrido continuo</h3>
       <div class="actions">
         <button class="btn" id="goBtn" title="Salir de la estación ahora">${ICONS.go}<span>Salir</span></button>
         <button class="btn" id="stopBtn" aria-pressed="false" title="Quedarse en la próxima estación">${ICONS.hold}<span>Retener</span></button>
@@ -200,15 +222,9 @@ export function createUI(h) {
         <button data-layer="forces" aria-pressed="false" title="Flechas de fuerza (escala de raíz cuadrada)">Fuerzas</button>
         <button data-layer="labels" aria-pressed="true" title="Nombres de las piezas en las vistas de detalle">Nombres</button>
       </div>
-      <h3>Compartir</h3>
-      <div class="actions">
-        <button class="btn" id="linkBtn" title="Copia un enlace que abre esta misma vista: modo, cámara, escala de tiempo y pestaña">Copiar enlace</button>
-        <button class="btn" id="shotBtn" title="Guarda la imagen de la escena (K)">Guardar imagen</button>
-      </div>
-      <h3>Apertura</h3>
-      <button class="btn" id="introBtn" title="Vuelve a ver el primer plano de la levitación. Reinicia el viaje (I)">Repetir la apertura</button>
-      <h3>Colores</h3>
-      <ul class="legend">${LEGEND.map(([c, l]) => `<li><i style="background:${c}"></i>${l}</li>`).join("")}</ul>
+      <details class="legend-box"><summary>Qué significa cada color</summary>
+        <ul class="legend">${LEGEND.map(([c, l]) => `<li><i style="background:${c}"></i>${l}</li>`).join("")}</ul>
+      </details>
     </div>
   </aside>
 
@@ -237,11 +253,17 @@ export function createUI(h) {
     hGapLbl: $("#hGapLbl"), hGapBar: $("#hGapBar"), hFrom: $("#hFrom"), hTo: $("#hTo"), hRem: $("#hRem"),
     hFill: $("#hFill"), hDot: $("#hDot"), hFieldV: $("#hFieldV"), hFieldBar: $("#hFieldBar"),
     target: $("#target"), targetOut: $("#targetOut"), spacing: $("#spacing"), spacingOut: $("#spacingOut"),
-    exag: $("#exag"), exagOut: $("#exagOut"), perturb: $("#perturb"),
+    exag: $("#exag"), exagOut: $("#exagOut"), perturb: $("#perturb"), tripDist: $("#tripDist"), tripRes: $("#tripRes"), tripNote: $("#tripNote"), tripNoteTxt: $("#tripNoteTxt"),
     cams: $("#cams"), toast: $("#toast"), labels: $("#labels"), side: $("#side"), resp: $("#resp"),
     cA: $("#chartA"), cB: $("#chartB"), cC: $("#chartC"),
     capA: $("#capA"), capB: $("#capB"), capC: $("#capC"), valA: $("#valA"), valB: $("#valB"), valC: $("#valC"),
   };
+
+  // el cuadro de mando puede pasar a dos filas: lo que flota sobre el (lupa, pistas, avisos) sube con el
+  const hudEl = $("#hud");
+  const syncHud = () => document.documentElement.style.setProperty("--hud-top", `${hudEl.offsetHeight + 24}px`);
+  syncHud();
+  new ResizeObserver(syncHud).observe(hudEl);
 
   let mode = "ems";
   const tracker = new ResponseTracker();
@@ -322,6 +344,9 @@ export function createUI(h) {
     for (const b of els.perturb.querySelectorAll("[aria-pressed]")) b.setAttribute("aria-pressed", "false");
     $("#stopBtn").setAttribute("aria-pressed", "false");
     els.resp.textContent = "";
+    els.tripRes.textContent = "";
+    els.tripNote.hidden = true;
+    tripShown = false;
     tracker.cancel();
     hist.clear();
     legTrace = { xs: [], ys: [] };
@@ -403,13 +428,18 @@ export function createUI(h) {
         return h.setHold(on);
       }
       case "resetBtn": return h.reset();
-      case "introBtn": return h.replayIntro?.();
+      case "tripBtn": return startTrip();
+      case "tripNoteX": return void (els.tripNote.hidden = true);
+      case "introBtn": return closeMenus(), h.replayIntro?.();
       case "tourBtn": return h.tourToggle?.();
-      case "linkBtn": return h.copyLink?.();
-      case "shotBtn": return h.screenshot?.();
+      case "linkBtn": return closeMenus(), h.copyLink?.();
+      case "shotBtn": return closeMenus(), h.screenshot?.();
       case "themeBtn": return toggleTheme();
       case "panelBtn": return setPanel(els.side.classList.contains("closed"));
     }
+  });
+  root.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && e.target.id === "tripDist") startTrip();
   });
   root.addEventListener("input", (e) => {
     const t = e.target;
@@ -424,7 +454,7 @@ export function createUI(h) {
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       // un popover abierto se cierra solo; despues la tarjeta de pieza; si no, se vuelve a la simulacion
-      if (keysPop.matches?.(":popover-open")) return;
+      if ([keysPop, $("#learn"), $("#more")].some((p) => p.matches?.(":popover-open"))) return;
       if (view.page === "sim" && (h.tourEsc?.() || h.partEsc())) return;
       if (view.page !== "sim") router.go("sim");
       return;
@@ -482,7 +512,7 @@ export function createUI(h) {
     view.arg = arg;
     document.title = { sim: "Maglev · Simulación", guia: "Maglev · Guía", laminas: "Maglev · Láminas" }[page] ?? "Maglev";
     document.body.dataset.view = page;
-    keysPop.hidePopover?.();
+    closeMenus();
     // (con la tarjeta cerrada no hay nada que cerrar; y al abrir un enlace directo a la Guia la interfaz
     // aun se esta construyendo: main.js todavia no tiene su `ui`)
     if (page !== "sim" && card.open) h.partClose();
@@ -513,7 +543,7 @@ export function createUI(h) {
   // ---- tema ----
   function applyTheme(t) {
     document.documentElement.dataset.theme = t;
-    $("#themeBtn").innerHTML = t === "light" ? ICONS.moon : ICONS.sun;
+    $("#themeBtn").innerHTML = `${t === "light" ? ICONS.moon : ICONS.sun}<span><b>${t === "light" ? "Tema oscuro" : "Tema claro"}</b></span>`;
     h.setTheme?.(t);
   }
   function toggleTheme() {
@@ -521,6 +551,45 @@ export function createUI(h) {
     applyTheme(next);
     try { localStorage.setItem("maglev-theme", next); } catch {}
     if (view.page === "laminas") renderPage();
+  }
+
+  function closeMenus() {
+    for (const p of [keysPop, $("#learn"), $("#more")]) if (p.matches?.(":popover-open")) p.hidePopover();
+  }
+
+  // ---- viaje con distancia fija ----
+  let tripShown = false;
+  function startTrip() {
+    const km = els.tripDist.valueAsNumber;
+    if (!Number.isFinite(km) || km <= 0) {
+      els.tripDist.focus();
+      return toast("Escribe una distancia en km, por ejemplo 5 o 12,5");
+    }
+    const kmh = Number(els.target.value);
+    if (kmh < 20) return toast("Sube la velocidad máxima para poder salir");
+    resetControls();
+    els.target.value = String(kmh);
+    const used = h.startTrip(km * 1000, kmh) / 1000;
+    if (Math.abs(used - km) > 1e-9) els.tripDist.value = String(used);
+    setOutputs();
+    els.tripRes.textContent = `Viaje de ${fmt(used, used < 10 ? 1 : 0)} km a un máximo de ${kmh} km/h.`;
+  }
+  const clock = (s) => (s < 60 ? `${fmt(s, 0)} s` : `${Math.floor(s / 60)} min ${String(Math.round(s % 60)).padStart(2, "0")} s`);
+  function tripText(tel, train) {
+    const tr = tel.trip;
+    if (!tr) return;
+    if (tr.done) {
+      if (tripShown) return;
+      tripShown = true;
+      const err = Math.abs(train.lastSnap);
+      const txt = `Llegó: ${fmt(tr.distance / 1000, tr.distance < 10e3 ? 1 : 0)} km en ${clock(tr.duration)}, máximo ${fmt(tr.vMax * 3.6, 0)} km/h, ajuste final ${fmt(err * 100, 0)} cm.`;
+      els.tripRes.textContent = txt + " Pulsa Salir (panel Control) para otro tramo igual.";
+      els.tripNoteTxt.textContent = txt;
+      els.tripNote.hidden = false;
+      return;
+    }
+    tripShown = false;
+    els.tripRes.textContent = `En viaje: quedan ${fmt(Math.max(0, tel.remaining) / 1000, tel.remaining < 10e3 ? 2 : 1)} km, ${clock(tel.time)} transcurridos.`;
   }
 
   let toastTimer = 0;
@@ -575,7 +644,7 @@ export function createUI(h) {
     const tips = coarse
       ? ["Arrastra para girar, pellizca para acercar, doble toque para recentrar"]
       : [
-          "Abajo a la izquierda, el corte en vivo de la levitación",
+          "Abajo a la izquierda, ábrelo para ver el corte en vivo de la levitación (L)",
           "Arrastra para girar, rueda para acercar, 1 a 6 cambian de cámara",
           "P elige una pieza para leer qué hace; E las separa",
         ];
@@ -646,7 +715,8 @@ export function createUI(h) {
       if (train.sections.some((s) => s.contact)) [label, kind] = ["Pegado al riel", "bad"];
       els.hState.textContent = label;
       els.hState.dataset.k = kind;
-      els.hTarget.textContent = train.hold ? "retenido" : `objetivo ${Math.round(train.targetSpeed * 3.6)} km/h`;
+      els.hTarget.textContent = tel.trip?.done ? "viaje terminado" : tel.trip ? `viaje de ${fmt(tel.trip.distance / 1000, tel.trip.distance < 10e3 ? 1 : 0)} km, máx. ${Math.round(train.targetSpeed * 3.6)}` : train.hold ? "retenido" : `objetivo ${Math.round(train.targetSpeed * 3.6)} km/h`;
+      tripText(tel, train);
       els.hGap.textContent = fmt(tel.gapMm, mode === "ems" ? 1 : 0) + " mm";
       const range = mode === "ems" ? [0, 22] : [80, 102];
       const pos = (v) => `${(Math.min(1, Math.max(0, (v - range[0]) / (range[1] - range[0]))) * 100).toFixed(1)}%`;
@@ -741,7 +811,7 @@ export function createUI(h) {
       y: [0, Math.ceil((MODES[mode].vMax * 3.6) / 100) * 100],
       series: [{ xs: legTrace.xs, ys: legTrace.ys, color: cssVar("--accent"), width: 2 }],
       marker: legTrace.xs.length ? { x: legTrace.xs[legTrace.xs.length - 1], y: tel.speedKmh, color: cssVar("--text") } : null,
-      xFmt: (q) => q.toFixed(0) + " km", yFmt: (q) => q.toFixed(0),
+      xFmt: (q) => (train.stationSpacing < 10e3 ? fmt(q, 1) : q.toFixed(0)) + " km", yFmt: (q) => q.toFixed(0),
     });
     els.valC.textContent = "";
   }
@@ -752,7 +822,7 @@ export function createUI(h) {
     const saved = localStorage.getItem("maglev-theme");
     applyTheme(saved ?? (window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark"));
     const panel = localStorage.getItem("maglev-panel");
-    setPanel(panel === null ? window.innerWidth > 1500 : panel === "1"); // cerrado en ventanas medianas: el tren gana sitio
+    setPanel(panel === "1"); // cerrado de entrada: la escena manda; se recuerda si el usuario lo abre
   } catch {
     applyTheme("dark");
   }

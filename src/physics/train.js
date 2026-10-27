@@ -27,6 +27,10 @@ export const MODES = {
   },
 };
 
+// limites del viaje con distancia fija, m. por debajo de 200 m el ems apenas termina de despegar.
+export const TRIP_MIN = 200;
+export const TRIP_MAX = 200e3;
+
 export const STATES = {
   REPOSO: "reposo",
   LEVITANDO: "levitando",
@@ -80,6 +84,7 @@ export class Train {
     this.lastSnap = 0;
     this.hold = false; // el usuario pide quedarse en reposo
     this.powerCut = 0; // s simulados que le quedan al corte de alimentacion (solo ems)
+    this.trip = null; // viaje con distancia fija (starttrip): el tren se detiene al final y no sigue
     for (const s of this.sections) s.reset(this.mode.id === "ems");
   }
 
@@ -129,7 +134,22 @@ export class Train {
   /** cambia la distancia entre estaciones; la siguiente es la mas cercana por delante. */
   setSpacing(meters) {
     this.stationSpacing = meters;
+    this.trip = null; // elegir la distancia entre estaciones vuelve al recorrido continuo
     this.nextStation = (Math.floor(this.x / meters + 1e-6) + 1) * meters;
+  }
+
+  /**
+   * viaje de una sola etapa: sale desde el origen, recorre `distance` metros con la velocidad maxima
+   * pedida y se detiene en la estacion de llegada (no sigue a la siguiente). devuelve la distancia usada.
+   */
+  startTrip(distance, speedKmh = toKmh(this.mode.vMax)) {
+    const d = clamp(distance, TRIP_MIN, TRIP_MAX);
+    this.reset();
+    this.stationSpacing = d;
+    this.nextStation = d;
+    this.setTargetSpeedKmh(speedKmh);
+    this.trip = { distance: d, done: false, vMax: 0, duration: 0 };
+    return d;
   }
 
   setTargetSpeedKmh(kmh) {
@@ -193,7 +213,14 @@ export class Train {
 
     switch (this.state) {
       case STATES.REPOSO:
-        if (!this.hold) this._go(STATES.LEVITANDO);
+        if (!this.hold) {
+          // tras un viaje terminado, salir de nuevo es otra etapa de la misma distancia
+          if (this.trip?.done) {
+            this.nextStation += this.stationSpacing;
+            this.trip = null;
+          }
+          this._go(STATES.LEVITANDO);
+        }
         break;
       case STATES.LEVITANDO:
         if (canMove) this._go(STATES.ACELERANDO);
@@ -246,8 +273,17 @@ export class Train {
       this.lastSnap = this.nextStation - this.x; // ajuste final de posicion, m
       this.v = 0;
       this.x = this.nextStation;
-      this._go(STATES.ESTACION);
+      if (this.trip) {
+        // fin del viaje: se queda en reposo (en ems aterriza sobre los patines) hasta que se pida salir
+        this.trip.done = true;
+        this.trip.duration = this.time;
+        this.hold = true;
+        this._go(STATES.REPOSO);
+      } else {
+        this._go(STATES.ESTACION);
+      }
     }
+    if (this.trip && !this.trip.done) this.trip.vMax = Math.max(this.trip.vMax, this.v);
     if (!this.autoTrip && this.targetSpeed === 0 && this.v < 0.03 && this.state !== STATES.REPOSO) {
       this.v = 0;
     }
@@ -312,6 +348,7 @@ export class Train {
       nextStation: this.nextStation,
       remaining: this.nextStation - this.x,
       time: this.time,
+      trip: this.trip ? { ...this.trip } : null,
     };
   }
 }

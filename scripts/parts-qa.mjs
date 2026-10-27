@@ -16,7 +16,7 @@ import { PNG } from "pngjs";
 const URL_BASE = process.argv.find((a) => a.startsWith("http")) ?? "http://127.0.0.1:5173/";
 const CHROME =
   process.env.CHROME_PATH ??
-  ["/opt/pw-browsers/chromium-1194/chrome-linux/chrome", "/usr/bin/chromium", "/usr/bin/google-chrome"].find((p) => existsSync(p));
+  ["/opt/pw-browsers/chromium", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", "/usr/bin/chromium", "/usr/bin/google-chrome"].find((p) => existsSync(p));
 const MODES = (process.env.QA_MODES ?? "ems,eds").split(",");
 const THEMES = (process.env.QA_THEMES ?? "light,dark").split(",");
 const SIZES = (process.env.QA_SIZES ?? "1920x918,390x844").split(",").map((s) => s.split("x").map(Number));

@@ -4,7 +4,7 @@
 
 export const MODES_OK = ["ems", "eds"];
 export const RIGS_OK = ["orbit", "chase", "section", "gap", "top", "field"];
-export const TIMES_OK = [1, 5, 20, 60];
+export const TIMES_OK = [0.25, 1, 5, 20, 60];
 export const TABS_OK = ["data", "ctrl", "view"];
 
 /** lee { m, c, t, tab } de un hash tipo "#/?m=eds&c=gap". devuelve null si no hay ningun campo valido. */
