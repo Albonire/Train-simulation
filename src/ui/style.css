@@ -138,9 +138,12 @@ body[data-view="sim"] .nav a[data-page="sim"] { display: none; }
 .menu small { display: block; color: var(--muted); font-size: var(--t-s); margin-top: 1px; }
 
 /* ---- camaras ---- */
-#cams { position: absolute; left: 12px; top: calc(var(--bar) + 12px); display: flex; flex-direction: column; gap: 2px; padding: 4px; z-index: 1; }
-#cams button { display: flex; align-items: center; justify-content: center; width: 40px; min-height: 40px; padding: 0; border-radius: var(--r-s); color: var(--muted); font-weight: 500; transition: background-color 0.15s, color 0.15s; }
-#cams button > span { display: none; }
+/* carril plegado a iconos; al pasar el cursor (o enfocar con el teclado) se despliega sobre la escena */
+:root { --rail-w: 48px; }
+#cams { position: absolute; left: 12px; top: calc(var(--bar) + 12px); display: flex; flex-direction: column; gap: 2px; padding: 4px; width: var(--rail-w); overflow: hidden; transition: width 0.2s var(--ease) 0.15s; z-index: 2; }
+#cams:hover, #cams:focus-within { width: 184px; transition-delay: 0s; }
+#cams button { display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 12px; flex: none; width: 100%; min-height: 40px; padding: 0 11px; border-radius: var(--r-s); color: var(--muted); font-weight: 500; text-align: left; white-space: nowrap; transition: background-color 0.15s, color 0.15s; }
+#cams button > span:not(.k) { overflow: hidden; }
 #cams button:hover { background: var(--surface-2); color: var(--text); }
 #cams button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 #cams .k { font-family: var(--num); font-size: var(--t-s); opacity: 0.75; }
@@ -336,9 +339,9 @@ body:not([data-view="sim"]) #view { visibility: hidden; }
   .nav a { padding: 0 10px; }
   .tools { padding-left: 4px; }
   /* en el movil el carril cabe entero: dos filas, sin desplazamiento lateral */
-  #cams { top: calc(var(--bar) + 8px); left: 8px; right: 8px; flex-direction: row; flex-wrap: wrap; }
-  #cams button { width: auto; flex: 1 1 calc(12.5% - 4px); }
-  #cams button:not([aria-pressed="true"]) span:not(.k) { font-size: var(--t-s); }
+  #cams, #cams:hover, #cams:focus-within { top: calc(var(--bar) + 8px); left: 8px; right: 8px; width: auto; overflow: visible; flex-direction: row; flex-wrap: wrap; transition: none; }
+  #cams button { display: flex; justify-content: center; width: auto; padding: 0; flex: 1 1 calc(12.5% - 4px); }
+  #cams button > span { display: none; }
   #cams .rule { display: none; }
   #cams .k { display: none; }
   #hud { left: 8px; right: 8px; bottom: 8px; width: auto; max-width: none; flex-wrap: wrap; gap: 8px 16px; padding: 10px 12px; }
