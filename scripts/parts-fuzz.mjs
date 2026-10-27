@@ -75,7 +75,7 @@ const ACTIONS = [
   ["pausa", async () => page.keyboard.press(" ")],
   ["tema", async () => page.click("#themeBtn")],
   ["panel H", async () => page.keyboard.press("h")],
-  ["escala", async () => page.click(`[data-ts="${pick([1, 5, 20, 60])}"]`)],
+  ["escala", async () => page.evaluate((x) => window.__app.ui.setTimeScale(x), pick([1, 5, 20, 60]))],
   ["modo", async () => page.click(`[data-mode="${pick(["ems", "eds"])}"]`)],
   ["cuerpo", async () => page.evaluate((b) => { document.querySelector('[data-tab="view"]')?.click(); document.querySelector(`[data-body="${b}"]`)?.click(); }, pick(["auto", "solid", "xray", "cut"]))],
   ["clic en el lienzo", async () => { const x = 200 + rnd() * (W - 600), y = 120 + rnd() * (H - 300); await page.mouse.move(x, y, { steps: 3 }); await page.mouse.down(); await page.mouse.up(); }],

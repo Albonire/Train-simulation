@@ -240,7 +240,7 @@
       <li>La física avanza en <b>pasos de un milisegundo</b>. Un paso tan corto hace que el resultado no dependa de la velocidad del computador.</li>
       <li>Cada 20 ms se guarda la <b>telemetría</b>: velocidad, separación de cada sección, corriente, empuje, potencia y energía. Con ella se dibujan las gráficas del panel "Datos" y la lupa del hueco.</li>
       <li>El usuario puede <b>perturbar</b> el sistema (carga extra, ráfaga de viento, golpe, quitar el control o cortar la corriente). El programa mide <b>cuánto se desvía</b> el tren y <b>cuánto tarda</b> en volver a su valor.</li>
-      <li>En el modo <b>Viaje</b> se escribe una distancia y una velocidad máxima. El programa calcula en cada instante a qué velocidad debe ir para poder frenar a tiempo, y al llegar informa el tiempo total y el ajuste final.</li>
+      <li>En el modo <b>Viaje</b> se escribe una distancia y una velocidad máxima. El programa calcula en cada instante a qué velocidad debe ir para poder frenar a tiempo. Antes de salir avisa a qué velocidad llegará con esa distancia (en trayectos cortos no alcanza la velocidad pedida porque debe frenar antes) y cuántos km hacen falta para alcanzarla. Al llegar informa el tiempo total y el ajuste final.</li>
     </ul>
 
     <h3>Criterios de evaluación</h3>
@@ -254,7 +254,7 @@
       <tr><td class="l">El tren se detiene donde se pidió</td><td class="l">Viajes de 0,5 a 40 km en los dos modos</td><td>a menos de 1,5 m</td></tr>
       <tr><td class="l">La energía cuadra</td><td class="l">Trabajo del motor frente a pérdidas</td><td>cumple</td></tr>
       <tr><td class="l">La imagen no parpadea ni se corta</td><td class="l">Revisión visual automática con capturas</td><td>cumple</td></tr>
-      <tr><td class="l">Total de pruebas automáticas</td><td class="l">Vitest, en cada cambio</td><td>216 de 216 aprobadas</td></tr>
+      <tr><td class="l">Total de pruebas automáticas</td><td class="l">Vitest, en cada cambio</td><td>238 de 238 aprobadas</td></tr>
     </table>
   </div>
 </section>
@@ -284,7 +284,7 @@
     </table>
     <figure>
       <img src="img/viaje.png" alt="Viaje terminado" style="width:92%" />
-      <figcaption>Viaje de 2 km terminado: el tren se detuvo en la estación 2 y el aviso sobre el cuadro de mando muestra el resumen. El campo de distancia y el botón "Iniciar viaje" están siempre a la vista, abajo.</figcaption>
+      <figcaption>Viaje de 2 km terminado: el tren se detuvo en la estación 2 y el aviso sobre el cuadro de mando muestra el resumen. La distancia, el botón "Iniciar viaje" y la estimación de velocidad están siempre a la vista, abajo.</figcaption>
     </figure>
     <div class="note"><p>Los tiempos son de tiempo simulado. En la aplicación se pueden ver más rápido (x5, x20, x60) o en cámara lenta (x¼).</p></div>
   </div>

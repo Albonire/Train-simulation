@@ -148,7 +148,7 @@ export class Train {
     this.stationSpacing = d;
     this.nextStation = d;
     this.setTargetSpeedKmh(speedKmh);
-    this.trip = { distance: d, done: false, vMax: 0, duration: 0 };
+    this.trip = { distance: d, done: false, vMax: 0, duration: 0, t0: 0 };
     return d;
   }
 
@@ -214,10 +214,11 @@ export class Train {
     switch (this.state) {
       case STATES.REPOSO:
         if (!this.hold) {
-          // tras un viaje terminado, salir de nuevo es otra etapa de la misma distancia
+          // tras un viaje terminado, salir de nuevo repite el viaje: otro tramo de la misma distancia y con la
+          // misma velocidad maxima, medido desde la salida (no desde el primer tramo)
           if (this.trip?.done) {
             this.nextStation += this.stationSpacing;
-            this.trip = null;
+            this.trip = { ...this.trip, done: false, vMax: 0, duration: 0, t0: this.time };
           }
           this._go(STATES.LEVITANDO);
         }
@@ -276,7 +277,7 @@ export class Train {
       if (this.trip) {
         // fin del viaje: se queda en reposo (en ems aterriza sobre los patines) hasta que se pida salir
         this.trip.done = true;
-        this.trip.duration = this.time;
+        this.trip.duration = this.time - this.trip.t0;
         this.hold = true;
         this._go(STATES.REPOSO);
       } else {

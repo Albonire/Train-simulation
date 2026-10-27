@@ -14,9 +14,10 @@ import { KEYS, GLOSARIO } from "./info.js";
 import { createPartCard } from "./partCard.js";
 import { createTourCard } from "./tourCard.js";
 import { createLoupe } from "./loupe.js";
-import { EDS, G } from "../physics/constants.js";
+import { EDS, G, fmtKm } from "../physics/constants.js";
 import { EdsSection } from "../physics/eds.js";
-import { MODES } from "../physics/train.js";
+import { MODES, TRIP_MIN, TRIP_MAX } from "../physics/train.js";
+import { previewTrip, distanceToReach } from "../physics/tripPreview.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const fmt = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d).replace(".", ",") : "–");
@@ -141,18 +142,13 @@ export function createUI(h) {
 
   <section id="hud" class="panel" aria-label="Cuadro de mando">
     <div class="h-speed"><output id="hSpeed">0</output><span>km/h</span></div>
-    <div class="h-state"><span class="pill" id="hState" data-k="idle" role="status">En reposo</span><span class="h-sub" id="hTarget"></span></div>
-    <div class="h-gap" id="hGapBox">
-      <span class="h-lbl" id="hGapLbl">Entrehierro</span>
-      <output id="hGap">–</output>
-      <div class="bar" id="hGapBar" aria-hidden="true"><i></i><b></b><b></b><b></b></div>
-    </div>
+    <span class="pill" id="hState" data-k="idle" role="status" hidden>En reposo</span>
     <div class="h-tripin" role="group" aria-label="Viaje con distancia fija">
-      <span class="h-lbl">Viaje</span>
       <div class="tripin-row">
-        <span class="num-in"><input id="tripDist" type="number" min="0.2" max="200" step="0.1" value="5" inputmode="decimal" aria-label="Distancia del viaje en kilómetros" title="Distancia a recorrer, de 0,2 a 200 km. El tren se detiene al llegar."><span>km</span></span>
+        <span class="num-in"><input id="tripDist" type="number" min="0.2" max="200" step="0.1" value="5" inputmode="decimal" aria-label="Distancia del viaje en kilómetros" aria-describedby="tripHint" title="Distancia a recorrer, de 0,2 a 200 km. El tren se detiene al llegar."><span>km</span></span>
         <button class="btn primary" id="tripBtn" title="El tren sale, frena solo y se detiene tras recorrer esa distancia">${ICONS.go}<span>Iniciar viaje</span></button>
       </div>
+      <span class="h-hint" id="tripHint"></span>
     </div>
     <div class="h-trip" title="Progreso hacia la próxima estación">
       <span class="h-lbl"><span id="hFrom">E1</span><span id="hRem">–</span><span id="hTo">E2</span></span>
@@ -160,9 +156,7 @@ export function createUI(h) {
     </div>
     <div class="h-time">
       <button class="ib" id="pauseBtn" aria-pressed="false" title="Pausa (Espacio)" aria-label="Pausa">${ICONS.pause}</button>
-      <div class="seg sm" id="timeBtns" role="group" aria-label="Velocidad de simulación">
-        ${[0.25, 1, 5, 20, 60].map((t) => `<button data-ts="${t}" aria-pressed="${t === 5}" title="${t < 1 ? "Cámara lenta: un cuarto de segundo simulado por cada segundo real" : `Simula ${t} s por cada segundo real`}">${t < 1 ? "x¼" : "x" + t}</button>`).join("")}
-      </div>
+      <button class="btn ts" id="tsBtn" aria-label="Velocidad de la simulación">x5</button>
     </div>
   </section>
 
@@ -249,8 +243,7 @@ export function createUI(h) {
   }
 
   const els = {
-    rows: $("#rows"), hSpeed: $("#hSpeed"), hState: $("#hState"), hTarget: $("#hTarget"), hGap: $("#hGap"),
-    hGapLbl: $("#hGapLbl"), hGapBar: $("#hGapBar"), hFrom: $("#hFrom"), hTo: $("#hTo"), hRem: $("#hRem"),
+    rows: $("#rows"), hSpeed: $("#hSpeed"), hState: $("#hState"), tsBtn: $("#tsBtn"), tripHint: $("#tripHint"), hFrom: $("#hFrom"), hTo: $("#hTo"), hRem: $("#hRem"),
     hFill: $("#hFill"), hDot: $("#hDot"), hFieldV: $("#hFieldV"), hFieldBar: $("#hFieldBar"),
     target: $("#target"), targetOut: $("#targetOut"), spacing: $("#spacing"), spacingOut: $("#spacingOut"),
     exag: $("#exag"), exagOut: $("#exagOut"), perturb: $("#perturb"), tripDist: $("#tripDist"), tripRes: $("#tripRes"), tripNote: $("#tripNote"), tripNoteTxt: $("#tripNoteTxt"),
@@ -285,10 +278,6 @@ export function createUI(h) {
     els.rows.innerHTML = ROWS[modeId].map(([id, label, unit]) => `<dt tabindex="0" title="${GLOSARIO[modeId][id] ?? ""}">${label}</dt><dd><span data-r="${id}">–</span><small>${unit}</small></dd>`).join("");
     rowEls = {};
     for (const [id] of ROWS[modeId]) rowEls[id] = $(`[data-r="${id}"]`, els.rows);
-    els.hGapLbl.textContent = modeId === "ems" ? "Entrehierro" : "Elevación";
-    $("#hGapBox").title = modeId === "ems"
-      ? `${GLOSARIO.ems.gap} Muestra la sección central; los tres puntos de la barra son las tres secciones y la zona verde es la nominal.`
-      : `${GLOSARIO.eds.gap} Muestra la sección central; los tres puntos de la barra son las tres secciones y la zona verde es la nominal.`;
     $("#hField").title = GLOSARIO[modeId].field;
     const vmax = Math.round(m.vMax * 3.6);
     els.target.max = String(vmax);
@@ -298,6 +287,11 @@ export function createUI(h) {
       .map(([id, ic, label, effect, toggle]) => `<button class="act" data-p="${id}" ${toggle ? 'aria-pressed="false"' : ""}>${ICONS[ic]}<span><b>${label}</b><small>${effect}</small></span></button>`)
       .join("");
     els.resp.textContent = "";
+    els.tripRes.textContent = "";
+    els.tripNote.hidden = true;
+    tripActive = false;
+    tripShown = false;
+    updateTripHint();
     tracker.cancel();
     refreshPage();
     $("[data-layer=wave]").title = modeId === "ems" ? "Onda del estator: rojo N, azul S" : "Corrientes en las bobinas de la vía";
@@ -346,6 +340,7 @@ export function createUI(h) {
     els.resp.textContent = "";
     els.tripRes.textContent = "";
     els.tripNote.hidden = true;
+    tripActive = false;
     tripShown = false;
     tracker.cancel();
     hist.clear();
@@ -353,6 +348,7 @@ export function createUI(h) {
     lastLeg = -1;
     loupe.reset();
     setOutputs();
+    updateTripHint();
   }
 
   function selectTab(name) {
@@ -382,8 +378,15 @@ export function createUI(h) {
     b.title = on ? "Reanudar (Espacio)" : "Pausa (Espacio)";
     h.setPaused(on);
   }
+  const TS_STEPS = [0.25, 1, 5, 20, 60];
+  let curTs = 5;
+  const tsLabel = (ts) => (ts < 1 ? (ts === 0.25 ? "x¼" : "x" + String(ts).replace(".", ",")) : "x" + ts);
   function setTimeScale(ts) {
-    for (const x of root.querySelectorAll("[data-ts]")) press(x, Number(x.dataset.ts) === ts);
+    els.tsBtn.textContent = tsLabel(ts);
+    const what = ts < 1 ? "cámara lenta" : `simula ${ts} s por cada segundo real`;
+    els.tsBtn.title = `Velocidad de la simulación: ${tsLabel(ts)} (${what}). Pulsa para cambiarla.`;
+    els.tsBtn.setAttribute("aria-label", `Velocidad de la simulación ${tsLabel(ts)}. Pulsa para cambiarla.`);
+    curTs = ts;
     h.setTimeScale(ts);
   }
 
@@ -404,7 +407,6 @@ export function createUI(h) {
     if (!b) return;
     if (b.dataset.mode) return h.setMode(b.dataset.mode);
     if (b.dataset.rig) return h.setRig(b.dataset.rig);
-    if (b.dataset.ts) return setTimeScale(Number(b.dataset.ts));
     if (b.dataset.tab) return selectTab(b.dataset.tab);
     if (b.dataset.body) {
       for (const x of $("#bodyBtns").children) press(x, x === b);
@@ -428,6 +430,7 @@ export function createUI(h) {
         return h.setHold(on);
       }
       case "resetBtn": return h.reset();
+      case "tsBtn": return setTimeScale(TS_STEPS.find((x) => x > curTs + 1e-9) ?? TS_STEPS[0]);
       case "tripBtn": return startTrip();
       case "tripNoteX": return void (els.tripNote.hidden = true);
       case "introBtn": return closeMenus(), h.replayIntro?.();
@@ -446,6 +449,7 @@ export function createUI(h) {
     if (t.id === "target") h.setTarget(Number(t.value));
     if (t.id === "exag") h.setExag(Number(t.value));
     if (t.id === "spacing") h.setSpacing(Number(t.value) * 1000);
+    if (t.id === "tripDist" || t.id === "target") updateTripHint();
     setOutputs();
   });
 
@@ -558,7 +562,24 @@ export function createUI(h) {
   }
 
   // ---- viaje con distancia fija ----
-  let tripShown = false;
+  let tripShown = false; // el aviso de llegada ya se mostro
+  let tripActive = false; // hay un viaje en curso o terminado cuyo texto esta en pantalla
+  const kmRound = (m) => fmtKm(m < 10e3 ? Math.round(m / 100) * 100 : Math.round(m / 1000) * 1000);
+  /** Lo que dice la estimacion previa: a que velocidad llegara con esa distancia y cuantos km hacen falta. */
+  function updateTripHint() {
+    const el = els.tripHint;
+    const km = els.tripDist.valueAsNumber;
+    const kmh = Number(els.target.value);
+    el.dataset.k = "";
+    if (!Number.isFinite(km) || km <= 0) return void (el.textContent = "");
+    if (kmh < 20) return void (el.textContent = "Sube la velocidad máxima (panel Control)");
+    const m = Math.min(TRIP_MAX, Math.max(TRIP_MIN, km * 1000));
+    const p = previewTrip(mode, m, kmh);
+    if (!p.limited) return void (el.textContent = `Llegará a ${Math.round(p.targetKmh)} km/h`);
+    const need = distanceToReach(mode, p.targetKmh);
+    el.dataset.k = "warn";
+    el.textContent = `Con ${fmtKm(m)} km solo llega a unos ${Math.round(p.peakKmh / 5) * 5} km/h` + (need ? `. Para ${Math.round(p.targetKmh)} hacen falta ${kmRound(need)} km` : "");
+  }
   function startTrip() {
     const km = els.tripDist.valueAsNumber;
     if (!Number.isFinite(km) || km <= 0) {
@@ -569,27 +590,44 @@ export function createUI(h) {
     if (kmh < 20) return toast("Sube la velocidad máxima para poder salir");
     resetControls();
     els.target.value = String(kmh);
-    const used = h.startTrip(km * 1000, kmh) / 1000;
-    if (Math.abs(used - km) > 1e-9) els.tripDist.value = String(used);
+    const used = h.startTrip(km * 1000, kmh);
+    if (Math.abs(used - km * 1000) > 1e-6) els.tripDist.value = String(used / 1000);
     setOutputs();
-    els.tripRes.textContent = `Viaje de ${fmt(used, used < 10 ? 1 : 0)} km a un máximo de ${kmh} km/h.`;
+    updateTripHint();
+    tripActive = true;
+    els.tripRes.textContent = `Viaje de ${fmtKm(used)} km a un máximo de ${kmh} km/h.`;
   }
   const clock = (s) => (s < 60 ? `${fmt(s, 0)} s` : `${Math.floor(s / 60)} min ${String(Math.round(s % 60)).padStart(2, "0")} s`);
   function tripText(tel, train) {
     const tr = tel.trip;
-    if (!tr) return;
+    if (!tr) {
+      // el viaje se cancelo (otro modo, "Estaciones cada", reiniciar): no queda texto de un viaje que ya no existe
+      if (tripActive) {
+        tripActive = false;
+        tripShown = false;
+        els.tripRes.textContent = "";
+        els.tripNote.hidden = true;
+      }
+      return;
+    }
+    tripActive = true;
     if (tr.done) {
       if (tripShown) return;
       tripShown = true;
       const err = Math.abs(train.lastSnap);
-      const txt = `Llegó: ${fmt(tr.distance / 1000, tr.distance < 10e3 ? 1 : 0)} km en ${clock(tr.duration)}, máximo ${fmt(tr.vMax * 3.6, 0)} km/h, ajuste final ${fmt(err * 100, 0)} cm.`;
-      els.tripRes.textContent = txt + " Pulsa Salir (panel Control) para otro tramo igual.";
+      const short = tr.vMax < 0.97 * train.targetSpeed ? ` La distancia no dio para llegar a ${Math.round(train.targetSpeed * 3.6)} km/h.` : "";
+      const txt = `Llegó: ${fmtKm(tr.distance)} km en ${clock(tr.duration)}, máximo ${fmt(tr.vMax * 3.6, 0)} km/h, ajuste final ${fmt(err * 100, 0)} cm.${short}`;
+      els.tripRes.textContent = txt + " Pulsa Iniciar viaje o Salir para repetirlo.";
       els.tripNoteTxt.textContent = txt;
       els.tripNote.hidden = false;
       return;
     }
-    tripShown = false;
-    els.tripRes.textContent = `En viaje: quedan ${fmt(Math.max(0, tel.remaining) / 1000, tel.remaining < 10e3 ? 2 : 1)} km, ${clock(tel.time)} transcurridos.`;
+    if (tripShown) {
+      // salio otra vez (Salir): el aviso del tramo anterior sobra
+      tripShown = false;
+      els.tripNote.hidden = true;
+    }
+    els.tripRes.textContent = `En viaje: quedan ${fmt(Math.max(0, tel.remaining) / 1000, tel.remaining < 10e3 ? 2 : 1)} km, ${clock(tel.time - tr.t0)} transcurridos.`;
   }
 
   let toastTimer = 0;
@@ -708,25 +746,18 @@ export function createUI(h) {
       lastText = now;
       // cuadro de mando
       els.hSpeed.textContent = fmt(tel.speedKmh, 0);
+      // el estado solo se muestra cuando dice algo: acelerar, ir a crucero y frenar es lo normal y no hace falta rotularlo
       let [label, kind] = STATE[tel.state] ?? [tel.state, "idle"];
+      let quiet = ["acelerando", "crucero", "frenando"].includes(tel.state);
       if (tel.state === "levitando" && mode === "eds") label = "Preparado";
       // sobre patines es lo normal en una estacion (neutro); en marcha es una falla (rojo)
-      if (train.sections.some((s) => s.fallen)) [label, kind] = ["Sobre patines", tel.speedKmh > 20 ? "bad" : "idle"];
-      if (train.sections.some((s) => s.contact)) [label, kind] = ["Pegado al riel", "bad"];
+      if (train.sections.some((s) => s.fallen)) [label, kind, quiet] = ["Sobre patines", tel.speedKmh > 20 ? "bad" : "idle", false];
+      if (train.sections.some((s) => s.contact)) [label, kind, quiet] = ["Pegado al riel", "bad", false];
+      if (tel.trip?.done) [label, kind, quiet] = ["Viaje terminado", "info", false];
       els.hState.textContent = label;
       els.hState.dataset.k = kind;
-      els.hTarget.textContent = tel.trip?.done ? "viaje terminado" : tel.trip ? `viaje de ${fmt(tel.trip.distance / 1000, tel.trip.distance < 10e3 ? 1 : 0)} km, máx. ${Math.round(train.targetSpeed * 3.6)}` : train.hold ? "retenido" : `objetivo ${Math.round(train.targetSpeed * 3.6)} km/h`;
+      els.hState.hidden = quiet;
       tripText(tel, train);
-      els.hGap.textContent = fmt(tel.gapMm, mode === "ems" ? 1 : 0) + " mm";
-      const range = mode === "ems" ? [0, 22] : [80, 102];
-      const pos = (v) => `${(Math.min(1, Math.max(0, (v - range[0]) / (range[1] - range[0]))) * 100).toFixed(1)}%`;
-      const bar = els.hGapBar;
-      const [z0, z1] = mode === "ems" ? [9.5, 10.5] : [EDS.gapWheels * 1000 + 8, EDS.gapCruise * 1000];
-      bar.children[0].style.left = pos(z0);
-      bar.children[0].style.width = `calc(${pos(z1)} - ${pos(z0)})`;
-      train.sections.forEach((s, i) => {
-        if (bar.children[i + 1]) bar.children[i + 1].style.left = pos(s.gapMm);
-      });
       // indicador de campo: EMS I/g relativo al nominal (zona 95 a 105 %), EDS corriente inducida
       const lvl = simView.fieldLevel ?? 0;
       els.hFieldV.textContent = `${fmt(lvl * 100, 0)} %`;

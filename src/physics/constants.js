@@ -11,6 +11,12 @@ export const RHO_AIR = 1.225; // kg/m^3, aire a nivel del mar
 export const KMH = 1 / 3.6; // multiplicar km/h por esto para obtener m/s
 export const toKmh = (ms) => ms * 3.6;
 
+/** distancia en metros como texto de km: entero ("12"), o con hasta dos decimales y coma ("12,5", "0,25"). */
+export const fmtKm = (meters) => {
+  const k = meters / 1000;
+  return (Math.abs(k - Math.round(k)) < 1e-9 ? String(Math.round(k)) : String(+k.toFixed(2))).replace(".", ",");
+};
+
 // ---------------------------------------------------------------- ems (transrapid)
 export const EMS = {
   // [fuente] entrehierro nominal de 10 mm mantenido por control activo

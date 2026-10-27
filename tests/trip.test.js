@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Train, TRIP_MIN, TRIP_MAX } from "../src/physics/train.js";
+import { fmtKm } from "../src/physics/constants.js";
 
 // viaje con distancia fija: corre hasta que termina (o se agota el tiempo) y sigue un rato mas
 function runTrip(mode, distance, kmh, { extra = 60, maxSeconds = 3000 } = {}) {
@@ -45,11 +46,39 @@ describe("viaje con distancia fija", () => {
     expect(t.startTrip(1e9)).toBe(TRIP_MAX);
   });
 
-  it("salir despues del viaje recorre otra etapa igual y vuelve al modo continuo", () => {
-    const r = runTrip("eds", 3000, 400, { extra: 1 });
+  it("salir despues del viaje repite el viaje: misma distancia, misma velocidad maxima y tiempo por tramo", () => {
+    const r = runTrip("eds", 3000, 250, { extra: 1 });
+    const first = r.t.trip.duration;
+    expect(r.t.hold).toBe(true);
     r.t.hold = false;
     r.t.advance(1);
-    expect(r.t.trip).toBe(null);
+    expect(r.t.trip).not.toBe(null);
+    expect(r.t.trip.done).toBe(false);
+    expect(r.t.trip.distance).toBe(3000);
     expect(r.t.nextStation).toBeCloseTo(6000, 6);
+    expect(r.t.targetSpeed * 3.6).toBeCloseTo(250, 6);
+    while (!r.t.trip.done && r.t.time < 3000) r.t.step(0.001);
+    expect(r.t.trip.done).toBe(true);
+    expect(Math.abs(r.t.x - 6000)).toBeLessThan(1.5);
+    // la duracion es la del segundo tramo, no la acumulada
+    expect(Math.abs(r.t.trip.duration - first)).toBeLessThan(0.05 * first);
+  });
+
+  it("elegir la distancia entre estaciones vuelve al recorrido continuo", () => {
+    const t = new Train("ems");
+    t.startTrip(2000, 300);
+    t.setSpacing(30e3);
+    expect(t.trip).toBe(null);
+  });
+});
+
+describe("fmtKm", () => {
+  it("entero sin decimales y con coma si no lo es", () => {
+    expect(fmtKm(12000)).toBe("12");
+    expect(fmtKm(12500)).toBe("12,5");
+    expect(fmtKm(500)).toBe("0,5");
+    expect(fmtKm(250)).toBe("0,25");
+    expect(fmtKm(2500)).toBe("2,5");
+    expect(fmtKm(1000.0000001)).toBe("1");
   });
 });
